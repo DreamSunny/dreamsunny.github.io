@@ -146,11 +146,8 @@ mSubLayer = SubWindowLayer;
 ## 3.1 创建RootWindowContainer
 
 1.SystemServer.main(..)
-
 2.SystemServer.run()
-
 3.SystemServer.startOtherServices(..)
-
 4.vm = WindowManagerService.main(..)
 
 ```Java
@@ -165,9 +162,7 @@ private WindowManagerService(..) {
 ## 3.2 创建DisplayContent
 
 5.ActivityManagerService.setWindowManager(wm)
-
 6.ActivityTaskManagerService.setWindowManager(wm)
-
 7.RootWindowContainer.setWindowManager(wm)
 
 ```Java

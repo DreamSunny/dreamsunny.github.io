@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 16 Aug 2023 13:26:26 +0800</pubDate>
-    <lastBuildDate>Wed, 16 Aug 2023 13:26:26 +0800</lastBuildDate>
+    <pubDate>Wed, 16 Aug 2023 21:01:11 +0800</pubDate>
+    <lastBuildDate>Wed, 16 Aug 2023 21:01:11 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -435,13 +435,10 @@ mSubLayer = SubWindowLayer;
 
 &lt;h2 id=&quot;31-创建rootwindowcontainer&quot;&gt;3.1 创建RootWindowContainer&lt;/h2&gt;
 
-&lt;p&gt;1.SystemServer.main(..)&lt;/p&gt;
-
-&lt;p&gt;2.SystemServer.run()&lt;/p&gt;
-
-&lt;p&gt;3.SystemServer.startOtherServices(..)&lt;/p&gt;
-
-&lt;p&gt;4.vm = WindowManagerService.main(..)&lt;/p&gt;
+&lt;p&gt;1.SystemServer.main(..)
+2.SystemServer.run()
+3.SystemServer.startOtherServices(..)
+4.vm = WindowManagerService.main(..)&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// WindowManagerService.java
 private WindowManagerService(..) {
@@ -451,11 +448,9 @@ private WindowManagerService(..) {
 
 &lt;h2 id=&quot;32-创建displaycontent&quot;&gt;3.2 创建DisplayContent&lt;/h2&gt;
 
-&lt;p&gt;5.ActivityManagerService.setWindowManager(wm)&lt;/p&gt;
-
-&lt;p&gt;6.ActivityTaskManagerService.setWindowManager(wm)&lt;/p&gt;
-
-&lt;p&gt;7.RootWindowContainer.setWindowManager(wm)&lt;/p&gt;
+&lt;p&gt;5.ActivityManagerService.setWindowManager(wm)
+6.ActivityTaskManagerService.setWindowManager(wm)
+7.RootWindowContainer.setWindowManager(wm)&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// RootWindowContainer.java
 private final ImeContainer mImeWindowsContainer = new ImeContainer(mWmService);
