@@ -1,10 +1,10 @@
 # Site settings
-title: Yaku Blog
-SEOTitle: yaku博客 | Yaku Blog
+title: Android学习笔记
+SEOTitle: Android学习笔记 | Yaku Blog
 header-img: img/home-bg.jpg
 email: mazhyue@gmail.com
 description: "Android学习笔记"
-keyword: ""
+keyword: "Android, 博客, 互联网"
 url: ""              # your host, for absolute URL
 baseurl: ""         # for example, '/blog' if your blog hosted on 'host/blog'
 
@@ -42,8 +42,13 @@ plugins: [jekyll-paginate]
 # document: http://jekyllrb.com/docs/configuration/#kramdown
 markdown: kramdown
 kramdown:
-  input: GFM                            # use Github Flavored Markdown !important
-
+  input: GFM # use Github Flavored Markdown !important
+  syntax_highlighter_opts:
+    span:
+      line_numbers: false
+    block:
+      line_numbers: true
+      start_line: 1
 
 
 # Disqus settings
