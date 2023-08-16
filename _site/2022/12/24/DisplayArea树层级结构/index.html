@@ -1,0 +1,1272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Android学习笔记">
+    <meta name="keyword"  content="">
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <title>DisplayArea树层级结构 - yaku博客 | Yaku Blog</title>
+
+    <link rel="canonical" href="http://localhost:4000/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/hux-blog.min.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="/css/syntax.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="http://cdn.staticfile.org/font-awesome/4.2.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+
+
+    <!-- Hux Delete, sad but pending in China
+    <link href='http://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='http://fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/
+    css'>
+    -->
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Yaku Blog</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <!-- Known Issue, found by Hux:
+            <nav>'s height woule be hold on by its content.
+            so, when navbar scale out, the <nav> will cover tags.
+            also mask any touch event of tags, unfortunately.
+        -->
+        <div id="huxblog_navbar">
+            <div class="navbar-collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li>
+                        <a href="/">Home</a>
+                    </li>
+                    
+                    <li>
+                        <a href="/about/">About</a>
+                    </li>
+                    
+                    <li>
+                        <a href="/tags/">Tags</a>
+                    </li>
+                    
+                </ul>
+            </div>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+<script>
+    // Drop Bootstarp low-performance Navbar
+    // Use customize navbar with high-quality material design animation
+    // in high-perf jank-free CSS3 implementation
+    var $body   = document.body;
+    var $toggle = document.querySelector('.navbar-toggle');
+    var $navbar = document.querySelector('#huxblog_navbar');
+    var $collapse = document.querySelector('.navbar-collapse');
+
+    $toggle.addEventListener('click', handleMagic)
+    function handleMagic(e){
+        if ($navbar.className.indexOf('in') > 0) {
+        // CLOSE
+            $navbar.className = " ";
+            // wait until animation end.
+            setTimeout(function(){
+                // prevent frequently toggle
+                if($navbar.className.indexOf('in') < 0) {
+                    $collapse.style.height = "0px"
+                }
+            },400)
+        }else{
+        // OPEN
+            $collapse.style.height = "auto"
+            $navbar.className += " in";
+        }
+    }
+</script>
+
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+<style type="text/css">
+    header.intro-header{
+        background-image: url('/img/post-bg-2015.jpg')
+    }
+</style>
+<header class="intro-header" >
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/tags/#Android" title="Android">Android</a>
+                        
+                    </div>
+                    <h1>DisplayArea树层级结构</h1>
+                    
+                    
+                    <h2 class="subheading"></h2>
+                    
+                    <span class="meta">Posted by Yaku on December 24, 2022</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+				<p><img src="/img/DisplayArea/class_hierarchy.png" alt="img" /></p>
+
+<ul>
+  <li>
+    <p>RootWindowContainer：最顶层的管理者，直接管理 DisplayContent 。</p>
+  </li>
+  <li>
+    <p>DisplayContent：对应一个真实或者虚拟的显示设备。</p>
+  </li>
+  <li>
+    <p>TaskDisplayArea：是系统中所有应用任务的父节点，用于管理 Task 。</p>
+  </li>
+  <li>
+    <p>Task：代表一个任务，可以包含多个 Activity 。</p>
+  </li>
+  <li>
+    <p>ActivityRecord：对应一个 Activity 节点。</p>
+  </li>
+  <li>
+    <p>WindowState：对应一个窗口。</p>
+  </li>
+</ul>
+
+<h1 id="1window相关概念">1.Window相关概念</h1>
+
+<p><strong>Window Type主要分为三大类：</strong></p>
+
+<ul>
+  <li>
+    <p>Application windows（应用窗口）: 1~99</p>
+  </li>
+  <li>
+    <p>Sub-windows（子窗口）: 1000~1999</p>
+  </li>
+  <li>
+    <p>System windows（系统窗口）: 2000~2999</p>
+  </li>
+</ul>
+
+<p><strong>Window Layer分为36层：</strong></p>
+
+<pre><code class="language-Java">default int getMaxWindowLayer() {
+    return 36;
+}
+</code></pre>
+
+<p><strong>Z-Order计算：</strong></p>
+
+<pre><code class="language-Java">mBaseLayer = WindowLayer * 10000 + 1000;
+mSubLayer = SubWindowLayer;
+</code></pre>
+
+<p><strong>Window Type与Window Layer对应关系如下：</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Window Type</th>
+      <th>VALUE</th>
+      <th>Window Layer</th>
+      <th>Leaf Type</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>TYPE_BASE_APPLICATION</em></td>
+      <td>1</td>
+      <td><em>APPLICATION_LAYER = 2</em></td>
+      <td><em>LEAF_TYPE_TASK_CONTAINERS = 1</em></td>
+    </tr>
+    <tr>
+      <td><em>TYPE_APPLICATION</em></td>
+      <td>2</td>
+      <td> </td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td><em>TYPE_APPLICATION_STARTING</em></td>
+      <td>3</td>
+      <td> </td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td><em>TYPE_DRAWN_APPLICATION</em></td>
+      <td>4</td>
+      <td> </td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td><em>LAST_APPLICATION_WINDOW</em></td>
+      <td>99</td>
+      <td> </td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td><strong><em>TYPE_APPLICATION_PANEL</em></strong></td>
+      <td><strong>1000</strong></td>
+      <td><strong>1</strong></td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td><strong><em>TYPE_APPLICATION_MEDIA</em></strong></td>
+      <td><strong>1001</strong></td>
+      <td><strong>-2</strong></td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td><strong><em>TYPE_APPLICATION_SUB_PANEL</em></strong></td>
+      <td><strong>1002</strong></td>
+      <td><strong>2</strong></td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td><strong><em>TYPE_APPLICATION_ATTACHED_DIALOG</em></strong></td>
+      <td><strong>1003</strong></td>
+      <td><strong>1</strong></td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td><strong><em>TYPE_APPLICATION_MEDIA_OVERLAY</em></strong></td>
+      <td><strong>1004</strong></td>
+      <td><strong>-1</strong></td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td><strong><em>TYPE_APPLICATION_ABOVE_SUB_PANEL</em></strong></td>
+      <td><strong>1005</strong></td>
+      <td><strong>3</strong></td>
+      <td>-</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_STATUS_BAR</em></td>
+      <td>2000</td>
+      <td>15</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_SEARCH_BAR</em></td>
+      <td>2001</td>
+      <td>4</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_PHONE</em></td>
+      <td>2002</td>
+      <td>3</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_SYSTEM_ALERT</em></td>
+      <td>2003</td>
+      <td>12|9</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_KEYGUARD</em></td>
+      <td>2004</td>
+      <td>3</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_TOAST</em></td>
+      <td>2005</td>
+      <td>7</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_SYSTEM_OVERLAY</em></td>
+      <td>2006</td>
+      <td>23|20</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_PRIORITY_PHONE</em></td>
+      <td>2007</td>
+      <td>8</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_SYSTEM_DIALOG</em></td>
+      <td>2008</td>
+      <td>6</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_KEYGUARD_DIALOG</em></td>
+      <td>2009</td>
+      <td>19</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_SYSTEM_ERROR</em></td>
+      <td>2010</td>
+      <td>27|9</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_INPUT_METHOD</em></td>
+      <td>2011</td>
+      <td>13</td>
+      <td><em>LEAF_TYPE_IME_CONTAINERS = 2</em></td>
+    </tr>
+    <tr>
+      <td><em>TYPE_INPUT_METHOD_DIALOG</em></td>
+      <td>2012</td>
+      <td>14</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td><em>TYPE_WALLPAPER</em></td>
+      <td>2013</td>
+      <td>1</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_STATUS_BAR_PANEL</em></td>
+      <td>2014</td>
+      <td>3</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_SECURE_SYSTEM_OVERLAY</em></td>
+      <td>2015</td>
+      <td>33</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_DRAG</em></td>
+      <td>2016</td>
+      <td>30</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_STATUS_BAR_SUB_PANEL</em></td>
+      <td>2017</td>
+      <td>18</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_POINTER</em></td>
+      <td>2018</td>
+      <td>35</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_NAVIGATION_BAR</em></td>
+      <td>2019</td>
+      <td>24</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_VOLUME_OVERLAY</em></td>
+      <td>2020</td>
+      <td>22</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_BOOT_PROGRESS</em></td>
+      <td>2021</td>
+      <td>34</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_INPUT_CONSUMER</em></td>
+      <td>2022</td>
+      <td>5</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_NAVIGATION_BAR_PANEL</em></td>
+      <td>2024</td>
+      <td>25</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_DISPLAY_OVERLAY</em></td>
+      <td>2026</td>
+      <td>29</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_MAGNIFICATION_OVERLAY</em></td>
+      <td>2027</td>
+      <td>28</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_PRIVATE_PRESENTATION</em></td>
+      <td>2030</td>
+      <td>3</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_VOICE_INTERACTION</em></td>
+      <td>2031</td>
+      <td>21</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_ACCESSIBILITY_OVERLAY</em></td>
+      <td>2032</td>
+      <td>31</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_VOICE_INTERACTION_STARTING</em></td>
+      <td>2033</td>
+      <td>20</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_DOCK_DIVIDER</em></td>
+      <td>2034</td>
+      <td>3</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_QS_DIALOG</em></td>
+      <td>2035</td>
+      <td>3</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_SCREENSHOT</em></td>
+      <td>2036</td>
+      <td>26</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_PRESENTATION</em></td>
+      <td>2037</td>
+      <td>3</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_APPLICATION_OVERLAY</em></td>
+      <td>2038</td>
+      <td>11</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_ACCESSIBILITY_MAGNIFICATION_OVERLAY</em></td>
+      <td>2039</td>
+      <td>32</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_NOTIFICATION_SHADE</em></td>
+      <td>2040</td>
+      <td>17</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_STATUS_BAR_ADDITIONAL</em></td>
+      <td>2041</td>
+      <td>16</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td><em>TYPE_CARWITH_NAVIGATION_BAR</em></td>
+      <td>2998</td>
+      <td>24</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>常见Window及Window Type：</strong></p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Window</th>
+      <th>Window Type</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Activity</td>
+      <td><em>TYPE_BASE_APPLICATION</em></td>
+    </tr>
+    <tr>
+      <td>TaskSnapshotWindow</td>
+      <td><em>TYPE_APPLICATION_STARTING</em></td>
+    </tr>
+    <tr>
+      <td>Dialog</td>
+      <td><em>TYPE_APPLICATION</em></td>
+    </tr>
+    <tr>
+      <td>PopupWindow</td>
+      <td><em>TYPE_APPLICATION_PANEL</em></td>
+    </tr>
+    <tr>
+      <td>Toast</td>
+      <td><em>TYPE_TOAST</em></td>
+    </tr>
+  </tbody>
+</table>
+
+<h1 id="2为什么要构建displayarea树">2.为什么要构建DisplayArea树？</h1>
+
+<h2 id="21-需求分析">2.1 需求分析</h2>
+
+<p>手机系统有N个类型的Window，需要划分Layer维护Window显示Z-order；</p>
+
+<p>有N个Feature（功能），每个Feature能够影响N个Layer层；</p>
+
+<p>窗口类型是可增加的，Feature是可增删的；</p>
+
+<h2 id="22-方案设计">2.2 方案设计</h2>
+
+<p>构建DisplayArea树，创建Feature节点，支持动态增删Feature，叶子节点维护Layer层级。</p>
+
+<p>以 DefaultTaskDisplayArea 节点为例：</p>
+
+<p>其父节点为 5|0|12 -&gt; 3|0|14 -&gt; 6|0|14 -&gt; 4|0|31 -&gt; DisplayContent，其含义为该节点的所有子节点均支持 FullscreenMagnification|5、OneHanded|3、HideDisplayCutout|6、WindowedMagnification|4 功能（Feature）。</p>
+
+<p>同时 DefaultTaskDisplayArea 节点的子节点的层级范围为 2|2，即所有子节点均为应用窗口，其Layer值是固定的。</p>
+
+<h1 id="3构建displayarea树流程">3.构建DisplayArea树流程</h1>
+
+<h2 id="31-创建rootwindowcontainer">3.1 创建RootWindowContainer</h2>
+
+<p>1.SystemServer.main(..)</p>
+
+<p>2.SystemServer.run()</p>
+
+<p>3.SystemServer.startOtherServices(..)</p>
+
+<p>4.vm = WindowManagerService.main(..)</p>
+
+<pre><code class="language-Java">// WindowManagerService.java
+private WindowManagerService(..) {
+    mRoot = new RootWindowContainer(this);
+}
+</code></pre>
+
+<h2 id="32-创建displaycontent">3.2 创建DisplayContent</h2>
+
+<p>5.ActivityManagerService.setWindowManager(wm)</p>
+
+<p>6.ActivityTaskManagerService.setWindowManager(wm)</p>
+
+<p>7.RootWindowContainer.setWindowManager(wm)</p>
+
+<pre><code class="language-Java">// RootWindowContainer.java
+private final ImeContainer mImeWindowsContainer = new ImeContainer(mWmService);
+void setWindowManager(WindowManagerService wm) {
+    ..
+    final Display[] displays = mDisplayManager.getDisplays();
+    for (int displayNdx = 0; displayNdx &lt; displays.length; ++displayNdx) {
+        final Display display = displays[displayNdx];
+        final DisplayContent displayContent = new DisplayContent(display, this);
+        addChild(displayContent, POSITION_BOTTOM);
+        if (displayContent.mDisplayId == DEFAULT_DISPLAY) {
+            mDefaultDisplay = displayContent;
+        }
+    }
+    ..
+}
+</code></pre>
+
+<h2 id="33-创建defaulttaskdisplayarea">3.3 创建DefaultTaskDisplayArea</h2>
+
+<pre><code class="language-Java">// DisplayContent.java
+DisplayContent(Display display, RootWindowContainer root) {
+    ..
+    final Transaction pendingTransaction = getPendingTransaction();
+    configureSurfaces(pendingTransaction);
+    pendingTransaction.apply();
+    ..
+}
+
+private void configureSurfaces(Transaction transaction) {
+    ..
+    if (mDisplayAreaPolicy == null) {
+        // Setup the policy and build the display area hierarchy.
+        // Build the hierarchy only after creating the surface so it is reparented correctly
+        mDisplayAreaPolicy = mWmService.getDisplayAreaPolicyProvider().instantiate(
+                mWmService, this /* content */, this /* root */,
+                mImeWindowsContainer);
+    }
+    ..
+}
+
+//DisplayAreaPolicy.java
+static final class DefaultProvider implements DisplayAreaPolicy.Provider {
+    @Override
+    public DisplayAreaPolicy instantiate(WindowManagerService wmService,
+            DisplayContent content, RootDisplayArea root,
+            DisplayArea.Tokens imeContainer) {
+        final TaskDisplayArea defaultTaskDisplayArea = new TaskDisplayArea(content, wmService,
+                "DefaultTaskDisplayArea", FEATURE_DEFAULT_TASK_CONTAINER);
+        final List&lt;TaskDisplayArea&gt; tdaList = new ArrayList&lt;&gt;();
+        tdaList.add(defaultTaskDisplayArea);
+
+        // Define the features that will be supported under the root of the whole logical
+        // display. The policy will build the DisplayArea hierarchy based on this.
+        final HierarchyBuilder rootHierarchy = new HierarchyBuilder(root);
+        // Set the essential containers (even if the display doesn't support IME).
+        rootHierarchy.setImeContainer(imeContainer).setTaskDisplayAreas(tdaList);
+        if (content.isTrusted()) {
+            // Only trusted display can have system decorations.
+            configureTrustedHierarchyBuilder(rootHierarchy, wmService, content);
+        }
+
+        // Instantiate the policy with the hierarchy defined above. This will create and attach
+        // all the necessary DisplayAreas to the root.
+        return new DisplayAreaPolicyBuilder().setRootHierarchy(rootHierarchy).build(wmService);
+    }
+    
+    private void configureTrustedHierarchyBuilder(HierarchyBuilder rootHierarchy,
+            WindowManagerService wmService, DisplayContent content) {
+        rootHierarchy.addFeature(new Feature.Builder(wmService.mPolicy, "WindowedMagnification",
+                FEATURE_WINDOWED_MAGNIFICATION)
+                .upTo(TYPE_ACCESSIBILITY_MAGNIFICATION_OVERLAY)
+                .except(TYPE_ACCESSIBILITY_MAGNIFICATION_OVERLAY)
+                .setNewDisplayAreaSupplier(DisplayArea.Dimmable::new)
+                .build());
+        if (content.isDefaultDisplay) {
+            rootHierarchy.addFeature(new Feature.Builder(wmService.mPolicy, "HideDisplayCutout",
+                    FEATURE_HIDE_DISPLAY_CUTOUT)
+                    .all()
+                    .except(TYPE_NAVIGATION_BAR, TYPE_NAVIGATION_BAR_PANEL, TYPE_STATUS_BAR,
+                            TYPE_NOTIFICATION_SHADE)
+                    .build())
+                    .addFeature(new Feature.Builder(wmService.mPolicy, "OneHanded",
+                            FEATURE_ONE_HANDED)
+                            .all()
+                            .except(TYPE_NAVIGATION_BAR, TYPE_NAVIGATION_BAR_PANEL,
+                                    TYPE_SECURE_SYSTEM_OVERLAY)
+                            .build());
+        }
+        rootHierarchy
+                .addFeature(new Feature.Builder(wmService.mPolicy, "FullscreenMagnification",
+                        FEATURE_FULLSCREEN_MAGNIFICATION)
+                        .all()
+                        .except(TYPE_ACCESSIBILITY_MAGNIFICATION_OVERLAY, TYPE_INPUT_METHOD,
+                                TYPE_INPUT_METHOD_DIALOG, TYPE_MAGNIFICATION_OVERLAY,
+                                TYPE_NAVIGATION_BAR, TYPE_NAVIGATION_BAR_PANEL)
+                        .build())
+                .addFeature(new Feature.Builder(wmService.mPolicy, "ImePlaceholder",
+                        FEATURE_IME_PLACEHOLDER)
+                        .and(TYPE_INPUT_METHOD, TYPE_INPUT_METHOD_DIALOG)
+                        .build());
+    }
+}
+</code></pre>
+
+<p>在 configureTrustedHierarchyBuilder(..) 方法中配置Feature及其能够影响到的Layer层：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Feature名</th>
+      <th>Feature ID</th>
+      <th>对应功能</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>WindowedMagnification</td>
+      <td>4</td>
+      <td>窗口放大镜功能。</td>
+    </tr>
+    <tr>
+      <td>HideDisplayCutout</td>
+      <td>6</td>
+      <td>隐藏刘海功能。</td>
+    </tr>
+    <tr>
+      <td>OneHanded</td>
+      <td>3</td>
+      <td>单手模式。</td>
+    </tr>
+    <tr>
+      <td>FullscreenMagnification</td>
+      <td>5</td>
+      <td>屏幕放大镜功能。</td>
+    </tr>
+    <tr>
+      <td>ImePlaceholder</td>
+      <td>7</td>
+      <td>特殊情况下用来放置输入法的节点。</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>在Feature类中使用一个长度为 getMaxWindowLayer() + 1 的boolean数组，用来标识该Feature能够影响到的Layer层：</p>
+
+<p><img src="/img/DisplayArea/array1.png" alt="img" /></p>
+
+<h2 id="34-displayareapolicy构建过程">3.4 DisplayAreaPolicy构建过程</h2>
+
+<pre><code class="language-Java">// DisplayAreaPolicyBuilder.java
+private void build(@Nullable List&lt;HierarchyBuilder&gt; displayAreaGroupHierarchyBuilders) {
+    final WindowManagerPolicy policy = mRoot.mWmService.mPolicy;
+    final int maxWindowLayerCount = policy.getMaxWindowLayer() + 1;
+    final DisplayArea.Tokens[] displayAreaForLayer =
+            new DisplayArea.Tokens[maxWindowLayerCount];
+    final Map&lt;Feature, List&lt;DisplayArea&lt;WindowContainer&gt;&gt;&gt; featureAreas =
+            new ArrayMap&lt;&gt;(mFeatures.size());
+    for (int i = 0; i &lt; mFeatures.size(); i++) {
+        featureAreas.put(mFeatures.get(i), new ArrayList&lt;&gt;());
+    }
+    ...
+}
+</code></pre>
+
+<h3 id="341-构建root节点">3.4.1 构建root节点：</h3>
+
+<pre><code class="language-Java">PendingArea[] areaForLayer = new PendingArea[maxWindowLayerCount];
+final PendingArea root = new PendingArea(null, 0, null);
+Arrays.fill(areaForLayer, root);
+</code></pre>
+
+<h3 id="342-构建featurearea">3.4.2 构建featureArea：</h3>
+
+<pre><code class="language-Java">// Create DisplayAreas to cover all defined features.
+final int size = mFeatures.size();
+for (int i = 0; i &lt; size; i++) {
+    final Feature feature = mFeatures.get(i);
+    PendingArea featureArea = null;
+    for (int layer = 0; layer &lt; maxWindowLayerCount; layer++) {
+        if (feature.mWindowLayers[layer]) {
+            if (featureArea == null || featureArea.mParent != areaForLayer[layer]) {
+                featureArea = new PendingArea(feature, layer, areaForLayer[layer]);
+                areaForLayer[layer].mChildren.add(featureArea);
+            }
+            areaForLayer[layer] = featureArea;
+        } else {
+            featureArea = null;
+        }
+    }
+}
+</code></pre>
+
+<p><img src="/img/DisplayArea/array2.png" alt="img" /></p>
+
+<p>黄色部分与上图是相对应的，创建的PendingArea显示格式为：Feature ID|minLayer</p>
+
+<p>构建出如下一棵树：</p>
+
+<p><img src="/img/DisplayArea/tree1.png" alt="img" /></p>
+
+<h3 id="343-构建-leafarea">3.4.3 构建 leafArea：</h3>
+
+<pre><code class="language-Java">// Create Tokens as leaf for every layer.
+PendingArea leafArea = null;
+int leafType = LEAF_TYPE_TOKENS;
+for (int layer = 0; layer &lt; maxWindowLayerCount; layer++) {
+    int type = typeOfLayer(policy, layer);
+    if (leafArea == null || leafArea.mParent != areaForLayer[layer]
+            || type != leafType) {
+        leafArea = new PendingArea(null /* feature */, layer, areaForLayer[layer]);
+        areaForLayer[layer].mChildren.add(leafArea);
+        leafType = type;
+        if (leafType == LEAF_TYPE_TASK_CONTAINERS) {
+            addTaskDisplayAreasToApplicationLayer(areaForLayer[layer]);
+            addDisplayAreaGroupsToApplicationLayer(areaForLayer[layer],
+                    displayAreaGroupHierarchyBuilders);
+            leafArea.mSkipTokens = true;
+        } else if (leafType == LEAF_TYPE_IME_CONTAINERS) {
+            leafArea.mExisting = mImeContainer;
+            leafArea.mSkipTokens = true;
+        }
+    }
+    leafArea.mMaxLayer = layer;
+}
+
+private static int typeOfLayer(WindowManagerPolicy policy, int layer) {
+    if (layer == APPLICATION_LAYER) {
+        return LEAF_TYPE_TASK_CONTAINERS; // 容纳App窗口的TaskDisplayArea
+    } else if (layer == policy.getWindowLayerFromTypeLw(TYPE_INPUT_METHOD)
+            || layer == policy.getWindowLayerFromTypeLw(TYPE_INPUT_METHOD_DIALOG)) {
+        return LEAF_TYPE_IME_CONTAINERS; // 容纳输入法窗口的ImeContainer
+    } else {
+        return LEAF_TYPE_TOKENS; // 容纳其他非App类型窗口的DisplayArea.Tokens
+    }
+}
+</code></pre>
+
+<p><img src="/img/DisplayArea/array3.png" alt="img" /></p>
+
+<p>黄色部分表示复用同一个leafArea，更新其mMaxLayer值，这里创建的PendingArea显示格式为：minLayer|maxLayer</p>
+
+<h3 id="344-更新整棵树所有节点的maxlayer">3.4.4 更新整棵树所有节点的maxLayer</h3>
+
+<pre><code class="language-Java">int computeMaxLayer() {
+    for (int i = 0; i &lt; mChildren.size(); i++) {
+        mMaxLayer = Math.max(mMaxLayer, mChildren.get(i).computeMaxLayer());
+    }
+    return mMaxLayer;
+}
+</code></pre>
+
+<h3 id="345-构建整棵树">3.4.5 构建整棵树</h3>
+
+<pre><code class="language-Java">void instantiateChildren(DisplayArea&lt;DisplayArea&gt; parent, DisplayArea.Tokens[] areaForLayer,
+        int level, Map&lt;Feature, List&lt;DisplayArea&lt;WindowContainer&gt;&gt;&gt; areas) {
+    mChildren.sort(Comparator.comparingInt(pendingArea -&gt; pendingArea.mMinLayer));
+    for (int i = 0; i &lt; mChildren.size(); i++) {
+        final PendingArea child = mChildren.get(i);
+        final DisplayArea area = child.createArea(parent, areaForLayer);
+        if (area == null) {
+            // TaskDisplayArea and ImeContainer can be set at different hierarchy, so it can
+            // be null.
+            continue;
+        }
+        parent.addChild(area, WindowContainer.POSITION_TOP);
+        if (child.mFeature != null) {
+            areas.get(child.mFeature).add(area);
+        }
+        child.instantiateChildren(area, areaForLayer, level + 1, areas);
+    }
+}
+
+private DisplayArea createArea(DisplayArea&lt;DisplayArea&gt; parent,
+        DisplayArea.Tokens[] areaForLayer) {
+    if (mExisting != null) {
+        // LEAF_TYPE_TASK_CONTAINERS
+        // LEAF_TYPE_IME_CONTAINERS
+        if (mExisting.asTokens() != null) {
+            // Store the WindowToken container for layers
+            fillAreaForLayers(mExisting.asTokens(), areaForLayer);
+        }
+        return mExisting;
+    }
+    if (mSkipTokens) {
+        // LEAF_TYPE_TASK_CONTAINERS
+        // LEAF_TYPE_IME_CONTAINERS
+        return null;
+    }
+    DisplayArea.Type type;
+    if (mMinLayer &gt; APPLICATION_LAYER) {
+        type = DisplayArea.Type.ABOVE_TASKS; // 位于App窗口之下的非App窗口
+    } else if (mMaxLayer &lt; APPLICATION_LAYER) {
+        type = DisplayArea.Type.BELOW_TASKS; // 位于App窗口之上的非App窗口
+    } else {
+        type = DisplayArea.Type.ANY; // App窗口
+    }
+    if (mFeature == null) {
+        final DisplayArea.Tokens leaf = new DisplayArea.Tokens(parent.mWmService, type,
+                "Leaf:" + mMinLayer + ":" + mMaxLayer);
+        fillAreaForLayers(leaf, areaForLayer);
+        return leaf;
+    } else {
+        return mFeature.mNewDisplayAreaSupplier.create(parent.mWmService, type,
+                mFeature.mName + ":" + mMinLayer + ":" + mMaxLayer, mFeature.mId);
+    }
+}
+</code></pre>
+
+<p>整棵树的根节点是 DisplayContent，这里创建的DisplayArea显示格式为：Feature ID|minLayer|maxLayer；叶子节点的显示格式为：minLayer|maxLayer</p>
+
+<p><img src="/img/DisplayArea/tree2.png" alt="img" /></p>
+
+<p>执行命令：adb shell dumpsys activity containers</p>
+
+<pre><code class="language-Java">ACTIVITY MANAGER CONTAINERS (dumpsys activity containers)
+ROOT 
+  #0 Display 0 name="内置屏幕"
+   #2 Leaf:36:36 
+    #1 WindowToken{7fb09c2 type=2024 android.os.BinderProxy@da9960d} 
+     #0 e873d3 RoundCornerBottom 
+    #0 WindowToken{2c592ae type=2024 android.os.BinderProxy@5ce3f29} 
+     #0 164a84f RoundCornerTop 
+   #1 HideDisplayCutout:32:35 
+    #2 OneHanded:34:35 
+     #0 FullscreenMagnification:34:35 
+      #0 Leaf:34:35 
+    #1 FullscreenMagnification:33:33 
+     #0 Leaf:33:33 
+    #0 OneHanded:32:32 
+     #0 Leaf:32:32 
+   #0 WindowedMagnification:0:31 
+    #6 HideDisplayCutout:26:31 
+     #0 OneHanded:26:31 
+      #2 FullscreenMagnification:29:31 
+       #0 Leaf:29:31 
+      #1 Leaf:28:28 
+       #1 WindowToken{6cffb72 type=2027 android.os.BinderProxy@9b9807d} 
+        #0 e90cc40 GestureStubRight 
+       #0 WindowToken{288fa0d type=2027 android.os.BinderProxy@3713ca4} 
+        #0 1d77f10 GestureStubLeft 
+      #0 FullscreenMagnification:26:27 
+       #0 Leaf:26:27 
+    #5 Leaf:24:25 
+     #3 WindowToken{2cfd75e type=2024 android.os.BinderProxy@a18e899} 
+      #0 6d1873f GestureStubHome 
+     #2 WindowToken{4a05ae3 type=2024 android.os.BinderProxy@b34e312} 
+      #0 28a0ce0 SecondaryHomeHandle0 
+     #1 WindowToken{6986f7 type=2024 android.os.BinderProxy@f7da2f6} 
+      #0 e17e964 pip-dismiss-overlay 
+     #0 WindowToken{dfc6ab6 type=2019 android.os.BinderProxy@e0bfb78} 
+      #0 bc113b7 NavigationBar0 
+    #4 HideDisplayCutout:18:23 
+     #0 OneHanded:18:23 
+      #0 FullscreenMagnification:18:23 
+       #0 Leaf:18:23 
+        #1 WindowToken{2ecacd2 type=2017 android.os.BinderProxy@63e9b5d} 
+         #0 7d9c1a3 control_center 
+        #0 WindowToken{7960200 type=2017 android.os.BinderProxy@7c7083} 
+         #0 b7b0a39 NotificationModalWindowManager 
+    #3 OneHanded:17:17 
+     #0 FullscreenMagnification:17:17 
+      #0 Leaf:17:17 
+       #0 WindowToken{37bf169 type=2040 android.os.BinderProxy@80f5833} 
+        #0 f89f7ee NotificationShade 
+    #2 HideDisplayCutout:16:16 
+     #0 OneHanded:16:16 
+      #0 FullscreenMagnification:16:16 
+       #0 Leaf:16:16 
+    #1 OneHanded:15:15 
+     #0 FullscreenMagnification:15:15 
+      #0 Leaf:15:15 
+       #0 WindowToken{ac189b4 type=2000 android.os.BinderProxy@75516c6} 
+        #0 194a9dd StatusBar 
+    #0 HideDisplayCutout:0:14 
+     #0 OneHanded:0:14 
+      #1 ImePlaceholder:13:14 
+       #0 ImeContainer 
+        #0 WindowToken{720aa04 type=2011 android.os.Binder@d506617} 
+         #0 f966473 InputMethod 
+      #0 FullscreenMagnification:0:12 
+       #2 Leaf:3:12 
+        #0 WindowToken{ec3f545 type=2038 android.os.BinderProxy@fd8013a} 
+         #0 329a9af ShellDropTarget 
+       #1 DefaultTaskDisplayArea 
+        #2 Task=18 
+         #0 Task=19 
+          #0 ActivityRecord{296e207 u0 com.miui.home/.launcher.Launcher} t19} 
+           #0 9eb98f2 com.miui.home/com.miui.home.launcher.Launcher 
+        #1 Task=4 
+        #0 Task=5 
+         #1 Task=7 
+         #0 Task=6 
+       #0 Leaf:0:1 
+        #1 WallpaperWindowToken{d4d41d3 token=android.os.BinderProxy@2da4fc2} 
+         #0 d44d722 com.miui.miwallpaper.wallpaperservice.MiuiKeyguardPictorialWallpaper 
+        #0 WallpaperWindowToken{22dbaad token=android.os.Binder@fe41bc4} 
+         #0 8db5a66 com.miui.miwallpaper.wallpaperservice.ImageWallpaper 
+ 
+</code></pre>
+
+<p>可以看到Activity是在DefaultTaskDisplayArea节点下，其他新创建的Window会根据Layer值插入到对应Leaf节点上。</p>
+
+<h1 id="4参考资料">4.参考资料</h1>
+
+<p><a href="https://juejin.cn/post/7140289958085935141">DisplayArea层级结构（一） —— DisplayArea层级结构的生成</a><br />
+<a href="https://juejin.cn/post/7140289685879783432">DisplayArea层级结构（二） —— 向DisplayArea层级结构添加窗口</a><br />
+<a href="https://juejin.cn/post/7140289813516648456">DisplayArea层级结构（三） —— 总结</a><br />
+<a href="https://blog.csdn.net/shensky711/article/details/121530510">WMS 层级结构 &amp;&amp; DisplayAreaGroup 引入</a><br />
+<a href="https://blog.csdn.net/jieliaoyuan8279/article/details/123157937">窗口层次: DisplayArea树</a></p>
+
+
+                <hr>
+
+                
+
+
+                <ul class="pager">
+                    
+                    
+                </ul>
+
+
+                
+                <!-- 多说评论框 start -->
+                <div class="comment">
+                    <div class="ds-thread"
+                        data-thread-key="/2022/12/24/DisplayArea树层级结构"
+                        data-title="DisplayArea树层级结构"
+                        data-url="http://localhost:4000/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/" >
+                    </div>
+                </div>
+                <!-- 多说评论框 end -->
+                
+
+                
+
+            </div>
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+                <section>
+                    <hr class="hidden-sm hidden-xs">
+                    <h5><a href="/tags/">FEATURED TAGS</a></h5>
+                    <div class="tags">
+        				
+                            
+        				
+        			</div>
+                </section>
+                
+
+                <!-- Friends Blog -->
+                
+                <hr>
+                <h5>FRIENDS</h5>
+                <ul class="list-inline">
+                    
+                </ul>
+                
+            </div>
+        </div>
+    </div>
+</article>
+
+
+<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+<script type="text/javascript">
+    // dynamic User by Hux
+    var _user = 'yaku';
+
+    // duoshuo comment query.
+    var duoshuoQuery = {short_name: _user };
+    (function() {
+        var ds = document.createElement('script');
+        ds.type = 'text/javascript';ds.async = true;
+        ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+        ds.charset = 'UTF-8';
+        (document.getElementsByTagName('head')[0]
+         || document.getElementsByTagName('body')[0]).appendChild(ds);
+    })();
+</script>
+<!-- 多说公共JS代码 end -->
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("http://cdn.bootcss.com/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'always',
+          placement: 'right',
+          icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                    
+                    
+
+                    <!-- add Weibo, Zhihu by Hux, add target = "_blank" to <a> by Hux -->
+                    
+                    
+
+
+                    
+                    
+                </ul>
+                <p class="copyright text-muted">
+                    Copyright &copy; Yaku Blog 2023
+                    <br>
+                    Theme by <a href="http://huangxuan.me">Hux</a> |
+                    <iframe
+                        style="margin-left: 2px; margin-bottom:-5px;"
+                        frameborder="0" scrolling="0" width="91px" height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=huxpro&repo=huxpro.github.io&type=star&count=true" >
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!-- 
+     Because of the native support for backtick-style fenced code blocks 
+     right within the Markdown is landed in Github Pages, 
+     From V1.6, There is no need for Highlight.js, 
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0  
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/    
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+<!-- jquery.tagcloud.js -->
+<script>
+    // only load tagcloud.js in tag.html
+    if($('#tag_cloud').length !== 0){
+        async("/js/jquery.tagcloud.js",function(){
+            $.fn.tagcloud.defaults = {
+                //size: {start: 1, end: 1, unit: 'em'},
+                color: {start: '#bbbbee', end: '#0085a1'},
+            };
+            $('#tag_cloud a').tagcloud();
+        })
+    }
+</script>
+
+<!--fastClick.js -->
+<script>
+    async("http://cdn.bootcss.com/fastclick/1.0.6/fastclick.min.js", function(){
+        var $nav = document.querySelector("nav");
+        if($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+<script>
+    // dynamic User by Hux
+    var _gaId = '';
+    var _gaDomain = '';
+
+    // Originial
+    (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+    (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+    m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+    })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
+
+
+<!-- Baidu Tongji -->
+
+
+
+
+<!-- Image to hack wechat -->
+<img src="/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
