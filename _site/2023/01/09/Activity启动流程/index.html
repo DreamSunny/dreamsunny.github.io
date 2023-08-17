@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Android学习笔记">
+    <meta name="keywords" content="Android, 博客, 互联网">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Open Graph -->
+    <meta property="og:title"
+        content="Activity启动流程 - Android学习笔记 | Yaku Blog">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="1.Activity官方文档
+">
+    
+    <meta property="article:published_time" content=" 2023-01-09T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Android">
+    
+    <meta property="article:tag" content="Activity">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
+    <meta property="og:url" content="http://localhost:4000/2023/01/09/Activity%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">
+    <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
+
+    <title>Activity启动流程 - Android学习笔记 | Yaku Blog</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/2023/01/09/Activity%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href=" /css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href=" /css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet"
+        type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+
+    <!-- Google AdSense -->
+    <script data-ad-client="ca-pub-6487568398225121" async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">Android学习笔记</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/img/post-bg-2015.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+
+
+
+<header class="intro-header" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
+                        
+                        <a class="tag" href="/archive/?tag=Activity" title="Activity">Activity</a>
+                        
+                    </div>
+                    <h1>Activity启动流程</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on January 9, 2023</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<h1 id="1activity官方文档">1.Activity官方文档</h1>
+
+<p><a href="https://developer.android.com/guide/components/activities/intro-activities?hl=zh-cn">Activity 简介</a><br />
+<a href="https://developer.android.com/guide/components/activities/activity-lifecycle?hl=zh-cn">Activity 生命周期</a><br />
+<a href="https://developer.android.com/guide/topics/manifest/activity-element?hl=zh-cn">应用清单</a></p>
+
+<h1 id="2activity启动流程">2.Activity启动流程</h1>
+
+<p>在桌面点击时钟图标打开闹钟应用，使用系统跟踪抓取 trace 文件，在 <a href="https://ui.perfetto.dev/">perfetto</a> 打开查看：</p>
+
+<p><a href="/file/startActivity.perfetto-trace">startActivity.perfetto-trace</a></p>
+
+<p><img src="/img/Activity/act_start.png" alt="act_start" /></p>
+
+<p>为了让整个过程可视化，对系统侧相关类做了代码插桩，在进入/退出方法处加上Trace日志：</p>
+
+<p><a href="/file/startActivityinjected.perfetto-trace">startActivityinjected.perfetto-trace</a></p>
+
+<p>在此基础上需要掌握调试安卓Framework源码 ，再结合trace来学习源码。</p>
+
+<h2 id="21-点击应用图标">2.1 点击应用图标</h2>
+
+<ol>
+  <li>InputReader 负责从 EventHub 里面把 Input 事件读取出来，然后交给 InputDispatcher 进行事件分发。</li>
+  <li>InputDispatcher 在拿到 InputReader 获取的事件后对 Input 事件进行包装，然后寻找并分发到目标窗口。</li>
+  <li>InboundQueue（iq）队列中放着 InputDispatcher 从 InputReader 中拿到的 Input 事件。</li>
+  <li>OutboundQueue（oq）队列里面放的是即将要被派发给各个目标窗口的 Input 事件。</li>
+  <li>WaitQueue（wq）队列里面记录的是已经派发给目标窗口等待其处理完的 Input 事件。</li>
+  <li>PendingInputEventQueue（aq）队列中记录的是应用需要处理的 Input 事件。</li>
+  <li>deliverInputEvent 标识 App UI Thread 被 Input 事件唤醒。</li>
+  <li>App 响应处理 Input 事件，内部会在其界面 View 树中传递处理。</li>
+</ol>
+
+<h2 id="22-启动闹钟应用">2.2 启动闹钟应用</h2>
+
+<h3 id="221-桌面请求启动闹钟应用">2.2.1 桌面请求启动闹钟应用</h3>
+
+<ol>
+  <li>Activity.startActivityForResult(..)</li>
+  <li>Instrumentation.execStartActivity(..)</li>
+  <li>ActivityTaskManager.<em>getService</em>().startActivity(..)</li>
+</ol>
+
+<pre><code class="language-Java">private static final Singleton&lt;IActivityTaskManager&gt; IActivityTaskManagerSingleton =
+        new Singleton&lt;IActivityTaskManager&gt;() {
+            @Override
+            protected IActivityTaskManager create() {
+                final IBinder b = ServiceManager.getService(Context.ACTIVITY_TASK_SERVICE);
+                return IActivityTaskManager.Stub.asInterface(b);
+            }
+        };
+</code></pre>
+
+<h3 id="222-系统侧处理请求">2.2.2 系统侧处理请求</h3>
+
+<p><img src="/img/Activity/atms_start_act.png" alt="atms_start_act" /></p>
+
+<p>核心逻辑从ActivityStarter.execute()方法开始：</p>
+
+<p><strong>1. ActivityStarter$Request.resolveActivity(..)</strong></p>
+
+<p>解析 ResolveInfo 和 ActivityInfo，最终调用到 ComputerEngine.queryIntentActivitiesInternal(..)</p>
+
+<p><img src="/img/Activity/resolve_act.png" alt="resolve_act" /></p>
+
+<p>这里有个细节是处理 显式启动 与 隐式启动 的区别：<a href="https://developer.android.com/guide/components/intents-filters?hl=zh-cn">Intent 和 Intent 过滤器</a></p>
+
+<pre><code class="language-Java">queryIntentActivitiesInternal(..) {
+    ComponentName comp = intent.getComponent();
+    if (comp != null) {
+        getActivityInfo(..)
+    } else {
+        queryIntentActivitiesInternalBody(..)
+    }
+}
+</code></pre>
+
+<p><strong>2. ActivityStarter.executeRequest()</strong></p>
+
+<p><strong><em>2.1 权限检查</em></strong></p>
+
+<p><strong>2.1.1 启动权限检查：ActivityTaskSupervisor.checkStartAnyActivityPermission(..)</strong></p>
+
+<p>应用AndroidManifest.xml配置项：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>android:exported</th>
+      <th>activity 是否可由其他应用的组件启动。</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>android:permission</td>
+      <td>启动 activity 或以其他方式使 activity 响应 intent 时，客户端必须具备的权限的名称。</td>
+    </tr>
+  </tbody>
+</table>
+
+<p><strong>2.1.2 允许后台启动检查：ActivityStarter.shouldAbortBackgroundActivityStart(..)</strong></p>
+
+<p>详见 <a href="https://developer.android.com/guide/components/activities/background-starts?hl=zh-cn">从后台启动 Activity 的限制</a></p>
+
+<p><strong><em>2.2 创建ActivityRecord</em></strong></p>
+
+<p>Activity 的实例是在应用侧创建的，系统侧会创建 ActivityRecord 与之对应，用来存储 Activity 的相关信息。</p>
+
+<p>相关文档：<a href="http://gityuan.com/2017/06/11/activity_record/">四大组件之ActivityRecord</a></p>
+
+<p><strong><em>2.3 ActivityStarter#startActivityUnchecked</em></strong></p>
+
+<p><strong>2.3.1 ActivityTaskManagerService.deferWindowLayout(..)</strong></p>
+
+<p>延迟当前进行的布局，因为页面即将要刷新，继续进行布局没有意义，与 continueWindowLayout() 成对。</p>
+
+<p><strong>2.3.2 ActivityStarter.startActivityInner(..)</strong></p>
+
+<p>这部分的核心逻辑围绕 <a href="https://developer.android.com/guide/components/activities/tasks-and-back-stack?hl=zh-cn">任务和返回堆栈 </a>内容展开：</p>
+
+<blockquote>
+  <p>Task（任务）是用户在执行某项工作时与之互动的一系列 Activity 的集合。这些 Activity 按照每个 Activity 打开的顺序排列在一个返回堆栈中。</p>
+</blockquote>
+
+<blockquote>
+  <p>Task（任务）是一个整体单元，当用户开始一个新任务或通过主屏幕按钮进入主屏幕时，任务可移至“后台”。“后台”任务可重新返回到“前台”，以便用户可以从他们离开的地方继续操作。</p>
+</blockquote>
+
+<p>为了更直观地理解这部分内容，写了一个示例应用：</p>
+
+<p><a href="/file/activityLaunchMode.apk">activityLaunchMode.apk</a></p>
+
+<p><strong>1.ActivityStarter#setInitialState</strong></p>
+
+<p><img src="/img/Activity/act1.png" alt="act1" /></p>
+
+<p><strong>2.ActivityStarter#computeLaunchingTaskFlags</strong></p>
+
+<p><img src="/img/Activity/act2.png" alt="act2" /></p>
+
+<p>主要判断是否添加 <a href="https://developer.android.com/reference/android/content/Intent#FLAG_ACTIVITY_NEW_TASK">FLAG_ACTIVITY_NEW_TASK</a> 属性。</p>
+
+<p><strong>3.计算4个task</strong></p>
+
+<pre><code class="language-Java">// Get top task at beginning because the order may be changed when reusing existing task.
+final Task prevTopRootTask = mPreferredTaskDisplayArea.getFocusedRootTask();
+final Task prevTopTask = prevTopRootTask != null ? prevTopRootTask.getTopLeafTask() : null;
+final Task reusedTask = getReusableTask();
+final Task targetTask = reusedTask != null ? reusedTask : computeTargetTask();
+</code></pre>
+
+<p><img src="/img/Activity/act3.png" alt="act3" /></p>
+
+<p>主要逻辑是查找是否存在Activity可复用的Task。</p>
+
+<p><strong>4.ActivityStarter#isAllowedToStart</strong></p>
+
+<p><img src="/img/Activity/act4.png" alt="act4" /></p>
+
+<p>基于 targetTask 再次判断 Activity 是否允许启动。</p>
+
+<p><strong>5.ActivityStarter#recycleTask</strong></p>
+
+<pre><code class="language-Java">final boolean newTask = targetTask == null;
+final ActivityRecord targetTaskTop = newTask
+        ? null : targetTask.getTopNonFinishingActivity();
+if (targetTaskTop != null) {
+    recycleTask(targetTask, targetTaskTop, reusedTask, intentGrants);
+} else {
+    mAddingToTask = true;
+}
+</code></pre>
+
+<p>复用targetTask，从桌面点击应用图标启动应用，targetTask 为 null，不会走 recycleTask() 逻辑。</p>
+
+<p><strong>6.ActivityStarter#getOrCreateRootTask</strong></p>
+
+<p><img src="/img/Activity/act5.png" alt="act5" /></p>
+
+<p>这里会创建 RootTask（截图中选中位置）。</p>
+
+<p><strong>7.ActivityStarter#setNewTask</strong></p>
+
+<pre><code class="language-Java">if (newTask) {
+    final Task taskToAffiliate = (mLaunchTaskBehind &amp;&amp; mSourceRecord != null)
+            ? mSourceRecord.getTask() : null;
+    setNewTask(taskToAffiliate);
+} else if (mAddingToTask) {
+    addOrReparentStartingActivity(targetTask, "adding to task");
+}
+</code></pre>
+
+<p><img src="/img/Activity/act6.png" alt="act6" /></p>
+
+<p>调用 Task.reuseOrCreateTask(..) 复用或者创建 Task（截图中选中位置），这里会复用刚才创建的 RootTask。</p>
+
+<p>这里还有一个逻辑是 ActivityStarter#addOrReparentStartingActivity ：</p>
+
+<pre><code class="language-Java">if (mStartActivity.getTaskFragment() == null
+        || mStartActivity.getTaskFragment() == newParent) {
+    newParent.addChild(mStartActivity, POSITION_TOP);
+} else {
+    mStartActivity.reparent(newParent, newParent.getChildCount() /* top */, reason);
+}
+</code></pre>
+
+<p>mStartActivity 是 ActivityRecord，newParent 是 Task，将ActivityRecord添加到Task中。</p>
+
+<p><strong>8.Task#moveToFront</strong></p>
+
+<p><img src="/img/Activity/act7.png" alt="act7" /></p>
+
+<p>这里是将 mTargetRootTask 移至“前台”。</p>
+
+<p><strong>9.Task#startActivityLocked</strong></p>
+
+<p><img src="/img/Activity/act8.png" alt="act8" /></p>
+
+<p>这里有个应用启动优化项：StartingWindow。</p>
+
+<p>相关介绍文档：<a href="https://androidperformance.com/2018/05/20/zhihu-startingwindow/#/StartingWindow-对用户体验的影响">知乎 救救你的 StartingWindow</a></p>
+
+<p><strong>10.RootWindowContainer#resumeFocusedTasksTopActivities</strong></p>
+
+<p><img src="/img/Activity/act9.png" alt="act9" /></p>
+
+<p>前面已经把 mTargetRootTask 移至“前台”，这里是把 mStartActivity 移至“前台”，主要逻辑在TaskFragment#resumeTopActivity。</p>
+
+<p>在目标 Activity 显示出来之前，需要把 RootTask 中其他 Activities 暂停：</p>
+
+<p><img src="/img/Activity/act10.png" alt="act10" /></p>
+
+<p>最终会调用到 TaskFragment#schedulePauseActivity （截图中选中位置）通知桌面暂停Launcher，详见 2.2.3。</p>
+
+<pre><code class="language-Java">void schedulePauseActivity(..) {
+    mAtmService.getLifecycleManager().scheduleTransaction(prev.app.getThread(),
+            prev.token, PauseActivityItem.obtain(..));
+}
+</code></pre>
+
+<p>接下来会判断应用进程是否存在，如果不存在先创建应用进程：</p>
+
+<pre><code class="language-Java">boolean pausing = !deferPause &amp;&amp; taskDisplayArea.pauseBackTasks(next);
+if (pausing) {
+    if (next.attachedToProcess()) {
+        //应用进程存在
+        next.app.updateProcessInfo(..);
+    } else if (!next.isProcessRunning()) {
+        //应用进程不存在，创建进程
+        mAtmService.startProcessAsync(..);
+    }
+} else if (mResumedActivity == next &amp;&amp; next.isState(RESUMED)
+        &amp;&amp; taskDisplayArea.allResumedActivitiesComplete()) {
+    //执行过渡动画
+    executeAppTransition(options);
+}
+</code></pre>
+
+<p>这里闹钟进程不存在，会请求 Zygote 创建闹钟进程，详见 2.3。</p>
+
+<p><strong>2.3.3 ActivityTaskManagerService.continueWindowLayout(..)</strong></p>
+
+<p>与上文 deferWindowLayout(..) 成对。</p>
+
+<p><strong>2.3.4 ActivityStarter.postStartActivityProcessing(..)</strong></p>
+
+<p>ActivityStartInterceptor 回调监听者 onActivityLaunched(..)</p>
+
+<pre><code class="language-Java">if (ActivityManager.isStartResultSuccessful(result)) {
+    mInterceptor.onActivityLaunched(targetTask.getTaskInfo(), r);
+}
+</code></pre>
+
+<h3 id="223-桌面activitypause">2.2.3 桌面activityPause</h3>
+
+<p>桌面收到系统侧 activityPause 通知，处理完后再通知系统侧：</p>
+
+<p><img src="/img/Activity/act_pause1.png" alt="act_pause1" /></p>
+
+<p>系统侧收到桌面 activityPause 通知：</p>
+
+<p><img src="/img/Activity/act_pause2.png" alt="act_pause2" /></p>
+
+<p>startSpecificActivity(..) 有多个入口，当应用进程创建完执行 attachApplication 后，才会执行 realStartActivityLocked(..)：</p>
+
+<pre><code class="language-Java">final WindowProcessController wpc = mService.getProcessController(..);
+if (wpc != null &amp;&amp; wpc.hasThread()) {
+    realStartActivityLocked(r, wpc, andResume, checkConfig);
+}
+</code></pre>
+
+<p>在 realStartActivityLocked(..) 中会通知应用侧执行 Activity 生命周期回调，详见 2.5：</p>
+
+<pre><code class="language-Java">final ClientTransaction clientTransaction = ClientTransaction.obtain(..);
+clientTransaction.addCallback(LaunchActivityItem.obtain(..));
+clientTransaction.setLifecycleStateRequest(ResumeActivityItem.obtain(..));
+mService.getLifecycleManager().scheduleTransaction(clientTransaction);
+</code></pre>
+
+<h3 id="224-桌面activitystop">2.2.4 桌面activityStop</h3>
+
+<p>上接 2.2.3，在显示出 Activity 前会执行 AppTransition 过渡动画：</p>
+
+<p><img src="/img/Activity/act_stop1.png" alt="act_stop1" /></p>
+
+<p>过渡动画执行完后，会通知桌面执行activityStop：</p>
+
+<p><img src="/img/Activity/act_stop2.png" alt="act_stop2" /></p>
+
+<p>总结下两个应用 Activity 生命周期：</p>
+
+<ol>
+  <li>桌面 Launcher 的 <code class="language-plaintext highlighter-rouge">onPause()</code> 方法执行。</li>
+  <li>闹钟 DeskClockTabActivity 的 <code class="language-plaintext highlighter-rouge">onCreate()</code>、<code class="language-plaintext highlighter-rouge">onStart()</code> 和 <code class="language-plaintext highlighter-rouge">onResume()</code> 方法依次执行（闹钟 DeskClockTabActivity 现在具有用户焦点）。</li>
+  <li>桌面 Launcher 在屏幕上不再显示，其 <code class="language-plaintext highlighter-rouge">onStop()</code> 方法执行。</li>
+</ol>
+
+<h2 id="23-创建闹钟进程">2.3 创建闹钟进程</h2>
+
+<h3 id="231-系统侧请求创建闹钟进程">2.3.1 系统侧请求创建闹钟进程</h3>
+
+<ol>
+  <li>ActivityManagerService.startProcess(..)</li>
+  <li>ActivityManagerService.startProcessLocked(..)</li>
+  <li>ProcessList.startProcessLocked(..)</li>
+  <li>ProcessList.startProcess(..)</li>
+</ol>
+
+<pre><code class="language-Java">if (hostingRecord.usesWebviewZygote()) {
+    WebViewZygote.getProcess().start(..)
+} else if (hostingRecord.usesAppZygote()) {
+    // see FLAG_USE_APP_ZYGOTE
+    appZygote.getProcess().start(..)
+} else {
+    Process.start(..);
+}
+</code></pre>
+
+<ol>
+  <li>ZYGOTE_PROCESS.start(..)</li>
+  <li>ZYGOTE_PROCESS.startViaZygote(..)</li>
+</ol>
+
+<pre><code class="language-Java">static ZygoteState connect(@NonNull LocalSocketAddress zygoteSocketAddress,
+        @Nullable LocalSocketAddress usapSocketAddress)
+        throws IOException {
+
+    final LocalSocket zygoteSessionSocket = new LocalSocket();
+
+    try {
+        zygoteSessionSocket.connect(zygoteSocketAddress);
+    } catch (IOException ex) {
+    }
+    
+    return new ZygoteState(..)
+}
+</code></pre>
+
+<ol>
+  <li>ZYGOTE_PROCESS.zygoteSendArgsAndGetResult(..)</li>
+  <li>ZYGOTE_PROCESS.attemptZygoteSendArgsAndGetResult(..)</li>
+</ol>
+
+<pre><code class="language-Java">private Process.ProcessStartResult attemptZygoteSendArgsAndGetResult(
+        ZygoteState zygoteState, String msgStr) throws ZygoteStartFailedEx {
+    try {
+        final BufferedWriter zygoteWriter = zygoteState.mZygoteOutputWriter;
+        final DataInputStream zygoteInputStream = zygoteState.mZygoteInputStream;
+
+        zygoteWriter.write(msgStr);
+        zygoteWriter.flush();
+
+        // Always read the entire result from the input stream to avoid leaving
+        // bytes in the stream for future process starts to accidentally stumble
+        // upon.
+        Process.ProcessStartResult result = new Process.ProcessStartResult();
+        result.pid = zygoteInputStream.readInt();
+        result.usingWrapper = zygoteInputStream.readBoolean();
+
+        if (result.pid &lt; 0) {
+            throw new ZygoteStartFailedEx("fork() failed");
+        }
+
+        return result;
+    } catch (IOException ex) {
+        zygoteState.close();
+        throw new ZygoteStartFailedEx(ex);
+    }
+}
+</code></pre>
+
+<p>Q：这里为什么不采用Binder进行通信？</p>
+
+<p>A：fork机制限制，仅支持单线程，而binder会创建多线程。</p>
+
+<h3 id="232-zygote创建闹钟进程">2.3.2 Zygote创建闹钟进程</h3>
+
+<ol>
+  <li>ZygoteServer.runSelectLoop(..)</li>
+  <li>ZygoteConnection.processCommand(..)</li>
+  <li>Zygote.forkAndSpecialize(..)</li>
+  <li>Zygote.nativeForkAndSpecialize(..)</li>
+</ol>
+
+<pre><code class="language-Java">int pid = Zygote.forkAndSpecialize(..);
+if (pid == 0) {
+    // in child
+    handleChildProc(..);
+} else {
+    // In the parent
+    handleParentProc(..);
+}
+</code></pre>
+
+<h2 id="24-闹钟主线程初始化">2.4 闹钟主线程初始化</h2>
+
+<h3 id="241-闹钟向系统侧请求attachapplication">2.4.1 闹钟向系统侧请求attachApplication</h3>
+
+<p>闹钟进程创建完成后初始化，上接 2.3.2：</p>
+
+<ol>
+  <li>Zygote.handleChildProc(..)</li>
+  <li>ZygoteInit.zygoteInit(..)</li>
+  <li>RuntimeInit.applicationInit(..)</li>
+  <li>RuntimeInit.findStaticMain(..)</li>
+  <li>ActivityThread.main(..)</li>
+  <li>ActivityThread.attach(..)</li>
+  <li>ActivityManagerService.attachApplication(..)</li>
+</ol>
+
+<p><img src="/img/Activity/application1.png" alt="application1" /></p>
+
+<p>系统侧收到闹钟 attachApplication 通知，上接 2.2.3，在此之后才会真正启动Activity：</p>
+
+<p><img src="/img/Activity/application2.png" alt="application2" /></p>
+
+<p>此外，Looper 也是在 ActivityThread.main(..) 中初始化的：</p>
+
+<pre><code class="language-Java">Looper.prepareMainLooper();
+Looper.loop();
+</code></pre>
+
+<h3 id="242-闹钟处理系统侧bindapplication请求">2.4.2 闹钟处理系统侧bindApplication请求</h3>
+
+<ol>
+  <li>ActivityThread$ApplicationThread.bindApplication(..)</li>
+  <li>ActivityThread.sendMessage(H.BIND_APPLICATION, data) // 第一条消息</li>
+  <li>ActivityThread.handleBindApplication(data)</li>
+</ol>
+
+<pre><code class="language-Java">// ActivityThread.java
+private void handleBindApplication(AppBindData data) {
+    ...
+    // JVMTI
+    if (agent != null) {
+        handleAttachAgent(agent, data.info);
+    }
+
+    // 1.创建ContextImpl
+    final ContextImpl appContext = ContextImpl.createAppContext(this, data.info);
+
+    // 2.创建Instrumentation
+    if (ii != null) {
+        initInstrumentation(ii, data, appContext);
+    } else {
+        mInstrumentation = new Instrumentation();
+        mInstrumentation.basicInit(this);
+    }
+
+    try {
+        // 3.创建 Application
+        app = data.info.makeApplicationInner(data.restrictedBackupMode, null);
+        ...
+        if (!data.restrictedBackupMode) {
+            if (!ArrayUtils.isEmpty(data.providers)) {
+                // 初始化ContentProvider
+                installContentProviders(app, data.providers);
+            }
+        }
+        ...
+        try {
+            // call Instrumentation.onCreate()
+            mInstrumentation.onCreate(data.instrumentationArgs);
+        }
+        catch (Exception e) {
+        }
+        ...
+        try {
+            // call Application.onCreate()
+            mInstrumentation.callApplicationOnCreate(app);
+        } catch (Exception e) {
+        }
+    } finally {
+    }
+    ...
+}
+</code></pre>
+
+<h2 id="25-闹钟activity生命周期">2.5 闹钟Activity生命周期</h2>
+
+<p>上接 2.2.3，实例化Activity：</p>
+
+<ol>
+  <li>ActivityThread$ApplicationThread.scheduleTransaction(..)</li>
+  <li>ClientTransactionHandler.scheduleTransaction(..)</li>
+  <li>ActivityThread$H.handleMessage(..)</li>
+  <li>TransactionExecutor.execute(..)</li>
+  <li>LaunchActivityItem.execute(..)</li>
+  <li>ActivityThread.handleLaunchActivity(..)</li>
+  <li>ActivityThread.performLaunchActivity(..)</li>
+</ol>
+
+<pre><code class="language-Java">try {
+    java.lang.ClassLoader cl = appContext.getClassLoader();
+    activity = mInstrumentation.newActivity(
+            cl, component.getClassName(), r.intent);
+} catch (Exception e) {
+}
+</code></pre>
+
+<p>Activity创建后依次执行 <code class="language-plaintext highlighter-rouge">onCreate()</code>、<code class="language-plaintext highlighter-rouge">onStart()</code> 和 <code class="language-plaintext highlighter-rouge">onResume()</code> 方法。</p>
+
+<p><img src="/img/Activity/act_lifecycle.png" alt="act_lifecycle" /></p>
+
+<h2 id="26-activity绘制及显示到屏幕">2.6 Activity绘制及显示到屏幕</h2>
+
+<p><img src="/img/Activity/act_draw1.png" alt="act_draw1" /></p>
+
+<p>在VSYNC-app周期内：SurfaceFlinger的app线程唤醒home主线程，接下来执行Choreographer的doFrame流程，包括input，animation，traversal阶段，在traversal中执行draw绘制并将绘制的内容同步给RenderThread线程。RenderThread线程先从buffer队列中dequeueBuffer申请一个buffer，填充内容，然后queueBuffer将buffer加入队列，并通知SurfaceFlinger。</p>
+
+<p><img src="/img/Activity/act_draw2.png" alt="act_draw2" /></p>
+
+<p>在VSYNC-sf周期内：处理MessageQueue::INVALIDATE消息，从各Layer的BufferQueue拿到最新的缓冲数据，并根据内容更新脏区域；处理MessageQueue::REFRESH消息，通过HWC合成各Layer的buffer，发送至显示设备进行显示。</p>
+
+<h1 id="3-小结">3. 小结</h1>
+
+<p>本文以在桌面点击图标启动闹钟应用为例，结合trace简单介绍了Activity启动流程中的关键细节，主要包括：Framework侧处理Activity启动请求、任务和返回栈、Activity生命周期、应用进程创建及初始化及绘制流程等。</p>
+
+<p>可延伸的知识点包括：Context、Window、View事件分发、View绘制流程、Handler机制、Binder机制、类加载机制、fork机制、ServiceManager、SurfaceFlinger、代码插桩、插件化等。</p>
+
+<h1 id="4-参考文档">4. 参考文档：</h1>
+
+<p><a href="https://www.jianshu.com/p/37370c1d17fc">Android应用启动全流程分析</a><br />
+<a href="https://www.jianshu.com/p/cf531a3af828">Android卡顿掉帧问题分析之工具篇</a></p>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/" data-toggle="tooltip" data-placement="top" title="DisplayArea树层级结构">
+                        Previous<br>
+                        <span>DisplayArea树层级结构</span>
+                        </a>
+                    </li>
+                    
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0000" 
+                    href="/archive/?tag=Android"
+                    title="Android"
+                    rel="2">Android</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+  <li><a href="https://weishu.me/">weishu</a></li>
+  
+  <li><a href="https://androidperformance.com/">Gracker</a></li>
+  
+  <li><a href="http://gityuan.com/">Gityuan</a></li>
+  
+</ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; Android学习笔记 2023
+                    <br>
+                    Powered by <a href="http://huangxuan.me">Hux Blog</a> |
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0" width="100px"
+                        height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=huxpro&repo=huxpro.github.io&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/js/snackbar.js "></script>
+<script src="/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2><h3 class="post-subtitle">{subtitle}</h3><hr></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false,
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        templateMiddleware: function (prop, value, template) {
+            if (prop === 'subtitle' || prop === 'title') {
+                if (value.indexOf("code")) {
+                    return htmlDecode(value);
+                } else {
+                    return value;
+                }
+            }
+        }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+<!-- Image to hack wechat -->
+<img src="/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

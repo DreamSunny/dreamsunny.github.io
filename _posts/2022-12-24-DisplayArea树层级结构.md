@@ -145,10 +145,12 @@ mSubLayer = SubWindowLayer;
 
 ## 3.1 创建RootWindowContainer
 
-1.SystemServer.main(..)
-2.SystemServer.run()
-3.SystemServer.startOtherServices(..)
-4.vm = WindowManagerService.main(..)
+1. SystemServer.main(..)  
+2. SystemServer.run()  
+
+3. SystemServer.startOtherServices(..)  
+
+4. vm = WindowManagerService.main(..) 
 
 ```Java
 // WindowManagerService.java
@@ -161,9 +163,10 @@ private WindowManagerService(..) {
 
 ## 3.2 创建DisplayContent
 
-5.ActivityManagerService.setWindowManager(wm)
-6.ActivityTaskManagerService.setWindowManager(wm)
-7.RootWindowContainer.setWindowManager(wm)
+1. ActivityManagerService.setWindowManager(wm)  
+2. ActivityTaskManagerService.setWindowManager(wm)  
+
+3. RootWindowContainer.setWindowManager(wm)  
 
 ```Java
 // RootWindowContainer.java
@@ -311,6 +314,7 @@ private void build(@Nullable List<HierarchyBuilder> displayAreaGroupHierarchyBui
 ```
 
 
+
 ### 3.4.1 构建root节点：
 
 ```Java
@@ -318,6 +322,7 @@ PendingArea[] areaForLayer = new PendingArea[maxWindowLayerCount];
 final PendingArea root = new PendingArea(null, 0, null);
 Arrays.fill(areaForLayer, root);
 ```
+
 
 
 ###  3.4.2 构建featureArea：
@@ -406,6 +411,8 @@ int computeMaxLayer() {
     return mMaxLayer;
 }
 ```
+
+
 
 ###  3.4.5 构建整棵树
 
@@ -571,4 +578,4 @@ ROOT
 [DisplayArea层级结构（二） —— 向DisplayArea层级结构添加窗口](https://juejin.cn/post/7140289685879783432)  
 [DisplayArea层级结构（三） —— 总结](https://juejin.cn/post/7140289813516648456)  
 [WMS 层级结构 && DisplayAreaGroup 引入](https://blog.csdn.net/shensky711/article/details/121530510)  
-[窗口层次: DisplayArea树](https://blog.csdn.net/jieliaoyuan8279/article/details/123157937)  
+[窗口层次: DisplayArea树](https://blog.csdn.net/jieliaoyuan8279/article/details/123157937)   

@@ -244,6 +244,44 @@
       col-xs-12 postlist-container">
       
 <div class="post-preview">
+    <a href="/2023/01/09/Activity%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">
+        <h2 class="post-title">
+            Activity启动流程
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.Activity官方文档
+
+Activity 简介
+Activity 生命周期
+应用清单
+
+2.Activity启动流程
+
+在桌面点击时钟图标打开闹钟应用，使用系统跟踪抓取 trace 文件，在 perfetto 打开查看：
+
+startActivity.perfetto-trace
+
+
+
+为了让整个过程可视化，对系统侧相关类做了代码插桩，在进入/退出方法处加上Trace日志：
+
+sta...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on January 9, 2023
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/">
         <h2 class="post-title">
             DisplayArea树层级结构
@@ -300,6 +338,11 @@
         
         
         
+        
+                <a data-sort="0000" 
+                    href="/archive/?tag=Android"
+                    title="Android"
+                    rel="2">Android</a>
     </div>
 </section>
 
@@ -342,6 +385,8 @@
   <li><a href="https://weishu.me/">weishu</a></li>
   
   <li><a href="https://androidperformance.com/">Gracker</a></li>
+  
+  <li><a href="http://gityuan.com/">Gityuan</a></li>
   
 </ul>
 

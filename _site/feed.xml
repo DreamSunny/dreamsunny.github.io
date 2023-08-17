@@ -5,9 +5,567 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 16 Aug 2023 21:01:11 +0800</pubDate>
-    <lastBuildDate>Wed, 16 Aug 2023 21:01:11 +0800</lastBuildDate>
+    <pubDate>Wed, 16 Aug 2023 23:49:59 +0800</pubDate>
+    <lastBuildDate>Wed, 16 Aug 2023 23:49:59 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
+    
+      <item>
+        <title>Activity启动流程</title>
+        <description>&lt;h1 id=&quot;1activity官方文档&quot;&gt;1.Activity官方文档&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://developer.android.com/guide/components/activities/intro-activities?hl=zh-cn&quot;&gt;Activity 简介&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://developer.android.com/guide/components/activities/activity-lifecycle?hl=zh-cn&quot;&gt;Activity 生命周期&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://developer.android.com/guide/topics/manifest/activity-element?hl=zh-cn&quot;&gt;应用清单&lt;/a&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;2activity启动流程&quot;&gt;2.Activity启动流程&lt;/h1&gt;
+
+&lt;p&gt;在桌面点击时钟图标打开闹钟应用，使用系统跟踪抓取 trace 文件，在 &lt;a href=&quot;https://ui.perfetto.dev/&quot;&gt;perfetto&lt;/a&gt; 打开查看：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;/file/startActivity.perfetto-trace&quot;&gt;startActivity.perfetto-trace&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act_start.png&quot; alt=&quot;act_start&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;为了让整个过程可视化，对系统侧相关类做了代码插桩，在进入/退出方法处加上Trace日志：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;/file/startActivityinjected.perfetto-trace&quot;&gt;startActivityinjected.perfetto-trace&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;在此基础上需要掌握调试安卓Framework源码 ，再结合trace来学习源码。&lt;/p&gt;
+
+&lt;h2 id=&quot;21-点击应用图标&quot;&gt;2.1 点击应用图标&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;InputReader 负责从 EventHub 里面把 Input 事件读取出来，然后交给 InputDispatcher 进行事件分发。&lt;/li&gt;
+  &lt;li&gt;InputDispatcher 在拿到 InputReader 获取的事件后对 Input 事件进行包装，然后寻找并分发到目标窗口。&lt;/li&gt;
+  &lt;li&gt;InboundQueue（iq）队列中放着 InputDispatcher 从 InputReader 中拿到的 Input 事件。&lt;/li&gt;
+  &lt;li&gt;OutboundQueue（oq）队列里面放的是即将要被派发给各个目标窗口的 Input 事件。&lt;/li&gt;
+  &lt;li&gt;WaitQueue（wq）队列里面记录的是已经派发给目标窗口等待其处理完的 Input 事件。&lt;/li&gt;
+  &lt;li&gt;PendingInputEventQueue（aq）队列中记录的是应用需要处理的 Input 事件。&lt;/li&gt;
+  &lt;li&gt;deliverInputEvent 标识 App UI Thread 被 Input 事件唤醒。&lt;/li&gt;
+  &lt;li&gt;App 响应处理 Input 事件，内部会在其界面 View 树中传递处理。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;22-启动闹钟应用&quot;&gt;2.2 启动闹钟应用&lt;/h2&gt;
+
+&lt;h3 id=&quot;221-桌面请求启动闹钟应用&quot;&gt;2.2.1 桌面请求启动闹钟应用&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Activity.startActivityForResult(..)&lt;/li&gt;
+  &lt;li&gt;Instrumentation.execStartActivity(..)&lt;/li&gt;
+  &lt;li&gt;ActivityTaskManager.&lt;em&gt;getService&lt;/em&gt;().startActivity(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private static final Singleton&amp;lt;IActivityTaskManager&amp;gt; IActivityTaskManagerSingleton =
+        new Singleton&amp;lt;IActivityTaskManager&amp;gt;() {
+            @Override
+            protected IActivityTaskManager create() {
+                final IBinder b = ServiceManager.getService(Context.ACTIVITY_TASK_SERVICE);
+                return IActivityTaskManager.Stub.asInterface(b);
+            }
+        };
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;222-系统侧处理请求&quot;&gt;2.2.2 系统侧处理请求&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/atms_start_act.png&quot; alt=&quot;atms_start_act&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;核心逻辑从ActivityStarter.execute()方法开始：&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;1. ActivityStarter$Request.resolveActivity(..)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;解析 ResolveInfo 和 ActivityInfo，最终调用到 ComputerEngine.queryIntentActivitiesInternal(..)&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/resolve_act.png&quot; alt=&quot;resolve_act&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;这里有个细节是处理 显式启动 与 隐式启动 的区别：&lt;a href=&quot;https://developer.android.com/guide/components/intents-filters?hl=zh-cn&quot;&gt;Intent 和 Intent 过滤器&lt;/a&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;queryIntentActivitiesInternal(..) {
+    ComponentName comp = intent.getComponent();
+    if (comp != null) {
+        getActivityInfo(..)
+    } else {
+        queryIntentActivitiesInternalBody(..)
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;2. ActivityStarter.executeRequest()&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;2.1 权限检查&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2.1.1 启动权限检查：ActivityTaskSupervisor.checkStartAnyActivityPermission(..)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;应用AndroidManifest.xml配置项：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;android:exported&lt;/th&gt;
+      &lt;th&gt;activity 是否可由其他应用的组件启动。&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;android:permission&lt;/td&gt;
+      &lt;td&gt;启动 activity 或以其他方式使 activity 响应 intent 时，客户端必须具备的权限的名称。&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;&lt;strong&gt;2.1.2 允许后台启动检查：ActivityStarter.shouldAbortBackgroundActivityStart(..)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;详见 &lt;a href=&quot;https://developer.android.com/guide/components/activities/background-starts?hl=zh-cn&quot;&gt;从后台启动 Activity 的限制&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;2.2 创建ActivityRecord&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Activity 的实例是在应用侧创建的，系统侧会创建 ActivityRecord 与之对应，用来存储 Activity 的相关信息。&lt;/p&gt;
+
+&lt;p&gt;相关文档：&lt;a href=&quot;http://gityuan.com/2017/06/11/activity_record/&quot;&gt;四大组件之ActivityRecord&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;&lt;em&gt;2.3 ActivityStarter#startActivityUnchecked&lt;/em&gt;&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2.3.1 ActivityTaskManagerService.deferWindowLayout(..)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;延迟当前进行的布局，因为页面即将要刷新，继续进行布局没有意义，与 continueWindowLayout() 成对。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2.3.2 ActivityStarter.startActivityInner(..)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;这部分的核心逻辑围绕 &lt;a href=&quot;https://developer.android.com/guide/components/activities/tasks-and-back-stack?hl=zh-cn&quot;&gt;任务和返回堆栈 &lt;/a&gt;内容展开：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Task（任务）是用户在执行某项工作时与之互动的一系列 Activity 的集合。这些 Activity 按照每个 Activity 打开的顺序排列在一个返回堆栈中。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Task（任务）是一个整体单元，当用户开始一个新任务或通过主屏幕按钮进入主屏幕时，任务可移至“后台”。“后台”任务可重新返回到“前台”，以便用户可以从他们离开的地方继续操作。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;为了更直观地理解这部分内容，写了一个示例应用：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;/file/activityLaunchMode.apk&quot;&gt;activityLaunchMode.apk&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;1.ActivityStarter#setInitialState&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act1.png&quot; alt=&quot;act1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2.ActivityStarter#computeLaunchingTaskFlags&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act2.png&quot; alt=&quot;act2&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;主要判断是否添加 &lt;a href=&quot;https://developer.android.com/reference/android/content/Intent#FLAG_ACTIVITY_NEW_TASK&quot;&gt;FLAG_ACTIVITY_NEW_TASK&lt;/a&gt; 属性。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;3.计算4个task&lt;/strong&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Get top task at beginning because the order may be changed when reusing existing task.
+final Task prevTopRootTask = mPreferredTaskDisplayArea.getFocusedRootTask();
+final Task prevTopTask = prevTopRootTask != null ? prevTopRootTask.getTopLeafTask() : null;
+final Task reusedTask = getReusableTask();
+final Task targetTask = reusedTask != null ? reusedTask : computeTargetTask();
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act3.png&quot; alt=&quot;act3&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;主要逻辑是查找是否存在Activity可复用的Task。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;4.ActivityStarter#isAllowedToStart&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act4.png&quot; alt=&quot;act4&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;基于 targetTask 再次判断 Activity 是否允许启动。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;5.ActivityStarter#recycleTask&lt;/strong&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;final boolean newTask = targetTask == null;
+final ActivityRecord targetTaskTop = newTask
+        ? null : targetTask.getTopNonFinishingActivity();
+if (targetTaskTop != null) {
+    recycleTask(targetTask, targetTaskTop, reusedTask, intentGrants);
+} else {
+    mAddingToTask = true;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;复用targetTask，从桌面点击应用图标启动应用，targetTask 为 null，不会走 recycleTask() 逻辑。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;6.ActivityStarter#getOrCreateRootTask&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act5.png&quot; alt=&quot;act5&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;这里会创建 RootTask（截图中选中位置）。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;7.ActivityStarter#setNewTask&lt;/strong&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;if (newTask) {
+    final Task taskToAffiliate = (mLaunchTaskBehind &amp;amp;&amp;amp; mSourceRecord != null)
+            ? mSourceRecord.getTask() : null;
+    setNewTask(taskToAffiliate);
+} else if (mAddingToTask) {
+    addOrReparentStartingActivity(targetTask, &quot;adding to task&quot;);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act6.png&quot; alt=&quot;act6&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;调用 Task.reuseOrCreateTask(..) 复用或者创建 Task（截图中选中位置），这里会复用刚才创建的 RootTask。&lt;/p&gt;
+
+&lt;p&gt;这里还有一个逻辑是 ActivityStarter#addOrReparentStartingActivity ：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;if (mStartActivity.getTaskFragment() == null
+        || mStartActivity.getTaskFragment() == newParent) {
+    newParent.addChild(mStartActivity, POSITION_TOP);
+} else {
+    mStartActivity.reparent(newParent, newParent.getChildCount() /* top */, reason);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;mStartActivity 是 ActivityRecord，newParent 是 Task，将ActivityRecord添加到Task中。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;8.Task#moveToFront&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act7.png&quot; alt=&quot;act7&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;这里是将 mTargetRootTask 移至“前台”。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;9.Task#startActivityLocked&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act8.png&quot; alt=&quot;act8&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;这里有个应用启动优化项：StartingWindow。&lt;/p&gt;
+
+&lt;p&gt;相关介绍文档：&lt;a href=&quot;https://androidperformance.com/2018/05/20/zhihu-startingwindow/#/StartingWindow-对用户体验的影响&quot;&gt;知乎 救救你的 StartingWindow&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;10.RootWindowContainer#resumeFocusedTasksTopActivities&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act9.png&quot; alt=&quot;act9&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;前面已经把 mTargetRootTask 移至“前台”，这里是把 mStartActivity 移至“前台”，主要逻辑在TaskFragment#resumeTopActivity。&lt;/p&gt;
+
+&lt;p&gt;在目标 Activity 显示出来之前，需要把 RootTask 中其他 Activities 暂停：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act10.png&quot; alt=&quot;act10&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;最终会调用到 TaskFragment#schedulePauseActivity （截图中选中位置）通知桌面暂停Launcher，详见 2.2.3。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;void schedulePauseActivity(..) {
+    mAtmService.getLifecycleManager().scheduleTransaction(prev.app.getThread(),
+            prev.token, PauseActivityItem.obtain(..));
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;接下来会判断应用进程是否存在，如果不存在先创建应用进程：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;boolean pausing = !deferPause &amp;amp;&amp;amp; taskDisplayArea.pauseBackTasks(next);
+if (pausing) {
+    if (next.attachedToProcess()) {
+        //应用进程存在
+        next.app.updateProcessInfo(..);
+    } else if (!next.isProcessRunning()) {
+        //应用进程不存在，创建进程
+        mAtmService.startProcessAsync(..);
+    }
+} else if (mResumedActivity == next &amp;amp;&amp;amp; next.isState(RESUMED)
+        &amp;amp;&amp;amp; taskDisplayArea.allResumedActivitiesComplete()) {
+    //执行过渡动画
+    executeAppTransition(options);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里闹钟进程不存在，会请求 Zygote 创建闹钟进程，详见 2.3。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2.3.3 ActivityTaskManagerService.continueWindowLayout(..)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;与上文 deferWindowLayout(..) 成对。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2.3.4 ActivityStarter.postStartActivityProcessing(..)&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;ActivityStartInterceptor 回调监听者 onActivityLaunched(..)&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;if (ActivityManager.isStartResultSuccessful(result)) {
+    mInterceptor.onActivityLaunched(targetTask.getTaskInfo(), r);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;223-桌面activitypause&quot;&gt;2.2.3 桌面activityPause&lt;/h3&gt;
+
+&lt;p&gt;桌面收到系统侧 activityPause 通知，处理完后再通知系统侧：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act_pause1.png&quot; alt=&quot;act_pause1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;系统侧收到桌面 activityPause 通知：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act_pause2.png&quot; alt=&quot;act_pause2&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;startSpecificActivity(..) 有多个入口，当应用进程创建完执行 attachApplication 后，才会执行 realStartActivityLocked(..)：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;final WindowProcessController wpc = mService.getProcessController(..);
+if (wpc != null &amp;amp;&amp;amp; wpc.hasThread()) {
+    realStartActivityLocked(r, wpc, andResume, checkConfig);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在 realStartActivityLocked(..) 中会通知应用侧执行 Activity 生命周期回调，详见 2.5：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;final ClientTransaction clientTransaction = ClientTransaction.obtain(..);
+clientTransaction.addCallback(LaunchActivityItem.obtain(..));
+clientTransaction.setLifecycleStateRequest(ResumeActivityItem.obtain(..));
+mService.getLifecycleManager().scheduleTransaction(clientTransaction);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;224-桌面activitystop&quot;&gt;2.2.4 桌面activityStop&lt;/h3&gt;
+
+&lt;p&gt;上接 2.2.3，在显示出 Activity 前会执行 AppTransition 过渡动画：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act_stop1.png&quot; alt=&quot;act_stop1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;过渡动画执行完后，会通知桌面执行activityStop：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act_stop2.png&quot; alt=&quot;act_stop2&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;总结下两个应用 Activity 生命周期：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;桌面 Launcher 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onPause()&lt;/code&gt; 方法执行。&lt;/li&gt;
+  &lt;li&gt;闹钟 DeskClockTabActivity 的 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onCreate()&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onStart()&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onResume()&lt;/code&gt; 方法依次执行（闹钟 DeskClockTabActivity 现在具有用户焦点）。&lt;/li&gt;
+  &lt;li&gt;桌面 Launcher 在屏幕上不再显示，其 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onStop()&lt;/code&gt; 方法执行。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;23-创建闹钟进程&quot;&gt;2.3 创建闹钟进程&lt;/h2&gt;
+
+&lt;h3 id=&quot;231-系统侧请求创建闹钟进程&quot;&gt;2.3.1 系统侧请求创建闹钟进程&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;ActivityManagerService.startProcess(..)&lt;/li&gt;
+  &lt;li&gt;ActivityManagerService.startProcessLocked(..)&lt;/li&gt;
+  &lt;li&gt;ProcessList.startProcessLocked(..)&lt;/li&gt;
+  &lt;li&gt;ProcessList.startProcess(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;if (hostingRecord.usesWebviewZygote()) {
+    WebViewZygote.getProcess().start(..)
+} else if (hostingRecord.usesAppZygote()) {
+    // see FLAG_USE_APP_ZYGOTE
+    appZygote.getProcess().start(..)
+} else {
+    Process.start(..);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;ZYGOTE_PROCESS.start(..)&lt;/li&gt;
+  &lt;li&gt;ZYGOTE_PROCESS.startViaZygote(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;static ZygoteState connect(@NonNull LocalSocketAddress zygoteSocketAddress,
+        @Nullable LocalSocketAddress usapSocketAddress)
+        throws IOException {
+
+    final LocalSocket zygoteSessionSocket = new LocalSocket();
+
+    try {
+        zygoteSessionSocket.connect(zygoteSocketAddress);
+    } catch (IOException ex) {
+    }
+    
+    return new ZygoteState(..)
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;ZYGOTE_PROCESS.zygoteSendArgsAndGetResult(..)&lt;/li&gt;
+  &lt;li&gt;ZYGOTE_PROCESS.attemptZygoteSendArgsAndGetResult(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private Process.ProcessStartResult attemptZygoteSendArgsAndGetResult(
+        ZygoteState zygoteState, String msgStr) throws ZygoteStartFailedEx {
+    try {
+        final BufferedWriter zygoteWriter = zygoteState.mZygoteOutputWriter;
+        final DataInputStream zygoteInputStream = zygoteState.mZygoteInputStream;
+
+        zygoteWriter.write(msgStr);
+        zygoteWriter.flush();
+
+        // Always read the entire result from the input stream to avoid leaving
+        // bytes in the stream for future process starts to accidentally stumble
+        // upon.
+        Process.ProcessStartResult result = new Process.ProcessStartResult();
+        result.pid = zygoteInputStream.readInt();
+        result.usingWrapper = zygoteInputStream.readBoolean();
+
+        if (result.pid &amp;lt; 0) {
+            throw new ZygoteStartFailedEx(&quot;fork() failed&quot;);
+        }
+
+        return result;
+    } catch (IOException ex) {
+        zygoteState.close();
+        throw new ZygoteStartFailedEx(ex);
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Q：这里为什么不采用Binder进行通信？&lt;/p&gt;
+
+&lt;p&gt;A：fork机制限制，仅支持单线程，而binder会创建多线程。&lt;/p&gt;
+
+&lt;h3 id=&quot;232-zygote创建闹钟进程&quot;&gt;2.3.2 Zygote创建闹钟进程&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;ZygoteServer.runSelectLoop(..)&lt;/li&gt;
+  &lt;li&gt;ZygoteConnection.processCommand(..)&lt;/li&gt;
+  &lt;li&gt;Zygote.forkAndSpecialize(..)&lt;/li&gt;
+  &lt;li&gt;Zygote.nativeForkAndSpecialize(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;int pid = Zygote.forkAndSpecialize(..);
+if (pid == 0) {
+    // in child
+    handleChildProc(..);
+} else {
+    // In the parent
+    handleParentProc(..);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;24-闹钟主线程初始化&quot;&gt;2.4 闹钟主线程初始化&lt;/h2&gt;
+
+&lt;h3 id=&quot;241-闹钟向系统侧请求attachapplication&quot;&gt;2.4.1 闹钟向系统侧请求attachApplication&lt;/h3&gt;
+
+&lt;p&gt;闹钟进程创建完成后初始化，上接 2.3.2：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Zygote.handleChildProc(..)&lt;/li&gt;
+  &lt;li&gt;ZygoteInit.zygoteInit(..)&lt;/li&gt;
+  &lt;li&gt;RuntimeInit.applicationInit(..)&lt;/li&gt;
+  &lt;li&gt;RuntimeInit.findStaticMain(..)&lt;/li&gt;
+  &lt;li&gt;ActivityThread.main(..)&lt;/li&gt;
+  &lt;li&gt;ActivityThread.attach(..)&lt;/li&gt;
+  &lt;li&gt;ActivityManagerService.attachApplication(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/application1.png&quot; alt=&quot;application1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;系统侧收到闹钟 attachApplication 通知，上接 2.2.3，在此之后才会真正启动Activity：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/application2.png&quot; alt=&quot;application2&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;此外，Looper 也是在 ActivityThread.main(..) 中初始化的：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;Looper.prepareMainLooper();
+Looper.loop();
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h3 id=&quot;242-闹钟处理系统侧bindapplication请求&quot;&gt;2.4.2 闹钟处理系统侧bindApplication请求&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;ActivityThread$ApplicationThread.bindApplication(..)&lt;/li&gt;
+  &lt;li&gt;ActivityThread.sendMessage(H.BIND_APPLICATION, data) // 第一条消息&lt;/li&gt;
+  &lt;li&gt;ActivityThread.handleBindApplication(data)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityThread.java
+private void handleBindApplication(AppBindData data) {
+    ...
+    // JVMTI
+    if (agent != null) {
+        handleAttachAgent(agent, data.info);
+    }
+
+    // 1.创建ContextImpl
+    final ContextImpl appContext = ContextImpl.createAppContext(this, data.info);
+
+    // 2.创建Instrumentation
+    if (ii != null) {
+        initInstrumentation(ii, data, appContext);
+    } else {
+        mInstrumentation = new Instrumentation();
+        mInstrumentation.basicInit(this);
+    }
+
+    try {
+        // 3.创建 Application
+        app = data.info.makeApplicationInner(data.restrictedBackupMode, null);
+        ...
+        if (!data.restrictedBackupMode) {
+            if (!ArrayUtils.isEmpty(data.providers)) {
+                // 初始化ContentProvider
+                installContentProviders(app, data.providers);
+            }
+        }
+        ...
+        try {
+            // call Instrumentation.onCreate()
+            mInstrumentation.onCreate(data.instrumentationArgs);
+        }
+        catch (Exception e) {
+        }
+        ...
+        try {
+            // call Application.onCreate()
+            mInstrumentation.callApplicationOnCreate(app);
+        } catch (Exception e) {
+        }
+    } finally {
+    }
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;25-闹钟activity生命周期&quot;&gt;2.5 闹钟Activity生命周期&lt;/h2&gt;
+
+&lt;p&gt;上接 2.2.3，实例化Activity：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;ActivityThread$ApplicationThread.scheduleTransaction(..)&lt;/li&gt;
+  &lt;li&gt;ClientTransactionHandler.scheduleTransaction(..)&lt;/li&gt;
+  &lt;li&gt;ActivityThread$H.handleMessage(..)&lt;/li&gt;
+  &lt;li&gt;TransactionExecutor.execute(..)&lt;/li&gt;
+  &lt;li&gt;LaunchActivityItem.execute(..)&lt;/li&gt;
+  &lt;li&gt;ActivityThread.handleLaunchActivity(..)&lt;/li&gt;
+  &lt;li&gt;ActivityThread.performLaunchActivity(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;try {
+    java.lang.ClassLoader cl = appContext.getClassLoader();
+    activity = mInstrumentation.newActivity(
+            cl, component.getClassName(), r.intent);
+} catch (Exception e) {
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Activity创建后依次执行 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onCreate()&lt;/code&gt;、&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onStart()&lt;/code&gt; 和 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;onResume()&lt;/code&gt; 方法。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act_lifecycle.png&quot; alt=&quot;act_lifecycle&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;26-activity绘制及显示到屏幕&quot;&gt;2.6 Activity绘制及显示到屏幕&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act_draw1.png&quot; alt=&quot;act_draw1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在VSYNC-app周期内：SurfaceFlinger的app线程唤醒home主线程，接下来执行Choreographer的doFrame流程，包括input，animation，traversal阶段，在traversal中执行draw绘制并将绘制的内容同步给RenderThread线程。RenderThread线程先从buffer队列中dequeueBuffer申请一个buffer，填充内容，然后queueBuffer将buffer加入队列，并通知SurfaceFlinger。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act_draw2.png&quot; alt=&quot;act_draw2&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在VSYNC-sf周期内：处理MessageQueue::INVALIDATE消息，从各Layer的BufferQueue拿到最新的缓冲数据，并根据内容更新脏区域；处理MessageQueue::REFRESH消息，通过HWC合成各Layer的buffer，发送至显示设备进行显示。&lt;/p&gt;
+
+&lt;h1 id=&quot;3-小结&quot;&gt;3. 小结&lt;/h1&gt;
+
+&lt;p&gt;本文以在桌面点击图标启动闹钟应用为例，结合trace简单介绍了Activity启动流程中的关键细节，主要包括：Framework侧处理Activity启动请求、任务和返回栈、Activity生命周期、应用进程创建及初始化及绘制流程等。&lt;/p&gt;
+
+&lt;p&gt;可延伸的知识点包括：Context、Window、View事件分发、View绘制流程、Handler机制、Binder机制、类加载机制、fork机制、ServiceManager、SurfaceFlinger、代码插桩、插件化等。&lt;/p&gt;
+
+&lt;h1 id=&quot;4-参考文档&quot;&gt;4. 参考文档：&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.jianshu.com/p/37370c1d17fc&quot;&gt;Android应用启动全流程分析&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://www.jianshu.com/p/cf531a3af828&quot;&gt;Android卡顿掉帧问题分析之工具篇&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Mon, 09 Jan 2023 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2023/01/09/Activity%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/</link>
+        <guid isPermaLink="true">http://localhost:4000/2023/01/09/Activity%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/</guid>
+        
+        <category>Android</category>
+        
+        <category>Activity</category>
+        
+        
+      </item>
     
       <item>
         <title>DisplayArea树层级结构</title>
@@ -435,10 +993,16 @@ mSubLayer = SubWindowLayer;
 
 &lt;h2 id=&quot;31-创建rootwindowcontainer&quot;&gt;3.1 创建RootWindowContainer&lt;/h2&gt;
 
-&lt;p&gt;1.SystemServer.main(..)
-2.SystemServer.run()
-3.SystemServer.startOtherServices(..)
-4.vm = WindowManagerService.main(..)&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;SystemServer.main(..)&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;SystemServer.run()&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;SystemServer.startOtherServices(..)&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;vm = WindowManagerService.main(..)&lt;/li&gt;
+&lt;/ol&gt;
 
 &lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// WindowManagerService.java
 private WindowManagerService(..) {
@@ -448,9 +1012,13 @@ private WindowManagerService(..) {
 
 &lt;h2 id=&quot;32-创建displaycontent&quot;&gt;3.2 创建DisplayContent&lt;/h2&gt;
 
-&lt;p&gt;5.ActivityManagerService.setWindowManager(wm)
-6.ActivityTaskManagerService.setWindowManager(wm)
-7.RootWindowContainer.setWindowManager(wm)&lt;/p&gt;
+&lt;ol&gt;
+  &lt;li&gt;ActivityManagerService.setWindowManager(wm)&lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;ActivityTaskManagerService.setWindowManager(wm)&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;RootWindowContainer.setWindowManager(wm)&lt;/li&gt;
+&lt;/ol&gt;
 
 &lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// RootWindowContainer.java
 private final ImeContainer mImeWindowsContainer = new ImeContainer(mWmService);

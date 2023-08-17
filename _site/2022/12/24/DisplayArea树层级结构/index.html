@@ -692,10 +692,16 @@ mSubLayer = SubWindowLayer;
 
 <h2 id="31-创建rootwindowcontainer">3.1 创建RootWindowContainer</h2>
 
-<p>1.SystemServer.main(..)
-2.SystemServer.run()
-3.SystemServer.startOtherServices(..)
-4.vm = WindowManagerService.main(..)</p>
+<ol>
+  <li>SystemServer.main(..)</li>
+  <li>
+    <p>SystemServer.run()</p>
+  </li>
+  <li>
+    <p>SystemServer.startOtherServices(..)</p>
+  </li>
+  <li>vm = WindowManagerService.main(..)</li>
+</ol>
 
 <pre><code class="language-Java">// WindowManagerService.java
 private WindowManagerService(..) {
@@ -705,9 +711,13 @@ private WindowManagerService(..) {
 
 <h2 id="32-创建displaycontent">3.2 创建DisplayContent</h2>
 
-<p>5.ActivityManagerService.setWindowManager(wm)
-6.ActivityTaskManagerService.setWindowManager(wm)
-7.RootWindowContainer.setWindowManager(wm)</p>
+<ol>
+  <li>ActivityManagerService.setWindowManager(wm)</li>
+  <li>
+    <p>ActivityTaskManagerService.setWindowManager(wm)</p>
+  </li>
+  <li>RootWindowContainer.setWindowManager(wm)</li>
+</ol>
 
 <pre><code class="language-Java">// RootWindowContainer.java
 private final ImeContainer mImeWindowsContainer = new ImeContainer(mWmService);
@@ -1124,15 +1134,16 @@ ROOT
                 <ul class="pager">
                     
                     
+                    <li class="next">
+                        <a href="/2023/01/09/Activity%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/" data-toggle="tooltip" data-placement="top" title="Activity启动流程">
+                        Next<br>
+                        <span>Activity启动流程</span>
+                        </a>
+                    </li>
+                    
                 </ul>
                 <hr style="visibility: hidden;">
 
-                
-                <!-- disqus 评论框 start -->
-                <div class="comment">
-                    <div id="disqus_thread" class="disqus-thread"></div>
-                </div>
-                <!-- disqus 评论框 end -->
                 
 
                 
@@ -1176,6 +1187,11 @@ ROOT
         
         
         
+        
+                <a data-sort="0000" 
+                    href="/archive/?tag=Android"
+                    title="Android"
+                    rel="2">Android</a>
     </div>
 </section>
 
@@ -1190,6 +1206,8 @@ ROOT
   
   <li><a href="https://androidperformance.com/">Gracker</a></li>
   
+  <li><a href="http://gityuan.com/">Gityuan</a></li>
+  
 </ul>
 
             </div>
@@ -1203,21 +1221,6 @@ ROOT
 
 
 
-
-<!-- disqus 公共JS代码 start (一个网页只需插入一次) -->
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES * * */
-    var disqus_shortname = "yaku";
-    var disqus_identifier = "/2022/12/24/DisplayArea树层级结构";
-    var disqus_url = "http://localhost:4000/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/";
-
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<!-- disqus 公共JS代码 end -->
 
 
 
