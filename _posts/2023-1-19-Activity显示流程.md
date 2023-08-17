@@ -685,10 +685,7 @@ WMS添加应用侧视图时会创建 WindowState 用来对应一个 Window，同
 
 # 7.参考文档
 
-[BLASTBufferQueue 详解](https://blog.simowce.com/all-about-blastbbq/)
-
-[BBQ 机制介绍](https://www.jianshu.com/p/50a30fa6952e)
-
-[BBQ 原理解读](https://www.jianshu.com/p/cdc60627df90)
-
-[BBQ 运用场景](https://www.jianshu.com/p/384a5cd2e304)
+[BLASTBufferQueue 详解](https://blog.simowce.com/all-about-blastbbq/)  
+[BBQ 机制介绍](https://www.jianshu.com/p/50a30fa6952e)  
+[BBQ 原理解读](https://www.jianshu.com/p/cdc60627df90)  
+[BBQ 运用场景](https://www.jianshu.com/p/384a5cd2e304)  

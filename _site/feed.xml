@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 17 Aug 2023 12:52:39 +0800</pubDate>
-    <lastBuildDate>Thu, 17 Aug 2023 12:52:39 +0800</lastBuildDate>
+    <pubDate>Thu, 17 Aug 2023 21:19:29 +0800</pubDate>
+    <lastBuildDate>Thu, 17 Aug 2023 21:19:29 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -708,13 +708,10 @@ void doFrame(..) {
 
 &lt;h1 id=&quot;7参考文档&quot;&gt;7.参考文档&lt;/h1&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://blog.simowce.com/all-about-blastbbq/&quot;&gt;BLASTBufferQueue 详解&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://www.jianshu.com/p/50a30fa6952e&quot;&gt;BBQ 机制介绍&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://www.jianshu.com/p/cdc60627df90&quot;&gt;BBQ 原理解读&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://www.jianshu.com/p/384a5cd2e304&quot;&gt;BBQ 运用场景&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;&lt;a href=&quot;https://blog.simowce.com/all-about-blastbbq/&quot;&gt;BLASTBufferQueue 详解&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://www.jianshu.com/p/50a30fa6952e&quot;&gt;BBQ 机制介绍&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://www.jianshu.com/p/cdc60627df90&quot;&gt;BBQ 原理解读&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://www.jianshu.com/p/384a5cd2e304&quot;&gt;BBQ 运用场景&lt;/a&gt;&lt;/p&gt;
 </description>
         <pubDate>Thu, 19 Jan 2023 20:00:00 +0800</pubDate>
         <link>http://localhost:4000/2023/01/19/Activity%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/</link>
@@ -2153,6 +2150,88 @@ ROOT
         <guid isPermaLink="true">http://localhost:4000/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/</guid>
         
         <category>Android</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Recovery机制介绍</title>
+        <description>&lt;p&gt;2020年三星手机发生了一场严重事故，中国三星手机用户在5月23日这一天凌晨突然无限重启，事故原因是因SystemUI发生异常重复Crash导致手机进入Recovery界面，用户只能选择恢复出厂设置导致用户数据永久丢失。&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.zhihu.com/question/396666758/answer/1245994988&quot;&gt;怎么看待三星大量手机在今天（5.23）凌晨系统崩溃并数据丢失？&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;知乎上已经有大佬详细分析了事故原因，本文重点介绍下为什么SystemUI频繁Crash会进入Recovery界面。&lt;/p&gt;
+
+&lt;h1 id=&quot;1-resureparty功能初始化&quot;&gt;&lt;strong&gt;1. ResureParty功能初始化&lt;/strong&gt;&lt;/h1&gt;
+
+&lt;p&gt;ResureParty是一套系统自救机制，当监控到系统核心程序出现循环崩溃时，通过尝试一系列措施达到恢复设备正常运行的目的，直到所有措施都无济于事，则会进入Recovery界面让用户通过擦除数据的方式进行设备恢复。&lt;/p&gt;
+
+&lt;p&gt;其初始化流程如下图：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Recovery/r1.png&quot; alt=&quot;r1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在SystemServer启动时，会初始化ResureParty机制。核心逻辑在PackageWatchDog，当应用发生异常退出时，PackageWatchDog会记录相关异常信息。&lt;/p&gt;
+
+&lt;p&gt;​&lt;/p&gt;
+
+&lt;h1 id=&quot;2-systemui发生crash被系统重新拉起&quot;&gt;&lt;strong&gt;2. SystemUI发生Crash被系统重新拉起&lt;/strong&gt;&lt;/h1&gt;
+
+&lt;p&gt;SystemUI是常驻进程，当其发生异常退出时，系统会尝试重新启动，其流程图如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Recovery/r1.png&quot; alt=&quot;r1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;ActivityManagerService中收到应用死亡的回调后，会判断应用是否为系统常驻进程。如果应用是系统常驻进程，则会重新启动该进程。&lt;/p&gt;
+
+&lt;h1 id=&quot;3-systemui频繁重启触发resureparty机制&quot;&gt;&lt;strong&gt;3. SystemUI频繁重启触发ResureParty机制&lt;/strong&gt;&lt;/h1&gt;
+
+&lt;p&gt;当SystemUI发生异常退出时，系统会重新启动SystemUI。但如果SystemUI的异常状态没有恢复，即重启后依然发生异常退出，则会陷入到异常退出-重启-异常退出-重启…这种循环崩溃的状态，此时就会触发ResureParty机制。&lt;/p&gt;
+
+&lt;p&gt;触发ResureParty机制的流程图如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Recovery/r1.png&quot; alt=&quot;r1&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;当应用异常退出后，会上报到PackageWatchDog，其onPackageFailureLocked方法中会判断当前应用是否为系统常驻进程，如果应用是系统常驻进程，则会更新mitigationCount，其对应的严重等级如下表：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;mitigationCount&lt;/th&gt;
+      &lt;th&gt;严重等级&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;1&lt;/td&gt;
+      &lt;td&gt;LEVEL_RESET_SETTINGS_UNTRUSTED_DEFAULTS&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;2&lt;/td&gt;
+      &lt;td&gt;LEVEL_RESET_SETTINGS_UNTRUSTED_CHANGES&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;3&lt;/td&gt;
+      &lt;td&gt;LEVEL_RESET_SETTINGS_TRUSTED_DEFAULTS&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;4&lt;/td&gt;
+      &lt;td&gt;LEVEL_WARM_REBOOT&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;5&lt;/td&gt;
+      &lt;td&gt;LEVEL_FACTORY_RESET&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;当达到严重等级达到LEVEL_FACTORY_RESET级别后，系统就会进入Recovery界面。&lt;/p&gt;
+</description>
+        <pubDate>Fri, 29 May 2020 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2020/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/</link>
+        <guid isPermaLink="true">http://localhost:4000/2020/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/</guid>
+        
+        <category>Android</category>
+        
+        <category>Recovery</category>
         
         
       </item>
