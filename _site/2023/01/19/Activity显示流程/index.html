@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Android学习笔记">
+    <meta name="keywords" content="Android, 博客, 互联网">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Open Graph -->
+    <meta property="og:title"
+        content="Activity显示流程 - Android学习笔记 | Yaku Blog">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="在 Activity启动流程 中，我们知道了系统侧响应 Activity 启动请求会创建 Task ；
+">
+    
+    <meta property="article:published_time" content=" 2023-01-19T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Android">
+    
+    <meta property="article:tag" content="Activity">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
+    <meta property="og:url" content="http://localhost:4000/2023/01/19/Activity%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/">
+    <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
+
+    <title>Activity显示流程 - Android学习笔记 | Yaku Blog</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/2023/01/19/Activity%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href=" /css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href=" /css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet"
+        type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+
+    <!-- Google AdSense -->
+    <script data-ad-client="ca-pub-6487568398225121" async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">Android学习笔记</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/img/post-bg-2015.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+
+
+
+<header class="intro-header" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
+                        
+                        <a class="tag" href="/archive/?tag=Activity" title="Activity">Activity</a>
+                        
+                    </div>
+                    <h1>Activity显示流程</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on January 19, 2023</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<p>在 <a href="https://dreamsunny.github.io/2023/01/09/Activity%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">Activity启动流程</a> 中，我们知道了系统侧响应 Activity 启动请求会创建 Task ；</p>
+
+<p>在 <a href="https://dreamsunny.github.io/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/">DisplayArea树层级结构</a>中，我们了解了 Task 最终会添加到 DefaultTaskDisplayArea ；</p>
+
+<p>本文主要梳理下Activity显示流程。</p>
+
+<h1 id="1task添加到defaulttaskdisplayarea">1.Task添加到DefaultTaskDisplayArea</h1>
+
+<p>调用堆栈如下：</p>
+
+<p><img src="/img/Activity/trace1.png" alt="trace1" /></p>
+
+<pre><code class="language-Java">// TaskDisplayArea.java
+Task getOrCreateRootTask(..) {
+    ...
+    return new Task.Builder(mAtmService)
+            ...
+            .setParent(this)
+            ...
+            .build();
+}
+</code></pre>
+
+<p>这里 setParent(this) 传入的是 TaskDisplayArea 。</p>
+
+<pre><code class="language-Java">// Task.java
+Task build() {
+    ...
+    final Task task = buildInner();
+    ...
+    if (mParent != null) {
+        if (mParent instanceof Task) {
+            final Task parentTask = (Task) mParent;
+            parentTask.addChild(task, mOnTop ? POSITION_TOP : POSITION_BOTTOM,
+                    (mActivityInfo.flags &amp; FLAG_SHOW_FOR_ALL_USERS) != 0);
+        } else {
+            mParent.addChild(task, mOnTop ? POSITION_TOP : POSITION_BOTTOM);
+        }
+    }
+    ...
+    return task;
+}
+</code></pre>
+
+<p>在 Task.Builder的build() 方法中，将创建的task添加到 TaskDisplayArea。</p>
+
+<h1 id="2activityrecord添加到task">2.ActivityRecord添加到Task</h1>
+
+<p>调用堆栈如下：</p>
+
+<p><img src="/img/Activity/trace2.png" alt="trace2" /></p>
+
+<ol>
+  <li>创建ActivityRecord：</li>
+</ol>
+
+<pre><code class="language-Java">// ActivityStarter.java
+private int executeRequest(Request request) {
+    ...
+    final ActivityRecord r = new ActivityRecord.Builder(mService)
+            ...
+            .build();
+    ...
+}
+// ActivityRecord.java
+private ActivityRecord(..) {
+    super(_service.mWindowManager, new Token(), TYPE_APPLICATION, true,
+            null /* displayContent */, false /* ownerCanManageAppTokens */);
+    ((Token) token).mActivityRef = new WeakReference&lt;&gt;(this);
+}
+
+private static class Token extends Binder {
+    @NonNull WeakReference&lt;ActivityRecord&gt; mActivityRef;
+
+    @Override
+    public String toString() {
+        return "Token{" + Integer.toHexString(System.identityHashCode(this)) + " "
+                + mActivityRef.get() + "}";
+    }
+}
+</code></pre>
+
+<ol>
+  <li>添加到 Task 中：</li>
+</ol>
+
+<pre><code class="language-Java">// ActivityStarter.java
+private void addOrReparentStartingActivity(@NonNull Task task, String reason) {
+    ..
+    TaskFragment newParent = task;
+    ...
+    if (mStartActivity.getTaskFragment() == null
+            || mStartActivity.getTaskFragment() == newParent) {
+        newParent.addChild(mStartActivity, POSITION_TOP);
+    } else {
+        mStartActivity.reparent(newParent, newParent.getChildCount() /* top */, reason);
+    }
+}
+</code></pre>
+
+<ol>
+  <li>添加到 DisplayContent 的 mTokenMap 中：</li>
+</ol>
+
+<pre><code class="language-Java">// WindowToken.java
+void onDisplayChanged(DisplayContent dc) {
+    dc.reParentWindowToken(this);
+    super.onDisplayChanged(dc);
+}
+// DisplayContent.java
+void reParentWindowToken(WindowToken token) {
+    ...
+    addWindowToken(token.token, token);
+    ...
+}
+
+void addWindowToken(IBinder binder, WindowToken token) {
+    ...
+    mTokenMap.put(binder, token);
+    ...
+}
+</code></pre>
+
+<h1 id="3activity窗口添加到wms">3.Activity窗口添加到WMS</h1>
+
+<p><img src="/img/Activity/act_show.png" alt="act_show" /></p>
+
+<h2 id="31-activitysetcontentview">3.1 Activity.setContentView(..)</h2>
+
+<pre><code class="language-Java">// Activity.java
+public void setContentView(@LayoutRes int layoutResID) {
+    getWindow().setContentView(layoutResID);
+    initWindowDecorActionBar();
+}
+</code></pre>
+
+<p>Activity.setContentView(..) 中直接调用 PhoneWindow.setContentView(..) 方法。</p>
+
+<pre><code class="language-Java">// PhoneWindow.java
+public void setContentView(int layoutResID) {
+    if (mContentParent == null) {
+        installDecor();
+    } else if (!hasFeature(FEATURE_CONTENT_TRANSITIONS)) {
+        ...
+    }
+
+    if (hasFeature(FEATURE_CONTENT_TRANSITIONS)) {
+        ...
+    } else {
+        mLayoutInflater.inflate(layoutResID, mContentParent);
+    }
+    ...
+}
+
+private void installDecor() {
+    mForceDecorInstall = false;
+    if (mDecor == null) {
+        mDecor = generateDecor(-1);
+        ...
+    } else {
+        mDecor.setWindow(this);
+    }
+    if (mContentParent == null) {
+        mContentParent = generateLayout(mDecor);
+        ...
+    }
+}
+
+protected DecorView generateDecor(int featureId) {
+    ...
+    return new DecorView(context, featureId, this, getAttributes());
+}
+
+protected ViewGroup generateLayout(DecorView decor) {
+    ...
+    int layoutResource;
+    int features = getLocalFeatures();
+    if ((features &amp; ((1 &lt;&lt; FEATURE_LEFT_ICON) | (1 &lt;&lt; FEATURE_RIGHT_ICON))) != 0) {
+        ..
+    } else if ((features &amp; ((1 &lt;&lt; FEATURE_PROGRESS) | (1 &lt;&lt; FEATURE_INDETERMINATE_PROGRESS))) != 0
+        &amp;&amp; (features &amp; (1 &lt;&lt; FEATURE_ACTION_BAR)) == 0) {
+        ..
+    } else if ((features &amp; (1 &lt;&lt; FEATURE_CUSTOM_TITLE)) != 0) {
+        ..
+    } else if ((features &amp; (1 &lt;&lt; FEATURE_NO_TITLE)) == 0) {
+        ..
+    } else if ((features &amp; (1 &lt;&lt; FEATURE_ACTION_MODE_OVERLAY)) != 0) {
+        ..
+    } else {
+        layoutResource = R.layout.screen_simple;
+    }
+    mDecor.onResourcesLoaded(mLayoutInflater, layoutResource);
+    ViewGroup contentParent = (ViewGroup)findViewById(ID_ANDROID_CONTENT);
+    ...
+    return contentParent;
+}
+</code></pre>
+
+<p>PhoneWindow.setContentView(..) 方法主要做3件事：</p>
+
+<ol>
+  <li>创建DecorView。</li>
+  <li>inflate Activity 根布局。</li>
+  <li>inflate Activity 视图布局（setContentView()传入的layoutResID）。</li>
+</ol>
+
+<p>其中系统预置 Activity 根布局有：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>feature</th>
+      <th>布局</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><em>FEATURE_LEFT_ICON</em> <br /> <em>FEATURE_RIGHT_ICON</em></td>
+      <td>screen_title_icons.xml</td>
+    </tr>
+    <tr>
+      <td><em>FEATURE_PROGRESS</em> <br /> <em>FEATURE_INDETERMINATE_PROGRESS</em> <br /> <em>FEATURE_ACTION_BAR</em></td>
+      <td>screen_progress.xml</td>
+    </tr>
+    <tr>
+      <td><em>FEATURE_CUSTOM_TITLE</em></td>
+      <td>screen_custom_title.xml</td>
+    </tr>
+    <tr>
+      <td><em>FEATURE_NO_TITLE</em></td>
+      <td>screen_title.xml</td>
+    </tr>
+    <tr>
+      <td><em>FEATURE_ACTION_MODE_OVERLAY</em></td>
+      <td>screen_simple_overlay_action_mode.xml</td>
+    </tr>
+    <tr>
+      <td>else</td>
+      <td>screen_simple.xml</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>以 screen_simple.xml 为例查看其布局：</p>
+
+<pre><code class="language-Java">// screen_simple.xml
+&lt;LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fitsSystemWindows="true"
+    android:orientation="vertical"&gt;
+    &lt;ViewStub android:id="@+id/action_mode_bar_stub"
+              android:inflatedId="@+id/action_mode_bar"
+              android:layout="@layout/action_mode_bar"
+              android:layout_width="match_parent"
+              android:layout_height="wrap_content"
+              android:theme="?attr/actionBarTheme" /&gt;
+    &lt;FrameLayout
+         android:id="@android:id/content"
+         android:layout_width="match_parent"
+         android:layout_height="match_parent"
+         android:foregroundInsidePadding="false"
+         android:foregroundGravity="fill_horizontal|top"
+         android:foreground="?android:attr/windowContentOverlay" /&gt;
+&lt;/LinearLayout&gt;
+</code></pre>
+
+<p>对应整个 Activity 视图为：</p>
+
+<p><img src="/img/Activity/decor.png" alt="decor" /></p>
+
+<p>最终，Activity.setContentView(..) 传入的布局会添加到 FrameLayout(id=ID_ANDROID_CONTENT) 。</p>
+
+<h2 id="32-viewrootimplsetview">3.2 ViewRootImpl.setView(..)</h2>
+
+<pre><code class="language-Java">// ViewRootImpl.java
+public ViewRootImpl(Context context, Display display) {
+    this(context, display, WindowManagerGlobal.getWindowSession(),
+            false /* useSfChoreographer */);
+}
+
+public ViewRootImpl(@UiContext Context context, Display display, IWindowSession session) {
+    this(context, display, session, false /* useSfChoreographer */);
+}
+
+public ViewRootImpl(@UiContext Context context, Display display, IWindowSession session,
+        boolean useSfChoreographer) {
+    mWindowSession = session;
+    mWindow = new W(this);
+    ...
+}
+
+public void setView(View view, WindowManager.LayoutParams attrs, View panelParentView,
+        int userId, Bundle bundle) {
+    synchronized (this) {
+        if (mView == null) {
+            ...
+            try {
+                res = mWindowSession.addToDisplayAsUser(mWindow, mWindowAttributes,
+                        getHostVisibility(), mDisplay.getDisplayId(), userId,
+                        mInsetsController.getRequestedVisibilities(), inputChannel, mTempInsets,
+                        mTempControls);
+            } catch (RemoteException e) {
+            } finally {
+            }
+            ...
+        }
+    }
+}
+// WindowManagerGlobal.java
+public static IWindowSession getWindowSession() {
+    synchronized (WindowManagerGlobal.class) {
+        if (sWindowSession == null) {
+            try {
+                IWindowManager windowManager = getWindowManagerService();
+                sWindowSession = windowManager.openSession(
+                        new IWindowSessionCallback.Stub() {
+                            @Override
+                            public void onAnimatorScaleChanged(float scale) {
+                                ValueAnimator.setDurationScale(scale);
+                            }
+                        });
+            } catch (RemoteException e) {
+                throw e.rethrowFromSystemServer();
+            }
+        }
+        return sWindowSession;
+    }
+}
+</code></pre>
+
+<p>ViewRootImpl 是 View视图 与 WindowManager 的纽带，mIWindowSession、mWindow 为 Binder 对象，用于 APP 端与 WMS 之间的相互通信。</p>
+
+<p><img src="/img/Activity/win_binder.png" alt="win_binder" /></p>
+
+<p>这里通过 IWindowSession.addToDisplayAsUser(..) 接口，请求WMS添加新窗口。</p>
+
+<p>此外，ViewRootImpl 管理整个 View 视图的绘制和 Input 事件分发。</p>
+
+<h1 id="4wms添加窗口">4.WMS添加窗口</h1>
+
+<pre><code class="language-Java">// WindowManagerService.java
+public int addWindow(Session session, IWindow client, LayoutParams attrs, ..) {
+    WindowState parentWindow = null;
+    final int type = attrs.type;
+    synchronized (mGlobalLock) {
+        final DisplayContent displayContent = getDisplayContentOrCreate(displayId, attrs.token);
+        
+        if (type &gt;= FIRST_SUB_WINDOW &amp;&amp; type &lt;= LAST_SUB_WINDOW) {
+            parentWindow = windowForClientLocked(null, attrs.token, false);
+            ...
+        }
+
+        ActivityRecord activity = null;
+        final boolean hasParent = parentWindow != null;
+        WindowToken token = displayContent.getWindowToken(
+                hasParent ? parentWindow.mAttrs.token : attrs.token);
+        final int rootType = hasParent ? parentWindow.mAttrs.type : type;
+
+        if (token == null) {
+            ...
+        } else if (rootType &gt;= FIRST_APPLICATION_WINDOW
+                &amp;&amp; rootType &lt;= LAST_APPLICATION_WINDOW) {
+            activity = token.asActivityRecord();
+            ...
+        } else if (rootType == TYPE_INPUT_METHOD) {
+            ...
+        } else if (rootType == TYPE_VOICE_INTERACTION) {
+            ...
+        } else if (rootType == TYPE_WALLPAPER) {
+            ...
+        } else if (rootType == TYPE_ACCESSIBILITY_OVERLAY) {
+            ...
+        } else if (type == TYPE_TOAST) {
+            ...
+        } else if (type == TYPE_QS_DIALOG) {
+            ...
+        } else if (token.asActivityRecord() != null) {
+            ...
+        }
+
+        final WindowState win = new WindowState(this, session, client, token, parentWindow,
+                appOp[0], attrs, viewVisibility, session.mUid, userId,
+                session.mCanAddInternalSystemWindow);
+        win.attach();
+        mWindowMap.put(client.asBinder(), win);
+        win.mToken.addWindow(win);
+
+        if (type == TYPE_APPLICATION_STARTING &amp;&amp; activity != null) {
+            activity.attachStartingWindow(win);
+        } else if (type == TYPE_INPUT_METHOD
+            ...
+        } else if (type == TYPE_INPUT_METHOD_DIALOG) {
+            ...
+        } else {
+            ...
+        }
+    }
+    return res;
+}
+</code></pre>
+
+<h2 id="41-创建windowstate">4.1 创建WindowState</h2>
+
+<pre><code class="language-Java">// WindowManagerService.java
+public int addWindow(...) {
+    ...
+    WindowToken token = displayContent.getWindowToken(
+            hasParent ? parentWindow.mAttrs.token : attrs.token);
+    ...
+}
+</code></pre>
+
+<p>这里传入的 token 是在创建 ActivityRecord 时创建的 Binder 对象（见上文2），获取到的 WindowToken 为 ActivityRecord 对象。</p>
+
+<p>WMS每一个新窗口都会对应创建一个 WindowState 对象：</p>
+
+<pre><code class="language-Java">// WindowManagerService.java
+public int addWindow(...) {
+    ...
+    final WindowState win = new WindowState(this, session, client, token, parentWindow,
+            appOp[0], attrs, viewVisibility, session.mUid, userId,
+            session.mCanAddInternalSystemWindow);
+    ...
+}
+</code></pre>
+
+<p>以 Activity 页面弹出一个Dialog对话框为例，WindowToken 与 WindowState 的关系为：</p>
+
+<p><img src="/img/Activity/win_token.png" alt="win_token" /></p>
+
+<h2 id="42-创建surfacesession">4.2 创建SurfaceSession</h2>
+
+<pre><code class="language-Java">// WindowManagerService.java
+public int addWindow(...) {
+    ...
+    synchronized (mGlobalLock) {
+        ...
+        final WindowState win = new WindowState(...);
+        win.attach();
+        ...
+    }
+    return res;
+}
+
+// WindowState.java
+void attach() {
+    mSession.windowAddedLocked();
+}
+
+// Session.java
+void windowAddedLocked() {
+    ...
+    if (mSurfaceSession == null) {
+        mSurfaceSession = new SurfaceSession();
+        ...
+    }
+}
+
+// SurfaceSession.java
+/** Create a new connection with the surface flinger. */
+@UnsupportedAppUsage
+public SurfaceSession() {
+    mNativeClient = nativeCreate();
+}
+
+// android_view_SurfaceSession.cpp
+static jlong nativeCreate(JNIEnv* env, jclass clazz) {
+    SurfaceComposerClient* client = new SurfaceComposerClient();
+    client-&gt;incStrong((void*)nativeCreate);
+    return reinterpret_cast&lt;jlong&gt;(client);
+}
+</code></pre>
+
+<p>SurfaceSession 构造方法中通过 nativeCreate() 方法返回了一个 SurfaceComposerClient 指针，它表示一个跟 SurfaceFlinger 的连接，当其第一次被使用时会调用 onFirstRef() 方法，创建一个实现 ISurfaceComposerClient 接口的 Client 对象。</p>
+
+<pre><code class="language-Java">// SurfaceComposerClient.cpp
+void SurfaceComposerClient::onFirstRef() {
+    sp&lt;ISurfaceComposer&gt; sf(ComposerService::getComposerService());
+    if (sf != nullptr &amp;&amp; mStatus == NO_INIT) {
+        sp&lt;ISurfaceComposerClient&gt; conn;
+        conn = sf-&gt;createConnection();
+        if (conn != nullptr) {
+            mClient = conn;
+            mStatus = NO_ERROR;
+        }
+    }
+}
+
+// SurfaceFlinger.cpp
+sp&lt;ISurfaceComposerClient&gt; SurfaceFlinger::createConnection() {
+    const sp&lt;Client&gt; client = new Client(this);
+    return client-&gt;initCheck() == NO_ERROR ? client : nullptr;
+}
+</code></pre>
+
+<p>WMS 创建了一个 WindowState 对象表示客户端的一个 Window，接着调用 WindowState.attach() 方法创建了一个 SurfaceSession 对象，SurfaceSession 表示一个跟 SurfaceFlinger 的连接，它创建了一个 SurfaceComposerClient 对象，然后 SurfaceFlinger 又创建了一个 Client 对象。</p>
+
+<h2 id="43-windowstate添加到activityrecord">4.3 WindowState添加到ActivityRecord</h2>
+
+<pre><code class="language-Java">// WindowManagerService.java
+public int addWindow(...) {
+    ...
+    final WindowState win = new WindowState(.., token, ..);
+    ...
+    win.mToken.addWindow(win);
+    ...
+}
+</code></pre>
+
+<h1 id="5应用绘制">5.应用绘制</h1>
+
+<h2 id="51-创建surface">5.1 创建Surface</h2>
+
+<pre><code class="language-Java">// ViewRootImpl.java
+public final Surface mSurface = new Surface();
+private final SurfaceControl mSurfaceControl = new SurfaceControl();
+private BLASTBufferQueue mBlastBufferQueue;
+</code></pre>
+
+<p>创建 ViewRootImp 实例时，会创建一个空的 Surface 和 SurfaceControl 对象，其初始化流程如下：</p>
+
+<ol>
+  <li>ViewRootImpl$TraversalRunnable.run(..)</li>
+  <li>ViewRootImpl.doTraversal(..)</li>
+  <li>ViewRootImpl.performTraversals(..)</li>
+  <li>ViewRootImpl.relayoutWindow(..)</li>
+  <li>Session.relayout(.., mSurfaceControl, ..)</li>
+  <li>WindowManagerService.relayoutWindow(.., outSurfaceControl, ..)</li>
+  <li>WindowManagerService.createSurfaceControl(outSurfaceControl, ..)</li>
+  <li>WindowStateAnimator.createSurfaceLocked()</li>
+  <li>new WindowSurfaceController(..)</li>
+  <li>SurfaceControl.Builder.build()</li>
+  <li>new SurfaceControl(..)</li>
+  <li>SurfaceControl.nativeCreate(..)</li>
+</ol>
+
+<pre><code class="language-Java">// android_view_SurfaceControl.cpp
+static jlong nativeCreate(..) {
+    sp&lt;SurfaceComposerClient&gt; client;
+    if (sessionObj != NULL) {
+        client = android_view_SurfaceSession_getClient(env, sessionObj);
+    } else {
+        client = SurfaceComposerClient::getDefault();
+    }
+
+    sp&lt;SurfaceControl&gt; surface;
+    status_t err = client-&gt;createSurfaceChecked(String8(name.c_str()), w, h, format, &amp;surface,
+                                                flags, parentHandle, std::move(metadata));
+    surface-&gt;incStrong((void *)nativeCreate);
+    return reinterpret_cast&lt;jlong&gt;(surface.get());
+}
+
+// SurfaceComposerClient.cpp 
+status_t SurfaceComposerClient::createSurfaceChecked(..) {
+    status_t err = mStatus;
+
+    if (mStatus == NO_ERROR) {
+        sp&lt;IBinder&gt; handle;
+        sp&lt;IGraphicBufferProducer&gt; gbp;
+
+        err = mClient-&gt;createSurface(name, w, h, format, flags, parentHandle, std::move(metadata),
+                                     &amp;handle, &amp;gbp, &amp;id, &amp;transformHint);
+
+        if (err == NO_ERROR) {
+            *outSurface =
+                    new SurfaceControl(this, handle, gbp, id, w, h, format, transformHint, flags);
+        }
+    }
+    return err;
+}
+
+// surfaceflinger/Client.cpp
+status_t Client::createSurface(..) {
+    LayerCreationArgs args(mFlinger.get(), this, name.c_str(), flags, std::move(metadata));
+    return mFlinger-&gt;createLayer(args, outHandle, parentHandle, outLayerId, nullptr,
+                                 outTransformHint);
+}
+</code></pre>
+
+<ol>
+  <li>WindowSurfaceController.getSurfaceControl(outSurfaceControl)</li>
+  <li>SurfaceControl.copyFrom(..)</li>
+</ol>
+
+<pre><code class="language-Java">outSurfaceControl.copyFrom(mSurfaceControl, "WindowSurfaceController.getSurfaceControl");
+</code></pre>
+
+<ol>
+  <li>SurfaceControl.nativeCopyFromSurfaceControl(..)</li>
+  <li>ViewRootImpl.updateBlastSurfaceIfNeeded()</li>
+  <li>new BLASTBufferQueue(mTag, mSurfaceControl, ..)</li>
+  <li>BLASTBufferQueue.createSurface()</li>
+  <li>BLASTBufferQueue.nativeGetSurface(..)</li>
+</ol>
+
+<pre><code class="language-Java">// android_graphics_BLASTBufferQueue.cpp
+static jobject nativeGetSurface(JNIEnv* env, jclass clazz, jlong ptr,
+                                jboolean includeSurfaceControlHandle) {
+    sp&lt;BLASTBufferQueue&gt; queue = reinterpret_cast&lt;BLASTBufferQueue*&gt;(ptr);
+    return android_view_Surface_createFromSurface(env,
+                                                  queue-&gt;getSurface(includeSurfaceControlHandle));
+}
+
+// BLASTBufferQueue.cpp
+sp&lt;Surface&gt; BLASTBufferQueue::getSurface(bool includeSurfaceControlHandle) {
+    std::unique_lock _lock{mMutex};
+    sp&lt;IBinder&gt; scHandle = nullptr;
+    if (includeSurfaceControlHandle &amp;&amp; mSurfaceControl) {
+        scHandle = mSurfaceControl-&gt;getHandle();
+    }
+    return new BBQSurface(mProducer, true, scHandle, this);
+}
+</code></pre>
+
+<ol>
+  <li>Surface.transferFrom(..)</li>
+</ol>
+
+<pre><code class="language-Java">mSurface.transferFrom(blastSurface);
+</code></pre>
+
+<ol>
+  <li>Surface.setNativeObjectLocked(..)</li>
+</ol>
+
+<p>在 Java 层中 ViewRootImpl 实例中持有一个 Surface 对象，该 Surface 对象中的 mNativeObject 属性指向 native 层中创建的 Surface 对象，native 层的 Surface 对应 SurfaceFlinger 中的 Layer 对象，它持有 Layer 中的 BufferQueueProducer 生产者指针，在 Surface 上绘制的内容最终会交由 SurfaceFlinger 来合成渲染送到显示器显示。</p>
+
+<h2 id="52-view绘制构建阶段">5.2 View绘制：构建阶段</h2>
+
+<p><img src="/img/Activity/view_draw1.png" alt="view_draw1" /></p>
+
+<pre><code class="language-Java">// Choreographer.java
+
+private final class FrameDisplayEventReceiver extends DisplayEventReceiver
+        implements Runnable {
+
+    @Override
+    public void onVsync(..) {
+        try {
+            ...
+            Message msg = Message.obtain(mHandler, this);
+            msg.setAsynchronous(true);
+            mHandler.sendMessageAtTime(msg, timestampNanos / TimeUtils.NANOS_PER_MS);
+        } finally {
+        }
+    }
+
+    @Override
+    public void run() {
+        doFrame(mTimestampNanos, mFrame, mLastVsyncEventData);
+    }
+}
+
+void doFrame(..) {
+    try {
+        ...
+        doCallbacks(Choreographer.CALLBACK_INPUT, frameData, frameIntervalNanos);
+        doCallbacks(Choreographer.CALLBACK_ANIMATION, frameData, frameIntervalNanos);
+        doCallbacks(Choreographer.CALLBACK_INSETS_ANIMATION, frameData, frameIntervalNanos);
+        doCallbacks(Choreographer.CALLBACK_TRAVERSAL, frameData, frameIntervalNanos);
+        doCallbacks(Choreographer.CALLBACK_COMMIT, frameData, frameIntervalNanos);
+    } finally {
+    }
+}
+</code></pre>
+
+<p>Choreographer中收到Vsync信号后，向主线程MessageQueue发送一条异步Message，当异步Message执行后会调用其doFrame(..)方法，依次执行 INPUT、ANIMATION、INSETS_ANIMATION、TRAVERSAL、COMMIT 回调。</p>
+
+<p>在 TRAVERSAL 回调中会执行 mTraversalRunnable ，其 run() 方法中调用 doTraversal() 方法，执行 performTraversals() 方法，接着依次执行 View 的 measure、layout、draw 流程的代码。</p>
+
+<h2 id="53-view绘制渲染阶段">5.3 View绘制：渲染阶段</h2>
+
+<p>RenderThread线程：</p>
+
+<p><img src="/img/Activity/view_draw2.png" alt="view_draw2" /></p>
+
+<p>渲染方式：软件绘制（CPU） VS 硬件绘制（GPU）</p>
+
+<p>渲染引擎：OpenGL VS Vulkan</p>
+
+<h2 id="54-surfaceflinger合成显示">5.4 SurfaceFlinger：合成显示</h2>
+
+<p><img src="/img/Activity/view_draw3.png" alt="view_draw3" /></p>
+
+<h1 id="6小结">6.小结</h1>
+
+<p>应用侧 Window 是一个抽象概念，用来描述顶层视图的外观和行为，唯一的实现类是 PhoneWindow。</p>
+
+<p>在创建 Activity / Dialog 时，会创建 PhoneWindow ，同时会创建 DecorView 。</p>
+
+<p>应用侧向WMS请求添加视图时，会创建ViewRootImpl，同时会创建 Surface，视图绘制的数据会写入  Surface，由 SurfaceFlinger 合成显示。</p>
+
+<p>WMS添加应用侧视图时会创建 WindowState 用来对应一个 Window，同时维护 Window 的 Z-Order 。</p>
+
+<h1 id="7参考文档">7.参考文档</h1>
+
+<p><a href="https://blog.simowce.com/all-about-blastbbq/">BLASTBufferQueue 详解</a></p>
+
+<p><a href="https://www.jianshu.com/p/50a30fa6952e">BBQ 机制介绍</a></p>
+
+<p><a href="https://www.jianshu.com/p/cdc60627df90">BBQ 原理解读</a></p>
+
+<p><a href="https://www.jianshu.com/p/384a5cd2e304">BBQ 运用场景</a></p>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2023/01/09/Activity%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/" data-toggle="tooltip" data-placement="top" title="Activity启动流程">
+                        Previous<br>
+                        <span>Activity启动流程</span>
+                        </a>
+                    </li>
+                    
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0000" 
+                    href="/archive/?tag=Android"
+                    title="Android"
+                    rel="3">Android</a>
+        
+                <a data-sort="0001" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="2">Activity</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+  <li><a href="https://weishu.me/">weishu</a></li>
+  
+  <li><a href="https://androidperformance.com/">Gracker</a></li>
+  
+  <li><a href="http://gityuan.com/">Gityuan</a></li>
+  
+</ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; Android学习笔记 2023
+                    <br>
+                    Powered by <a href="http://huangxuan.me">Hux Blog</a> |
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0" width="100px"
+                        height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=huxpro&repo=huxpro.github.io&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/js/snackbar.js "></script>
+<script src="/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2><h3 class="post-subtitle">{subtitle}</h3><hr></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false,
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        templateMiddleware: function (prop, value, template) {
+            if (prop === 'subtitle' || prop === 'title') {
+                if (value.indexOf("code")) {
+                    return htmlDecode(value);
+                } else {
+                    return value;
+                }
+            }
+        }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+<!-- Image to hack wechat -->
+<img src="/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

@@ -5,9 +5,727 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 16 Aug 2023 23:49:59 +0800</pubDate>
-    <lastBuildDate>Wed, 16 Aug 2023 23:49:59 +0800</lastBuildDate>
+    <pubDate>Thu, 17 Aug 2023 12:52:39 +0800</pubDate>
+    <lastBuildDate>Thu, 17 Aug 2023 12:52:39 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
+    
+      <item>
+        <title>Activity显示流程</title>
+        <description>&lt;p&gt;在 &lt;a href=&quot;https://dreamsunny.github.io/2023/01/09/Activity%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/&quot;&gt;Activity启动流程&lt;/a&gt; 中，我们知道了系统侧响应 Activity 启动请求会创建 Task ；&lt;/p&gt;
+
+&lt;p&gt;在 &lt;a href=&quot;https://dreamsunny.github.io/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/&quot;&gt;DisplayArea树层级结构&lt;/a&gt;中，我们了解了 Task 最终会添加到 DefaultTaskDisplayArea ；&lt;/p&gt;
+
+&lt;p&gt;本文主要梳理下Activity显示流程。&lt;/p&gt;
+
+&lt;h1 id=&quot;1task添加到defaulttaskdisplayarea&quot;&gt;1.Task添加到DefaultTaskDisplayArea&lt;/h1&gt;
+
+&lt;p&gt;调用堆栈如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/trace1.png&quot; alt=&quot;trace1&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// TaskDisplayArea.java
+Task getOrCreateRootTask(..) {
+    ...
+    return new Task.Builder(mAtmService)
+            ...
+            .setParent(this)
+            ...
+            .build();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里 setParent(this) 传入的是 TaskDisplayArea 。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Task.java
+Task build() {
+    ...
+    final Task task = buildInner();
+    ...
+    if (mParent != null) {
+        if (mParent instanceof Task) {
+            final Task parentTask = (Task) mParent;
+            parentTask.addChild(task, mOnTop ? POSITION_TOP : POSITION_BOTTOM,
+                    (mActivityInfo.flags &amp;amp; FLAG_SHOW_FOR_ALL_USERS) != 0);
+        } else {
+            mParent.addChild(task, mOnTop ? POSITION_TOP : POSITION_BOTTOM);
+        }
+    }
+    ...
+    return task;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在 Task.Builder的build() 方法中，将创建的task添加到 TaskDisplayArea。&lt;/p&gt;
+
+&lt;h1 id=&quot;2activityrecord添加到task&quot;&gt;2.ActivityRecord添加到Task&lt;/h1&gt;
+
+&lt;p&gt;调用堆栈如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/trace2.png&quot; alt=&quot;trace2&quot; /&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;创建ActivityRecord：&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityStarter.java
+private int executeRequest(Request request) {
+    ...
+    final ActivityRecord r = new ActivityRecord.Builder(mService)
+            ...
+            .build();
+    ...
+}
+// ActivityRecord.java
+private ActivityRecord(..) {
+    super(_service.mWindowManager, new Token(), TYPE_APPLICATION, true,
+            null /* displayContent */, false /* ownerCanManageAppTokens */);
+    ((Token) token).mActivityRef = new WeakReference&amp;lt;&amp;gt;(this);
+}
+
+private static class Token extends Binder {
+    @NonNull WeakReference&amp;lt;ActivityRecord&amp;gt; mActivityRef;
+
+    @Override
+    public String toString() {
+        return &quot;Token{&quot; + Integer.toHexString(System.identityHashCode(this)) + &quot; &quot;
+                + mActivityRef.get() + &quot;}&quot;;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;添加到 Task 中：&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityStarter.java
+private void addOrReparentStartingActivity(@NonNull Task task, String reason) {
+    ..
+    TaskFragment newParent = task;
+    ...
+    if (mStartActivity.getTaskFragment() == null
+            || mStartActivity.getTaskFragment() == newParent) {
+        newParent.addChild(mStartActivity, POSITION_TOP);
+    } else {
+        mStartActivity.reparent(newParent, newParent.getChildCount() /* top */, reason);
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;添加到 DisplayContent 的 mTokenMap 中：&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// WindowToken.java
+void onDisplayChanged(DisplayContent dc) {
+    dc.reParentWindowToken(this);
+    super.onDisplayChanged(dc);
+}
+// DisplayContent.java
+void reParentWindowToken(WindowToken token) {
+    ...
+    addWindowToken(token.token, token);
+    ...
+}
+
+void addWindowToken(IBinder binder, WindowToken token) {
+    ...
+    mTokenMap.put(binder, token);
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;3activity窗口添加到wms&quot;&gt;3.Activity窗口添加到WMS&lt;/h1&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/act_show.png&quot; alt=&quot;act_show&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;31-activitysetcontentview&quot;&gt;3.1 Activity.setContentView(..)&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Activity.java
+public void setContentView(@LayoutRes int layoutResID) {
+    getWindow().setContentView(layoutResID);
+    initWindowDecorActionBar();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Activity.setContentView(..) 中直接调用 PhoneWindow.setContentView(..) 方法。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// PhoneWindow.java
+public void setContentView(int layoutResID) {
+    if (mContentParent == null) {
+        installDecor();
+    } else if (!hasFeature(FEATURE_CONTENT_TRANSITIONS)) {
+        ...
+    }
+
+    if (hasFeature(FEATURE_CONTENT_TRANSITIONS)) {
+        ...
+    } else {
+        mLayoutInflater.inflate(layoutResID, mContentParent);
+    }
+    ...
+}
+
+private void installDecor() {
+    mForceDecorInstall = false;
+    if (mDecor == null) {
+        mDecor = generateDecor(-1);
+        ...
+    } else {
+        mDecor.setWindow(this);
+    }
+    if (mContentParent == null) {
+        mContentParent = generateLayout(mDecor);
+        ...
+    }
+}
+
+protected DecorView generateDecor(int featureId) {
+    ...
+    return new DecorView(context, featureId, this, getAttributes());
+}
+
+protected ViewGroup generateLayout(DecorView decor) {
+    ...
+    int layoutResource;
+    int features = getLocalFeatures();
+    if ((features &amp;amp; ((1 &amp;lt;&amp;lt; FEATURE_LEFT_ICON) | (1 &amp;lt;&amp;lt; FEATURE_RIGHT_ICON))) != 0) {
+        ..
+    } else if ((features &amp;amp; ((1 &amp;lt;&amp;lt; FEATURE_PROGRESS) | (1 &amp;lt;&amp;lt; FEATURE_INDETERMINATE_PROGRESS))) != 0
+        &amp;amp;&amp;amp; (features &amp;amp; (1 &amp;lt;&amp;lt; FEATURE_ACTION_BAR)) == 0) {
+        ..
+    } else if ((features &amp;amp; (1 &amp;lt;&amp;lt; FEATURE_CUSTOM_TITLE)) != 0) {
+        ..
+    } else if ((features &amp;amp; (1 &amp;lt;&amp;lt; FEATURE_NO_TITLE)) == 0) {
+        ..
+    } else if ((features &amp;amp; (1 &amp;lt;&amp;lt; FEATURE_ACTION_MODE_OVERLAY)) != 0) {
+        ..
+    } else {
+        layoutResource = R.layout.screen_simple;
+    }
+    mDecor.onResourcesLoaded(mLayoutInflater, layoutResource);
+    ViewGroup contentParent = (ViewGroup)findViewById(ID_ANDROID_CONTENT);
+    ...
+    return contentParent;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;PhoneWindow.setContentView(..) 方法主要做3件事：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;创建DecorView。&lt;/li&gt;
+  &lt;li&gt;inflate Activity 根布局。&lt;/li&gt;
+  &lt;li&gt;inflate Activity 视图布局（setContentView()传入的layoutResID）。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;其中系统预置 Activity 根布局有：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;feature&lt;/th&gt;
+      &lt;th&gt;布局&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;em&gt;FEATURE_LEFT_ICON&lt;/em&gt; &lt;br /&gt; &lt;em&gt;FEATURE_RIGHT_ICON&lt;/em&gt;&lt;/td&gt;
+      &lt;td&gt;screen_title_icons.xml&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;em&gt;FEATURE_PROGRESS&lt;/em&gt; &lt;br /&gt; &lt;em&gt;FEATURE_INDETERMINATE_PROGRESS&lt;/em&gt; &lt;br /&gt; &lt;em&gt;FEATURE_ACTION_BAR&lt;/em&gt;&lt;/td&gt;
+      &lt;td&gt;screen_progress.xml&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;em&gt;FEATURE_CUSTOM_TITLE&lt;/em&gt;&lt;/td&gt;
+      &lt;td&gt;screen_custom_title.xml&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;em&gt;FEATURE_NO_TITLE&lt;/em&gt;&lt;/td&gt;
+      &lt;td&gt;screen_title.xml&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;em&gt;FEATURE_ACTION_MODE_OVERLAY&lt;/em&gt;&lt;/td&gt;
+      &lt;td&gt;screen_simple_overlay_action_mode.xml&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;else&lt;/td&gt;
+      &lt;td&gt;screen_simple.xml&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;以 screen_simple.xml 为例查看其布局：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// screen_simple.xml
+&amp;lt;LinearLayout xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;
+    android:layout_width=&quot;match_parent&quot;
+    android:layout_height=&quot;match_parent&quot;
+    android:fitsSystemWindows=&quot;true&quot;
+    android:orientation=&quot;vertical&quot;&amp;gt;
+    &amp;lt;ViewStub android:id=&quot;@+id/action_mode_bar_stub&quot;
+              android:inflatedId=&quot;@+id/action_mode_bar&quot;
+              android:layout=&quot;@layout/action_mode_bar&quot;
+              android:layout_width=&quot;match_parent&quot;
+              android:layout_height=&quot;wrap_content&quot;
+              android:theme=&quot;?attr/actionBarTheme&quot; /&amp;gt;
+    &amp;lt;FrameLayout
+         android:id=&quot;@android:id/content&quot;
+         android:layout_width=&quot;match_parent&quot;
+         android:layout_height=&quot;match_parent&quot;
+         android:foregroundInsidePadding=&quot;false&quot;
+         android:foregroundGravity=&quot;fill_horizontal|top&quot;
+         android:foreground=&quot;?android:attr/windowContentOverlay&quot; /&amp;gt;
+&amp;lt;/LinearLayout&amp;gt;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;对应整个 Activity 视图为：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/decor.png&quot; alt=&quot;decor&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;最终，Activity.setContentView(..) 传入的布局会添加到 FrameLayout(id=ID_ANDROID_CONTENT) 。&lt;/p&gt;
+
+&lt;h2 id=&quot;32-viewrootimplsetview&quot;&gt;3.2 ViewRootImpl.setView(..)&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ViewRootImpl.java
+public ViewRootImpl(Context context, Display display) {
+    this(context, display, WindowManagerGlobal.getWindowSession(),
+            false /* useSfChoreographer */);
+}
+
+public ViewRootImpl(@UiContext Context context, Display display, IWindowSession session) {
+    this(context, display, session, false /* useSfChoreographer */);
+}
+
+public ViewRootImpl(@UiContext Context context, Display display, IWindowSession session,
+        boolean useSfChoreographer) {
+    mWindowSession = session;
+    mWindow = new W(this);
+    ...
+}
+
+public void setView(View view, WindowManager.LayoutParams attrs, View panelParentView,
+        int userId, Bundle bundle) {
+    synchronized (this) {
+        if (mView == null) {
+            ...
+            try {
+                res = mWindowSession.addToDisplayAsUser(mWindow, mWindowAttributes,
+                        getHostVisibility(), mDisplay.getDisplayId(), userId,
+                        mInsetsController.getRequestedVisibilities(), inputChannel, mTempInsets,
+                        mTempControls);
+            } catch (RemoteException e) {
+            } finally {
+            }
+            ...
+        }
+    }
+}
+// WindowManagerGlobal.java
+public static IWindowSession getWindowSession() {
+    synchronized (WindowManagerGlobal.class) {
+        if (sWindowSession == null) {
+            try {
+                IWindowManager windowManager = getWindowManagerService();
+                sWindowSession = windowManager.openSession(
+                        new IWindowSessionCallback.Stub() {
+                            @Override
+                            public void onAnimatorScaleChanged(float scale) {
+                                ValueAnimator.setDurationScale(scale);
+                            }
+                        });
+            } catch (RemoteException e) {
+                throw e.rethrowFromSystemServer();
+            }
+        }
+        return sWindowSession;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;ViewRootImpl 是 View视图 与 WindowManager 的纽带，mIWindowSession、mWindow 为 Binder 对象，用于 APP 端与 WMS 之间的相互通信。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/win_binder.png&quot; alt=&quot;win_binder&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;这里通过 IWindowSession.addToDisplayAsUser(..) 接口，请求WMS添加新窗口。&lt;/p&gt;
+
+&lt;p&gt;此外，ViewRootImpl 管理整个 View 视图的绘制和 Input 事件分发。&lt;/p&gt;
+
+&lt;h1 id=&quot;4wms添加窗口&quot;&gt;4.WMS添加窗口&lt;/h1&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// WindowManagerService.java
+public int addWindow(Session session, IWindow client, LayoutParams attrs, ..) {
+    WindowState parentWindow = null;
+    final int type = attrs.type;
+    synchronized (mGlobalLock) {
+        final DisplayContent displayContent = getDisplayContentOrCreate(displayId, attrs.token);
+        
+        if (type &amp;gt;= FIRST_SUB_WINDOW &amp;amp;&amp;amp; type &amp;lt;= LAST_SUB_WINDOW) {
+            parentWindow = windowForClientLocked(null, attrs.token, false);
+            ...
+        }
+
+        ActivityRecord activity = null;
+        final boolean hasParent = parentWindow != null;
+        WindowToken token = displayContent.getWindowToken(
+                hasParent ? parentWindow.mAttrs.token : attrs.token);
+        final int rootType = hasParent ? parentWindow.mAttrs.type : type;
+
+        if (token == null) {
+            ...
+        } else if (rootType &amp;gt;= FIRST_APPLICATION_WINDOW
+                &amp;amp;&amp;amp; rootType &amp;lt;= LAST_APPLICATION_WINDOW) {
+            activity = token.asActivityRecord();
+            ...
+        } else if (rootType == TYPE_INPUT_METHOD) {
+            ...
+        } else if (rootType == TYPE_VOICE_INTERACTION) {
+            ...
+        } else if (rootType == TYPE_WALLPAPER) {
+            ...
+        } else if (rootType == TYPE_ACCESSIBILITY_OVERLAY) {
+            ...
+        } else if (type == TYPE_TOAST) {
+            ...
+        } else if (type == TYPE_QS_DIALOG) {
+            ...
+        } else if (token.asActivityRecord() != null) {
+            ...
+        }
+
+        final WindowState win = new WindowState(this, session, client, token, parentWindow,
+                appOp[0], attrs, viewVisibility, session.mUid, userId,
+                session.mCanAddInternalSystemWindow);
+        win.attach();
+        mWindowMap.put(client.asBinder(), win);
+        win.mToken.addWindow(win);
+
+        if (type == TYPE_APPLICATION_STARTING &amp;amp;&amp;amp; activity != null) {
+            activity.attachStartingWindow(win);
+        } else if (type == TYPE_INPUT_METHOD
+            ...
+        } else if (type == TYPE_INPUT_METHOD_DIALOG) {
+            ...
+        } else {
+            ...
+        }
+    }
+    return res;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;41-创建windowstate&quot;&gt;4.1 创建WindowState&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// WindowManagerService.java
+public int addWindow(...) {
+    ...
+    WindowToken token = displayContent.getWindowToken(
+            hasParent ? parentWindow.mAttrs.token : attrs.token);
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里传入的 token 是在创建 ActivityRecord 时创建的 Binder 对象（见上文2），获取到的 WindowToken 为 ActivityRecord 对象。&lt;/p&gt;
+
+&lt;p&gt;WMS每一个新窗口都会对应创建一个 WindowState 对象：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// WindowManagerService.java
+public int addWindow(...) {
+    ...
+    final WindowState win = new WindowState(this, session, client, token, parentWindow,
+            appOp[0], attrs, viewVisibility, session.mUid, userId,
+            session.mCanAddInternalSystemWindow);
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;以 Activity 页面弹出一个Dialog对话框为例，WindowToken 与 WindowState 的关系为：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/win_token.png&quot; alt=&quot;win_token&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;42-创建surfacesession&quot;&gt;4.2 创建SurfaceSession&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// WindowManagerService.java
+public int addWindow(...) {
+    ...
+    synchronized (mGlobalLock) {
+        ...
+        final WindowState win = new WindowState(...);
+        win.attach();
+        ...
+    }
+    return res;
+}
+
+// WindowState.java
+void attach() {
+    mSession.windowAddedLocked();
+}
+
+// Session.java
+void windowAddedLocked() {
+    ...
+    if (mSurfaceSession == null) {
+        mSurfaceSession = new SurfaceSession();
+        ...
+    }
+}
+
+// SurfaceSession.java
+/** Create a new connection with the surface flinger. */
+@UnsupportedAppUsage
+public SurfaceSession() {
+    mNativeClient = nativeCreate();
+}
+
+// android_view_SurfaceSession.cpp
+static jlong nativeCreate(JNIEnv* env, jclass clazz) {
+    SurfaceComposerClient* client = new SurfaceComposerClient();
+    client-&amp;gt;incStrong((void*)nativeCreate);
+    return reinterpret_cast&amp;lt;jlong&amp;gt;(client);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;SurfaceSession 构造方法中通过 nativeCreate() 方法返回了一个 SurfaceComposerClient 指针，它表示一个跟 SurfaceFlinger 的连接，当其第一次被使用时会调用 onFirstRef() 方法，创建一个实现 ISurfaceComposerClient 接口的 Client 对象。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// SurfaceComposerClient.cpp
+void SurfaceComposerClient::onFirstRef() {
+    sp&amp;lt;ISurfaceComposer&amp;gt; sf(ComposerService::getComposerService());
+    if (sf != nullptr &amp;amp;&amp;amp; mStatus == NO_INIT) {
+        sp&amp;lt;ISurfaceComposerClient&amp;gt; conn;
+        conn = sf-&amp;gt;createConnection();
+        if (conn != nullptr) {
+            mClient = conn;
+            mStatus = NO_ERROR;
+        }
+    }
+}
+
+// SurfaceFlinger.cpp
+sp&amp;lt;ISurfaceComposerClient&amp;gt; SurfaceFlinger::createConnection() {
+    const sp&amp;lt;Client&amp;gt; client = new Client(this);
+    return client-&amp;gt;initCheck() == NO_ERROR ? client : nullptr;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;WMS 创建了一个 WindowState 对象表示客户端的一个 Window，接着调用 WindowState.attach() 方法创建了一个 SurfaceSession 对象，SurfaceSession 表示一个跟 SurfaceFlinger 的连接，它创建了一个 SurfaceComposerClient 对象，然后 SurfaceFlinger 又创建了一个 Client 对象。&lt;/p&gt;
+
+&lt;h2 id=&quot;43-windowstate添加到activityrecord&quot;&gt;4.3 WindowState添加到ActivityRecord&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// WindowManagerService.java
+public int addWindow(...) {
+    ...
+    final WindowState win = new WindowState(.., token, ..);
+    ...
+    win.mToken.addWindow(win);
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;5应用绘制&quot;&gt;5.应用绘制&lt;/h1&gt;
+
+&lt;h2 id=&quot;51-创建surface&quot;&gt;5.1 创建Surface&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ViewRootImpl.java
+public final Surface mSurface = new Surface();
+private final SurfaceControl mSurfaceControl = new SurfaceControl();
+private BLASTBufferQueue mBlastBufferQueue;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;创建 ViewRootImp 实例时，会创建一个空的 Surface 和 SurfaceControl 对象，其初始化流程如下：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;ViewRootImpl$TraversalRunnable.run(..)&lt;/li&gt;
+  &lt;li&gt;ViewRootImpl.doTraversal(..)&lt;/li&gt;
+  &lt;li&gt;ViewRootImpl.performTraversals(..)&lt;/li&gt;
+  &lt;li&gt;ViewRootImpl.relayoutWindow(..)&lt;/li&gt;
+  &lt;li&gt;Session.relayout(.., mSurfaceControl, ..)&lt;/li&gt;
+  &lt;li&gt;WindowManagerService.relayoutWindow(.., outSurfaceControl, ..)&lt;/li&gt;
+  &lt;li&gt;WindowManagerService.createSurfaceControl(outSurfaceControl, ..)&lt;/li&gt;
+  &lt;li&gt;WindowStateAnimator.createSurfaceLocked()&lt;/li&gt;
+  &lt;li&gt;new WindowSurfaceController(..)&lt;/li&gt;
+  &lt;li&gt;SurfaceControl.Builder.build()&lt;/li&gt;
+  &lt;li&gt;new SurfaceControl(..)&lt;/li&gt;
+  &lt;li&gt;SurfaceControl.nativeCreate(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// android_view_SurfaceControl.cpp
+static jlong nativeCreate(..) {
+    sp&amp;lt;SurfaceComposerClient&amp;gt; client;
+    if (sessionObj != NULL) {
+        client = android_view_SurfaceSession_getClient(env, sessionObj);
+    } else {
+        client = SurfaceComposerClient::getDefault();
+    }
+
+    sp&amp;lt;SurfaceControl&amp;gt; surface;
+    status_t err = client-&amp;gt;createSurfaceChecked(String8(name.c_str()), w, h, format, &amp;amp;surface,
+                                                flags, parentHandle, std::move(metadata));
+    surface-&amp;gt;incStrong((void *)nativeCreate);
+    return reinterpret_cast&amp;lt;jlong&amp;gt;(surface.get());
+}
+
+// SurfaceComposerClient.cpp 
+status_t SurfaceComposerClient::createSurfaceChecked(..) {
+    status_t err = mStatus;
+
+    if (mStatus == NO_ERROR) {
+        sp&amp;lt;IBinder&amp;gt; handle;
+        sp&amp;lt;IGraphicBufferProducer&amp;gt; gbp;
+
+        err = mClient-&amp;gt;createSurface(name, w, h, format, flags, parentHandle, std::move(metadata),
+                                     &amp;amp;handle, &amp;amp;gbp, &amp;amp;id, &amp;amp;transformHint);
+
+        if (err == NO_ERROR) {
+            *outSurface =
+                    new SurfaceControl(this, handle, gbp, id, w, h, format, transformHint, flags);
+        }
+    }
+    return err;
+}
+
+// surfaceflinger/Client.cpp
+status_t Client::createSurface(..) {
+    LayerCreationArgs args(mFlinger.get(), this, name.c_str(), flags, std::move(metadata));
+    return mFlinger-&amp;gt;createLayer(args, outHandle, parentHandle, outLayerId, nullptr,
+                                 outTransformHint);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;WindowSurfaceController.getSurfaceControl(outSurfaceControl)&lt;/li&gt;
+  &lt;li&gt;SurfaceControl.copyFrom(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;outSurfaceControl.copyFrom(mSurfaceControl, &quot;WindowSurfaceController.getSurfaceControl&quot;);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;SurfaceControl.nativeCopyFromSurfaceControl(..)&lt;/li&gt;
+  &lt;li&gt;ViewRootImpl.updateBlastSurfaceIfNeeded()&lt;/li&gt;
+  &lt;li&gt;new BLASTBufferQueue(mTag, mSurfaceControl, ..)&lt;/li&gt;
+  &lt;li&gt;BLASTBufferQueue.createSurface()&lt;/li&gt;
+  &lt;li&gt;BLASTBufferQueue.nativeGetSurface(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// android_graphics_BLASTBufferQueue.cpp
+static jobject nativeGetSurface(JNIEnv* env, jclass clazz, jlong ptr,
+                                jboolean includeSurfaceControlHandle) {
+    sp&amp;lt;BLASTBufferQueue&amp;gt; queue = reinterpret_cast&amp;lt;BLASTBufferQueue*&amp;gt;(ptr);
+    return android_view_Surface_createFromSurface(env,
+                                                  queue-&amp;gt;getSurface(includeSurfaceControlHandle));
+}
+
+// BLASTBufferQueue.cpp
+sp&amp;lt;Surface&amp;gt; BLASTBufferQueue::getSurface(bool includeSurfaceControlHandle) {
+    std::unique_lock _lock{mMutex};
+    sp&amp;lt;IBinder&amp;gt; scHandle = nullptr;
+    if (includeSurfaceControlHandle &amp;amp;&amp;amp; mSurfaceControl) {
+        scHandle = mSurfaceControl-&amp;gt;getHandle();
+    }
+    return new BBQSurface(mProducer, true, scHandle, this);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Surface.transferFrom(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;mSurface.transferFrom(blastSurface);
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Surface.setNativeObjectLocked(..)&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;在 Java 层中 ViewRootImpl 实例中持有一个 Surface 对象，该 Surface 对象中的 mNativeObject 属性指向 native 层中创建的 Surface 对象，native 层的 Surface 对应 SurfaceFlinger 中的 Layer 对象，它持有 Layer 中的 BufferQueueProducer 生产者指针，在 Surface 上绘制的内容最终会交由 SurfaceFlinger 来合成渲染送到显示器显示。&lt;/p&gt;
+
+&lt;h2 id=&quot;52-view绘制构建阶段&quot;&gt;5.2 View绘制：构建阶段&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/view_draw1.png&quot; alt=&quot;view_draw1&quot; /&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Choreographer.java
+
+private final class FrameDisplayEventReceiver extends DisplayEventReceiver
+        implements Runnable {
+
+    @Override
+    public void onVsync(..) {
+        try {
+            ...
+            Message msg = Message.obtain(mHandler, this);
+            msg.setAsynchronous(true);
+            mHandler.sendMessageAtTime(msg, timestampNanos / TimeUtils.NANOS_PER_MS);
+        } finally {
+        }
+    }
+
+    @Override
+    public void run() {
+        doFrame(mTimestampNanos, mFrame, mLastVsyncEventData);
+    }
+}
+
+void doFrame(..) {
+    try {
+        ...
+        doCallbacks(Choreographer.CALLBACK_INPUT, frameData, frameIntervalNanos);
+        doCallbacks(Choreographer.CALLBACK_ANIMATION, frameData, frameIntervalNanos);
+        doCallbacks(Choreographer.CALLBACK_INSETS_ANIMATION, frameData, frameIntervalNanos);
+        doCallbacks(Choreographer.CALLBACK_TRAVERSAL, frameData, frameIntervalNanos);
+        doCallbacks(Choreographer.CALLBACK_COMMIT, frameData, frameIntervalNanos);
+    } finally {
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Choreographer中收到Vsync信号后，向主线程MessageQueue发送一条异步Message，当异步Message执行后会调用其doFrame(..)方法，依次执行 INPUT、ANIMATION、INSETS_ANIMATION、TRAVERSAL、COMMIT 回调。&lt;/p&gt;
+
+&lt;p&gt;在 TRAVERSAL 回调中会执行 mTraversalRunnable ，其 run() 方法中调用 doTraversal() 方法，执行 performTraversals() 方法，接着依次执行 View 的 measure、layout、draw 流程的代码。&lt;/p&gt;
+
+&lt;h2 id=&quot;53-view绘制渲染阶段&quot;&gt;5.3 View绘制：渲染阶段&lt;/h2&gt;
+
+&lt;p&gt;RenderThread线程：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/view_draw2.png&quot; alt=&quot;view_draw2&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;渲染方式：软件绘制（CPU） VS 硬件绘制（GPU）&lt;/p&gt;
+
+&lt;p&gt;渲染引擎：OpenGL VS Vulkan&lt;/p&gt;
+
+&lt;h2 id=&quot;54-surfaceflinger合成显示&quot;&gt;5.4 SurfaceFlinger：合成显示&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/Activity/view_draw3.png&quot; alt=&quot;view_draw3&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;6小结&quot;&gt;6.小结&lt;/h1&gt;
+
+&lt;p&gt;应用侧 Window 是一个抽象概念，用来描述顶层视图的外观和行为，唯一的实现类是 PhoneWindow。&lt;/p&gt;
+
+&lt;p&gt;在创建 Activity / Dialog 时，会创建 PhoneWindow ，同时会创建 DecorView 。&lt;/p&gt;
+
+&lt;p&gt;应用侧向WMS请求添加视图时，会创建ViewRootImpl，同时会创建 Surface，视图绘制的数据会写入  Surface，由 SurfaceFlinger 合成显示。&lt;/p&gt;
+
+&lt;p&gt;WMS添加应用侧视图时会创建 WindowState 用来对应一个 Window，同时维护 Window 的 Z-Order 。&lt;/p&gt;
+
+&lt;h1 id=&quot;7参考文档&quot;&gt;7.参考文档&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://blog.simowce.com/all-about-blastbbq/&quot;&gt;BLASTBufferQueue 详解&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.jianshu.com/p/50a30fa6952e&quot;&gt;BBQ 机制介绍&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.jianshu.com/p/cdc60627df90&quot;&gt;BBQ 原理解读&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.jianshu.com/p/384a5cd2e304&quot;&gt;BBQ 运用场景&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Thu, 19 Jan 2023 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2023/01/19/Activity%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/</link>
+        <guid isPermaLink="true">http://localhost:4000/2023/01/19/Activity%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/</guid>
+        
+        <category>Android</category>
+        
+        <category>Activity</category>
+        
+        
+      </item>
     
       <item>
         <title>Activity启动流程</title>
