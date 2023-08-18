@@ -5,9 +5,51 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 17 Aug 2023 22:28:16 +0800</pubDate>
-    <lastBuildDate>Thu, 17 Aug 2023 22:28:16 +0800</lastBuildDate>
+    <pubDate>Fri, 18 Aug 2023 08:28:05 +0800</pubDate>
+    <lastBuildDate>Fri, 18 Aug 2023 08:28:05 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
+    
+      <item>
+        <title>抖音Android基础技术大揭秘</title>
+        <description>&lt;h1 id=&quot;1抖音android基础技术大揭秘-vol01&quot;&gt;1.抖音Android基础技术大揭秘 Vol.01&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://live.juejin.cn/4354/6654710&quot;&gt;字节跳动技术沙龙（第10期）&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://www.bilibili.com/video/BV1eh4y1s7kR&quot;&gt;字节跳动技术沙龙（第10期）&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/douyin/douyin1.png&quot; alt=&quot;douyin1&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;2抖音android基础技术大揭秘-vol02&quot;&gt;2.抖音Android基础技术大揭秘 Vol.02&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://live.juejin.cn/4354/9932368&quot;&gt;字节跳动技术沙龙（第12期）&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://www.bilibili.com/video/BV1bc411V7tE&quot;&gt;字节跳动技术沙龙（第12期）&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/douyin/douyin2.png&quot; alt=&quot;douyin2&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;3抖音android基础技术大揭秘-vol03&quot;&gt;3.抖音Android基础技术大揭秘 Vol.03&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://live.byteoc.com/9281/2307433&quot;&gt;抖音Android基础技术大揭秘第三期&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://www.bilibili.com/video/BV1Fh4y1X71b&quot;&gt;抖音Android基础技术大揭秘第三期&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/douyin/douyin3.png&quot; alt=&quot;douyin3&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;4抖音android基础技术大揭秘-vol04&quot;&gt;4.抖音Android基础技术大揭秘 Vol.04&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://www.bilibili.com/video/BV1zu4y1o74x/&quot;&gt;抖音Android基础技术大揭秘第四期&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/douyin/douyin4.png&quot; alt=&quot;douyin4&quot; /&gt;&lt;/p&gt;
+</description>
+        <pubDate>Mon, 29 May 2023 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2023/05/29/%E6%8A%96%E9%9F%B3Android%E5%9F%BA%E7%A1%80%E6%8A%80%E6%9C%AF%E5%A4%A7%E6%8F%AD%E7%A7%98/</link>
+        <guid isPermaLink="true">http://localhost:4000/2023/05/29/%E6%8A%96%E9%9F%B3Android%E5%9F%BA%E7%A1%80%E6%8A%80%E6%9C%AF%E5%A4%A7%E6%8F%AD%E7%A7%98/</guid>
+        
+        <category>Android</category>
+        
+        <category>Performance</category>
+        
+        <category>Stability</category>
+        
+        
+      </item>
     
       <item>
         <title>Activity显示流程</title>
