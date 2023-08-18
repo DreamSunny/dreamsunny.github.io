@@ -298,7 +298,7 @@
 
 <p>SystemUI是常驻进程，当其发生异常退出时，系统会尝试重新启动，其流程图如下：</p>
 
-<p><img src="/img/Recovery/r1.png" alt="r1" /></p>
+<p><img src="/img/Recovery/r2.png" alt="r2" /></p>
 
 <p>ActivityManagerService中收到应用死亡的回调后，会判断应用是否为系统常驻进程。如果应用是系统常驻进程，则会重新启动该进程。</p>
 
@@ -308,7 +308,7 @@
 
 <p>触发ResureParty机制的流程图如下：</p>
 
-<p><img src="/img/Recovery/r1.png" alt="r1" /></p>
+<p><img src="/img/Recovery/r3.png" alt="r3" /></p>
 
 <p>当应用异常退出后，会上报到PackageWatchDog，其onPackageFailureLocked方法中会判断当前应用是否为系统常驻进程，如果应用是系统常驻进程，则会更新mitigationCount，其对应的严重等级如下表：</p>
 
@@ -343,7 +343,7 @@
   </tbody>
 </table>
 
-<p>当达到严重等级达到LEVEL_FACTORY_RESET级别后，系统就会进入Recovery界面。</p>
+<p>当达到严重等级达到LEVEL_FACTORY_RESET级别后，系统就会进入Recovery界面2</p>
 
 
                 <hr style="visibility: hidden;">
@@ -584,9 +584,40 @@
 
 <!-- Google Analytics -->
 
+<script>
+    // dynamic User by Hux
+    var _gaId = 'G-2V8N2PZX57';
+    var _gaDomain = 'dreamsunny.github.io';
+
+    // Originial
+    (function (i, s, o, g, r, a, m) {
+        i['GoogleAnalyticsObject'] = r; i[r] = i[r] || function () {
+            (i[r].q = i[r].q || []).push(arguments)
+        }, i[r].l = 1 * new Date(); a = s.createElement(o),
+            m = s.getElementsByTagName(o)[0]; a.async = 1; a.src = g; m.parentNode.insertBefore(a, m)
+    })(window, document, 'script', '//www.google-analytics.com/analytics.js', 'ga');
+
+    ga('create', _gaId, _gaDomain);
+    ga('send', 'pageview');
+</script>
+
 
 
 <!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4aa6afabf05ffd2ce6f459088368d4a3';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function () {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?" + _baId;
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    })();
+</script>
 
 
 

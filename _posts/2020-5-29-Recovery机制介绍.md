@@ -39,7 +39,7 @@ ResureParty是一套系统自救机制，当监控到系统核心程序出现循
 
 SystemUI是常驻进程，当其发生异常退出时，系统会尝试重新启动，其流程图如下：
 
-![r1](/img/Recovery/r1.png)
+![r2](/img/Recovery/r2.png)
 
 ActivityManagerService中收到应用死亡的回调后，会判断应用是否为系统常驻进程。如果应用是系统常驻进程，则会重新启动该进程。
 
@@ -49,7 +49,7 @@ ActivityManagerService中收到应用死亡的回调后，会判断应用是否�
 
  触发ResureParty机制的流程图如下：
 
-![r1](/img/Recovery/r1.png)
+![r3](/img/Recovery/r3.png)
 
 当应用异常退出后，会上报到PackageWatchDog，其onPackageFailureLocked方法中会判断当前应用是否为系统常驻进程，如果应用是系统常驻进程，则会更新mitigationCount，其对应的严重等级如下表：                                      
 
@@ -61,4 +61,4 @@ ActivityManagerService中收到应用死亡的回调后，会判断应用是否�
 | 4               | LEVEL_WARM_REBOOT                       |
 | 5               | LEVEL_FACTORY_RESET                     |
 
-当达到严重等级达到LEVEL_FACTORY_RESET级别后，系统就会进入Recovery界面。
+当达到严重等级达到LEVEL_FACTORY_RESET级别后，系统就会进入Recovery界面2

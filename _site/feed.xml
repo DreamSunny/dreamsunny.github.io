@@ -5,36 +5,36 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 18 Aug 2023 08:28:05 +0800</pubDate>
-    <lastBuildDate>Fri, 18 Aug 2023 08:28:05 +0800</lastBuildDate>
+    <pubDate>Fri, 18 Aug 2023 12:30:47 +0800</pubDate>
+    <lastBuildDate>Fri, 18 Aug 2023 12:30:47 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
         <title>抖音Android基础技术大揭秘</title>
         <description>&lt;h1 id=&quot;1抖音android基础技术大揭秘-vol01&quot;&gt;1.抖音Android基础技术大揭秘 Vol.01&lt;/h1&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://live.juejin.cn/4354/6654710&quot;&gt;字节跳动技术沙龙（第10期）&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://www.bilibili.com/video/BV1eh4y1s7kR&quot;&gt;字节跳动技术沙龙（第10期）&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;掘金：&lt;a href=&quot;https://live.juejin.cn/4354/6654710&quot;&gt;字节跳动技术沙龙（第10期）&lt;/a&gt;&lt;br /&gt;
+B站：&lt;a href=&quot;https://www.bilibili.com/video/BV1eh4y1s7kR&quot;&gt;字节跳动技术沙龙（第10期）&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/img/douyin/douyin1.png&quot; alt=&quot;douyin1&quot; /&gt;&lt;/p&gt;
 
 &lt;h1 id=&quot;2抖音android基础技术大揭秘-vol02&quot;&gt;2.抖音Android基础技术大揭秘 Vol.02&lt;/h1&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://live.juejin.cn/4354/9932368&quot;&gt;字节跳动技术沙龙（第12期）&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://www.bilibili.com/video/BV1bc411V7tE&quot;&gt;字节跳动技术沙龙（第12期）&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;掘金：&lt;a href=&quot;https://live.juejin.cn/4354/9932368&quot;&gt;字节跳动技术沙龙（第12期）&lt;/a&gt;&lt;br /&gt;
+B站：&lt;a href=&quot;https://www.bilibili.com/video/BV1bc411V7tE&quot;&gt;字节跳动技术沙龙（第12期）&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/img/douyin/douyin2.png&quot; alt=&quot;douyin2&quot; /&gt;&lt;/p&gt;
 
 &lt;h1 id=&quot;3抖音android基础技术大揭秘-vol03&quot;&gt;3.抖音Android基础技术大揭秘 Vol.03&lt;/h1&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://live.byteoc.com/9281/2307433&quot;&gt;抖音Android基础技术大揭秘第三期&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://www.bilibili.com/video/BV1Fh4y1X71b&quot;&gt;抖音Android基础技术大揭秘第三期&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;掘金：&lt;a href=&quot;https://live.byteoc.com/9281/2307433&quot;&gt;抖音Android基础技术大揭秘第三期&lt;/a&gt;&lt;br /&gt;
+B站：&lt;a href=&quot;https://www.bilibili.com/video/BV1Fh4y1X71b&quot;&gt;抖音Android基础技术大揭秘第三期&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/img/douyin/douyin3.png&quot; alt=&quot;douyin3&quot; /&gt;&lt;/p&gt;
 
 &lt;h1 id=&quot;4抖音android基础技术大揭秘-vol04&quot;&gt;4.抖音Android基础技术大揭秘 Vol.04&lt;/h1&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://www.bilibili.com/video/BV1zu4y1o74x/&quot;&gt;抖音Android基础技术大揭秘第四期&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;B站：&lt;a href=&quot;https://www.bilibili.com/video/BV1zu4y1o74x/&quot;&gt;抖音Android基础技术大揭秘第四期&lt;/a&gt;&lt;/p&gt;
 
 &lt;p&gt;&lt;img src=&quot;/img/douyin/douyin4.png&quot; alt=&quot;douyin4&quot; /&gt;&lt;/p&gt;
 </description>
@@ -2220,7 +2220,7 @@ ROOT
 
 &lt;p&gt;SystemUI是常驻进程，当其发生异常退出时，系统会尝试重新启动，其流程图如下：&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;/img/Recovery/r1.png&quot; alt=&quot;r1&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/Recovery/r2.png&quot; alt=&quot;r2&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;ActivityManagerService中收到应用死亡的回调后，会判断应用是否为系统常驻进程。如果应用是系统常驻进程，则会重新启动该进程。&lt;/p&gt;
 
@@ -2230,7 +2230,7 @@ ROOT
 
 &lt;p&gt;触发ResureParty机制的流程图如下：&lt;/p&gt;
 
-&lt;p&gt;&lt;img src=&quot;/img/Recovery/r1.png&quot; alt=&quot;r1&quot; /&gt;&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/Recovery/r3.png&quot; alt=&quot;r3&quot; /&gt;&lt;/p&gt;
 
 &lt;p&gt;当应用异常退出后，会上报到PackageWatchDog，其onPackageFailureLocked方法中会判断当前应用是否为系统常驻进程，如果应用是系统常驻进程，则会更新mitigationCount，其对应的严重等级如下表：&lt;/p&gt;
 
@@ -2265,7 +2265,7 @@ ROOT
   &lt;/tbody&gt;
 &lt;/table&gt;
 
-&lt;p&gt;当达到严重等级达到LEVEL_FACTORY_RESET级别后，系统就会进入Recovery界面。&lt;/p&gt;
+&lt;p&gt;当达到严重等级达到LEVEL_FACTORY_RESET级别后，系统就会进入Recovery界面2&lt;/p&gt;
 </description>
         <pubDate>Fri, 29 May 2020 20:00:00 +0800</pubDate>
         <link>http://localhost:4000/2020/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/</link>
