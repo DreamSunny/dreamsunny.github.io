@@ -69,8 +69,8 @@ netease_comment: false
 ba_track_id: 4aa6afabf05ffd2ce6f459088368d4a3
 
 # Google Analytics
-ga_track_id: "G-2V8N2PZX57" # Format: UA-xxxxxx-xx
-ga_domain: dreamsunny.github.io
+# ga_track_id: "G-2V8N2PZX57" # Format: UA-xxxxxx-xx
+# ga_domain: dreamsunny.github.io
 
 # Sidebar settings
 sidebar: true # whether or not using Sidebar.
@@ -94,4 +94,5 @@ friends:
     { title: "weishu", href: "https://weishu.me/" },
     { title: "Gracker", href: "https://androidperformance.com/" },
     { title: "Gityuan", href: "http://gityuan.com/" },
+    { title: "芦半山", href: "https://juejin.cn/user/149189312913511/posts" },
   ]

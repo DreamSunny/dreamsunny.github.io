@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 18 Aug 2023 12:30:47 +0800</pubDate>
-    <lastBuildDate>Fri, 18 Aug 2023 12:30:47 +0800</lastBuildDate>
+    <pubDate>Wed, 23 Aug 2023 21:21:47 +0800</pubDate>
+    <lastBuildDate>Wed, 23 Aug 2023 21:21:47 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -2192,6 +2192,607 @@ ROOT
         <guid isPermaLink="true">http://localhost:4000/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/</guid>
         
         <category>Android</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Android类加载流程</title>
+        <description>&lt;h1 id=&quot;1基本概念&quot;&gt;1.基本概念&lt;/h1&gt;
+
+&lt;p&gt;&lt;strong&gt;1.1 类加载器的作用&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;类的加载需要类加载器完成，在JVM中，一个类的唯一性是需要这个类本身和类加载器一起才能确定的，每个类加载器都有一个独立的命名空间。&lt;/p&gt;
+
+&lt;p&gt;不同的类加载器，即使是同一个类字节码文件，最后再JVM里的类对象也不是同一个。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;1.2 双亲委派模型&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;如果一个类加载器收到了类加载的请求，它首先不会自己去尝试加载这个类，而是把这个请求委派给父类加载器去完成，每一个层次的类加载器都是如此，&lt;/p&gt;
+
+&lt;p&gt;因此所有的加载请求最终都应该传送到顶层的启动类加载器中，只有当父加载器反馈自己无法完成这个加载请求（它的搜索范围中没有找到所需的类）时，子加载器才会尝试自己去加载。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;protected Class&amp;lt;?&amp;gt; loadClass(String name, boolean resolve)
+    throws ClassNotFoundException
+{
+    synchronized (getClassLoadingLock(name)) {
+        // First, check if the class has already been loaded
+        Class&amp;lt;?&amp;gt; c = findLoadedClass(name);
+        if (c == null) {
+            long t0 = System.nanoTime();
+            try {
+                if (parent != null) {
+                    // 交给父类加载器尝试加载
+                    c = parent.loadClass(name, false);
+                } else {
+                    c = findBootstrapClassOrNull(name);
+                }
+            } catch (ClassNotFoundException e) {
+                // ClassNotFoundException thrown if class not found
+                // from the non-null parent class loader
+            }
+
+            if (c == null) {
+                // If still not found, then invoke findClass in order
+                // to find the class.
+                long t1 = System.nanoTime();
+                // 父类加载器无法加载时自身尝试加载
+                c = findClass(name);
+
+                // this is the defining class loader; record the stats
+                PerfCounter.getParentDelegationTime().addTime(t1 - t0);
+                PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);
+                PerfCounter.getFindClasses().increment();
+            }
+        }
+        if (resolve) {
+            resolveClass(c);
+        }
+        return c;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;使用双亲委派模型来组织类加载器之间的关系，有一个显而易见的好处就是Java类随着它的类加载器一起具备了一种带有优先级的层次关系。&lt;/p&gt;
+
+&lt;p&gt;例如类java.lang.Object，它存放在rt.jar之中，无论哪一个类加载器要加载这个类，最终都是委派给处于模型最顶端的启动类加载器进行加载，&lt;/p&gt;
+
+&lt;p&gt;因此Object类在程序的各种类加载器环境中都是同一个类。相反，如果没有使用双亲委派模型，由各个类加载器自行去加载的话，如果用户自己编写了一个称为java.lang.Object的类，&lt;/p&gt;
+
+&lt;p&gt;并放在程序的Class Path中，那系统中将会出现多个不同的Object类，Java类型体系中最基础的行为也就无法保证，应用程序也将会变得一片混乱。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;1.3 Java与Android类加载器比较&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;JVM加载的是class文件，ART加载的是dex文件。&lt;/p&gt;
+
+&lt;p&gt;Java中四种类加载器：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/ClassLoader/java.png&quot; alt=&quot;java&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Android中类加载器：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/ClassLoader/android.png&quot; alt=&quot;android&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;2android类加载器&quot;&gt;2.Android类加载器&lt;/h1&gt;
+
+&lt;p&gt;&lt;strong&gt;ClassLoader：&lt;/strong&gt;对Java的ClassLoader代码做了精简，其中loadClass()核心逻辑不变，仍采用双亲委派模型。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;BootClassLoader&lt;/strong&gt;：继承于ClassLoader，是ClassLoader的内部类。是SystemClassLoader的父加载器，同时也是Android中所有ClassLoader的最终parent。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ClassLoader.java 
+private static ClassLoader createSystemClassLoader() {
+    String classPath = System.getProperty(&quot;java.class.path&quot;, &quot;.&quot;);
+    String librarySearchPath = System.getProperty(&quot;java.library.path&quot;, &quot;&quot;);
+    return new PathClassLoader(classPath, librarySearchPath, BootClassLoader.getInstance());
+}
+
+public ClassLoader getClassLoader() {
+    return (classLoader == null) ? BootClassLoader.getInstance() : classLoader;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;BaseDexClassLoader&lt;/strong&gt;：继承于ClassLoader，是PathClassLoader和DexClassLoader的父类。&lt;/p&gt;
+
+&lt;p&gt;BaseDexClassLoader重写了ClassLoader的findClass()方法，核心在于维护了DexPathList这个类对象。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// BaseDexClassLoader.java 
+private final DexPathList pathList;
+
+public BaseDexClassLoader(String dexPath,
+        String librarySearchPath, ClassLoader parent, ClassLoader[] sharedLibraryLoaders,
+        ClassLoader[] sharedLibraryLoadersAfter,
+        boolean isTrusted) {
+    super(parent);
+    ...
+    this.pathList = new DexPathList(this, dexPath, librarySearchPath, null, isTrusted);
+    ...
+}
+ 
+@Override
+protected Class&amp;lt;?&amp;gt; findClass(String name) throws ClassNotFoundException {
+    ...
+    Class c = pathList.findClass(name, suppressedExceptions);
+    if (c != null) {
+        return c;
+    }
+    ...
+    return c;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;strong&gt;PathClassLoader&lt;/strong&gt;：继承于BaseDexClassLoader，用来加载系统类和apk中的类。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;DexClassLoader&lt;/strong&gt;：继承于BaseDexClassLoader，可以用来加载外置的dex文件或者apk，jar等。&lt;/p&gt;
+
+&lt;p&gt;在Android8.1之后，optimizedDirectory参数已废弃，默认传入null。也就是说Android8.1版本及以后，PathClassLoader和DexClassLoader没有区别。&lt;/p&gt;
+
+&lt;h1 id=&quot;3dexpathlist&quot;&gt;3.DexPathList&lt;/h1&gt;
+
+&lt;p&gt;DexPathList核心功能是维护dexElements数组，用来记录dex文件集合。在BaseDexClassLoader构造函数中将dexPath传入，在DexPathList的splitDexPath()方法解析文件路径，在makeDexElements()方法添加到dexElements数组中。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// DexPathList.java
+private Element[] dexElements;
+ 
+DexPathList(ClassLoader definingContext, String dexPath,
+        String librarySearchPath, File optimizedDirectory, boolean isTrusted) {
+    ...
+    this.dexElements = makeDexElements(splitDexPath(dexPath), optimizedDirectory,
+                                       suppressedExceptions, definingContext, isTrusted);
+    ...
+}
+
+// 生成dexElements数组
+private static Element[] makeDexElements(List&amp;lt;File&amp;gt; files, File optimizedDirectory,
+        List&amp;lt;IOException&amp;gt; suppressedExceptions, ClassLoader loader, boolean isTrusted) {
+  Element[] elements = new Element[files.size()];
+  int elementsPos = 0;
+  for (File file : files) {
+      if (file.isDirectory()) {
+              ...
+      } else if (file.isFile()) {
+          String name = file.getName();
+
+          DexFile dex = null;
+          if (name.endsWith(DEX_SUFFIX)) {
+              // Raw dex file (not inside a zip/jar).
+              try {
+                  dex = loadDexFile(file, optimizedDirectory, loader, elements);
+                  if (dex != null) {
+                      elements[elementsPos++] = new Element(dex, null);
+                  }
+              } catch (IOException suppressed) {
+                  ...
+              }
+          } else {
+              ...
+          }
+          if (dex != null &amp;amp;&amp;amp; isTrusted) {
+            dex.setTrusted();
+          }
+      } else {
+          System.logW(&quot;ClassLoader referenced unknown path: &quot; + file);
+      }
+  }
+  if (elementsPos != elements.length) {
+      elements = Arrays.copyOf(elements, elementsPos);
+  }
+  return elements;
+}
+
+// 加载dex文件，创建DexFile对象
+private static DexFile loadDexFile(File file, File optimizedDirectory, ClassLoader loader,
+                                   Element[] elements)
+        throws IOException {
+    if (optimizedDirectory == null) {
+        return new DexFile(file, loader, elements);
+    } else {
+        String optimizedPath = optimizedPathFor(file, optimizedDirectory);
+        return DexFile.loadDex(file.getPath(), optimizedPath, 0, loader, elements);
+    }
+}
+
+static class Element {
+    private final File path;
+    private final Boolean pathIsDirectory;
+    private final DexFile dexFile;
+ 
+    public Class&amp;lt;?&amp;gt; findClass(String name, ClassLoader definingContext,List&amp;lt;Throwable&amp;gt; suppressed) {
+        return dexFile != null ? dexFile.loadClassBinaryName(name, definingContext, suppressed) : null;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在上文提到BaseDexClassLoader重写了ClassLoader的findClass()方法，其实现是直接调用DexPathList的findClass()方法，其核心逻辑是遍历所有dex文件，调用DexFile的loadClassBinaryName()方法加载类：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// DexPathList.java
+public Class&amp;lt;?&amp;gt; findClass(String name, List&amp;lt;Throwable&amp;gt; suppressed) {
+    for (Element element : dexElements) {
+        Class&amp;lt;?&amp;gt; clazz = element.findClass(name, definingContext, suppressed);
+        if (clazz != null) {
+            return clazz;
+        }
+    }
+    ...
+    return null;
+}
+
+// DexFile.java 
+public Class loadClassBinaryName(String name, ClassLoader loader, List&amp;lt;Throwable&amp;gt; suppressed) {
+    return defineClass(name, loader, mCookie, this, suppressed);
+}
+
+private static Class defineClass(String name, ClassLoader loader, Object cookie,
+                                 DexFile dexFile, List&amp;lt;Throwable&amp;gt; suppressed) {
+    Class result = null;
+    try {
+        result = defineClassNative(name, loader, cookie, dexFile);
+    } catch (NoClassDefFoundError e) {
+        ...
+    } catch (ClassNotFoundException e) {
+        ...
+    }
+    return result;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;从DexPathList的findClass()方法我们可以看到，在尝试加载一个类的时候，会遍历所有dex文件，只要找到就会直接返回，不会再继续遍历dexElements。&lt;/p&gt;
+
+&lt;p&gt;也就是说当两个类不同的dex中出现，会优先处理排在前面的dex文件，这便是热修复的核心精髓，将需要修复的类所打包的dex文件插入到dexElements前面。&lt;/p&gt;
+
+&lt;h1 id=&quot;4类加载流程&quot;&gt;4.类加载流程&lt;/h1&gt;
+
+&lt;p&gt;在启动应用创建进程后，会调用ActivityThread.main()方法，在main()方法中ActivityThread与AMS建立交互，&lt;/p&gt;
+
+&lt;p&gt;然后AMS调用ApplicationThread.bindApplication()方法，在bindApplication()方法中发送BIND_APPLICATION消息，执行handleBindApplication()方法，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityThread.java
+public static void main(String[] args) {
+    ...
+    ActivityThread thread = new ActivityThread();
+    thread.attach(false, startSeq);
+    ...
+}
+ 
+private void attach(boolean system, long startSeq) {
+    ...
+    final IActivityManager mgr = ActivityManager.getService();
+    try {
+        mgr.attachApplication(mAppThread, startSeq);
+    } catch (RemoteException ex) {
+        throw ex.rethrowFromSystemServer();
+    }
+    ...
+}
+ 
+private class ApplicationThread extends IApplicationThread.Stub {
+    public final void bindApplication(String processName, ApplicationInfo appInfo,
+        ...
+        sendMessage(H.BIND_APPLICATION, data);
+    }
+}
+ 
+private void handleBindApplication(AppBindData data) {
+    ...
+    data.info = getPackageInfoNoCheck(data.appInfo, data.compatInfo, isSdkSandbox);
+    ...
+    Application app = data.info.makeApplication(data.restrictedBackupMode, null);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在handleBindApplication()方法中会调用getPackageInfoNoCheck()方法，其过程中会创建LoadedApk对象，这里需要注意的是构建LoadedApk传入的baseLoader为null，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityThread.java
+public final LoadedApk getPackageInfoNoCheck(ApplicationInfo ai,
+        CompatibilityInfo compatInfo) {
+    return getPackageInfo(ai, compatInfo, null, false, true, false, isSdkSandbox);
+}
+ 
+private LoadedApk getPackageInfo(ApplicationInfo aInfo, CompatibilityInfo compatInfo,
+        ClassLoader baseLoader, boolean securityViolation, boolean includeCode,
+        boolean registerPackage, boolean isSdkSandbox) {
+        ...
+        packageInfo =
+                new LoadedApk(this, aInfo, compatInfo, baseLoader,
+                        securityViolation, includeCode
+                        &amp;amp;&amp;amp; (aInfo.flags &amp;amp; ApplicationInfo.FLAG_HAS_CODE) != 0, registerPackage);
+        ...
+        return packageInfo;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;至此，LoadedApk对象已经创建，其mBaseClassLoader为null。接下来继续makeApplication()的逻辑，&lt;/p&gt;
+
+&lt;p&gt;这里会调用getClassLoader()方法，此时mClassLoader为null，调用createOrUpdateClassLoaderLocked()方法，&lt;/p&gt;
+
+&lt;p&gt;此时mDefaultClassLoader也为null，调用ApplicationLoaders创建DefaultClassLoader，&lt;/p&gt;
+
+&lt;p&gt;最后初始化mClassLoader，这里mDefaultClassLoader==mClassLoader，两者是相同的。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// LoadedApk.java
+public Application makeApplication(boolean forceDefaultAppClass,
+        Instrumentation instrumentation) {
+    return makeApplicationInner(forceDefaultAppClass, instrumentation,
+            /* allowDuplicateInstances= */ true);
+}
+
+private Application makeApplicationInner(boolean forceDefaultAppClass,
+        Instrumentation instrumentation, boolean allowDuplicateInstances) {
+    ...
+    final String myProcessName = Process.myProcessName();
+    String appClass = mApplicationInfo.getCustomApplicationClassNameForProcess(
+            myProcessName);
+    if (forceDefaultAppClass || (appClass == null)) {
+        appClass = &quot;android.app.Application&quot;;
+    }
+
+    try {
+        final java.lang.ClassLoader cl = getClassLoader();
+        ...
+        ContextImpl appContext = ContextImpl.createAppContext(mActivityThread, this);
+        ...
+        app = mActivityThread.mInstrumentation.newApplication(
+                cl, appClass, appContext);
+        appContext.setOuterContext(app);
+    } catch (Exception e) {
+        ...
+    } 
+    ...
+    return app;
+}
+ 
+public ClassLoader getClassLoader() {
+    synchronized (this) {
+        if (mClassLoader == null) {
+            createOrUpdateClassLoaderLocked(null /*addedPaths*/);
+        }
+        return mClassLoader;
+    }
+}
+ 
+private void createOrUpdateClassLoaderLocked(List&amp;lt;String&amp;gt; addedPaths) {
+    ...
+    final List&amp;lt;String&amp;gt; zipPaths = new ArrayList&amp;lt;&amp;gt;(10);
+    final List&amp;lt;String&amp;gt; libPaths = new ArrayList&amp;lt;&amp;gt;(10);
+    ...
+    makePaths(mActivityThread, isBundledApp, mApplicationInfo, zipPaths, libPaths);
+    ...
+    final String zip = (zipPaths.size() == 1) ? zipPaths.get(0) :
+        TextUtils.join(File.pathSeparator, zipPaths);
+    if (mDefaultClassLoader == null) {
+        ...
+        mDefaultClassLoader = ApplicationLoaders.getDefault().getClassLoaderWithSharedLibraries(
+                zip, mApplicationInfo.targetSdkVersion, isBundledApp, librarySearchPath,
+                libraryPermittedPath, mBaseClassLoader,
+                mApplicationInfo.classLoaderName, sharedLibraries.first, nativeSharedLibraries,
+                sharedLibraries.second);
+        mAppComponentFactory = createAppFactory(mApplicationInfo, mDefaultClassLoader);
+        ...
+    }
+    if (!libPaths.isEmpty()) {
+        ...
+        try {
+            ApplicationLoaders.getDefault().addNative(mDefaultClassLoader, libPaths);
+        } finally {
+            ...
+        }
+    }
+    if (addedPaths != null &amp;amp;&amp;amp; addedPaths.size() &amp;gt; 0) {
+        final String add = TextUtils.join(File.pathSeparator, addedPaths);
+        ApplicationLoaders.getDefault().addPath(mDefaultClassLoader, add);
+        ...
+    }
+    ...
+    if (mClassLoader == null) {
+        mClassLoader = mAppComponentFactory.instantiateClassLoader(mDefaultClassLoader,
+                new ApplicationInfo(mApplicationInfo));
+    }
+}
+
+public static void makePaths(ActivityThread activityThread,
+                             boolean isBundledApp,
+                             ApplicationInfo aInfo,
+                             List&amp;lt;String&amp;gt; outZipPaths,
+                             List&amp;lt;String&amp;gt; outLibPaths) {
+    final String appDir = aInfo.sourceDir; // Full path to the base APK for this application.
+    final String libDir = aInfo.nativeLibraryDir; // Full path to the directory where native JNI libraries are stored.
+
+    outZipPaths.clear();
+    outZipPaths.add(appDir); // data/app/**/base.apk
+    ...
+    if (outLibPaths != null) {
+        if (outLibPaths.isEmpty()) {
+            outLibPaths.add(libDir); 
+        }
+
+        if (aInfo.primaryCpuAbi != null) {
+            ...
+            for (String apk : outZipPaths) {
+                outLibPaths.add(apk + &quot;!/lib/&quot; + aInfo.primaryCpuAbi);
+            }
+        }
+        ...
+    }
+    ...
+    appendSharedLibrariesLibPathsIfNeeded(
+            aInfo.sharedLibraryInfos, aInfo, outSeenPaths, outLibPaths);
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;接下来看ApplicationLoaders里的逻辑，在getClassLoaderWithSharedLibraries()方法中会调用getClassLoader()方法，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ApplicationLoaders.java
+ClassLoader getClassLoaderWithSharedLibraries(
+        String zip, int targetSdkVersion, boolean isBundled,
+        String librarySearchPath, String libraryPermittedPath,
+        ClassLoader parent, String classLoaderName,
+        List&amp;lt;ClassLoader&amp;gt; sharedLibraries, List&amp;lt;String&amp;gt; nativeSharedLibraries,
+        List&amp;lt;ClassLoader&amp;gt; sharedLibrariesLoadedAfterApp) {
+    // For normal usage the cache key used is the same as the zip path.
+    return getClassLoader(zip, targetSdkVersion, isBundled, librarySearchPath,
+                          libraryPermittedPath, parent, zip, classLoaderName, sharedLibraries,
+                          nativeSharedLibraries, sharedLibrariesLoadedAfterApp);
+}
+
+// 这里传入的parent==null
+private ClassLoader getClassLoader(String zip, int targetSdkVersion, boolean isBundled,
+                                  String librarySearchPath, String libraryPermittedPath,
+                                  ClassLoader parent, String cacheKey,
+                                  String classLoaderName, List&amp;lt;ClassLoader&amp;gt; sharedLibraries,
+                                  List&amp;lt;String&amp;gt; nativeSharedLibraries,
+                                  List&amp;lt;ClassLoader&amp;gt; sharedLibrariesLoadedAfterApp) {
+    ClassLoader baseParent = ClassLoader.getSystemClassLoader().getParent(); // java.lang.BootClassLoader
+
+    synchronized (mLoaders) {
+        if (parent == null) {
+            parent = baseParent;
+        }
+
+        if (parent == baseParent) {
+            ...
+            ClassLoader classloader = ClassLoaderFactory.createClassLoader(
+                    zip,  librarySearchPath, libraryPermittedPath, parent,
+                    targetSdkVersion, isBundled, classLoaderName, sharedLibraries,
+                    nativeSharedLibraries, sharedLibrariesLoadedAfterApp);
+            ...
+            return classloader;
+        }
+
+        ClassLoader loader = ClassLoaderFactory.createClassLoader(
+                zip, null, parent, classLoaderName, sharedLibraries,
+                null /*sharedLibrariesLoadedAfterApp*/);
+
+        return loader;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;接着看ClassLoaderFactory的逻辑，这里classloaderName为null，因此创建的是PathClassLoader。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ClassLoaderFactory.java
+public static ClassLoader createClassLoader(String dexPath,
+       String librarySearchPath, ClassLoader parent, String classloaderName,
+       List&amp;lt;ClassLoader&amp;gt; sharedLibraries, List&amp;lt;ClassLoader&amp;gt; sharedLibrariesLoadedAfter) {
+   ...
+   if (isPathClassLoaderName(classloaderName)) {
+       return new PathClassLoader(dexPath, librarySearchPath, parent, arrayOfSharedLibraries,
+               arrayOfSharedLibrariesLoadedAfterApp);
+   } else if (isDelegateLastClassLoaderName(classloaderName)) {
+       return new DelegateLastClassLoader(dexPath, librarySearchPath, parent,
+               arrayOfSharedLibraries, arrayOfSharedLibrariesLoadedAfterApp);
+   }
+
+    throw new AssertionError(&quot;Invalid classLoaderName: &quot; + classloaderName);
+}
+ 
+public static boolean isPathClassLoaderName(String name) {
+    return name == null || PATH_CLASS_LOADER_NAME.equals(name) ||
+            DEX_CLASS_LOADER_NAME.equals(name);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;回到LoadedApk.makeApplication()的逻辑，接下来会创建Application，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Instrumentation.java 
+public Application newApplication(ClassLoader cl, String className, Context context)
+        throws InstantiationException, IllegalAccessException,
+        ClassNotFoundException {
+    Application app = getFactory(context.getPackageName())
+            .instantiateApplication(cl, className);
+    app.attach(context);
+    return app;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里的className默认是android.app.Application，cl是之前创建的PathClassLoader。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// instantiateApplication.java
+public @NonNull Application instantiateApplication(@NonNull ClassLoader cl,
+        @NonNull String className)
+        throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+    return (Application) cl.loadClass(className).newInstance();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;以上就是应用PathClassLoader的创建流程以及应用代码是如何被加载的。需要注意的是基于双亲委派模型，最终加载android.app.Application类的classloader是BootClassLoader。&lt;/p&gt;
+
+&lt;h1 id=&quot;5delegatelastclassloader&quot;&gt;5.DelegateLastClassLoader&lt;/h1&gt;
+
+&lt;p&gt;在上文分析创建PathClassLoader代码中，还有一种类加载器DelegateLastClassLoader，继承于PathClassLoader，其加载class核心逻辑如下：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;@Override
+protected Class&amp;lt;?&amp;gt; loadClass(String name, boolean resolve) throws ClassNotFoundException {
+    // First, check whether the class has already been loaded. Return it if that&apos;s the
+    // case.
+    Class&amp;lt;?&amp;gt; cl = findLoadedClass(name);
+    if (cl != null) {
+        return cl;
+    }
+ 
+    // Next, check whether the class in question is present in the boot classpath.
+    try {
+        return Object.class.getClassLoader().loadClass(name);
+    } catch (ClassNotFoundException ignored) {
+    }
+ 
+    // Next, check whether the class in question is present in the dexPath that this classloader
+    // operates on, or its shared libraries.
+    ClassNotFoundException fromSuper = null;
+    try {
+        return findClass(name);
+    } catch (ClassNotFoundException ex) {
+        fromSuper = ex;
+    }
+ 
+    // Finally, check whether the class in question is present in the parent classloader.
+    try {
+        return getParent().loadClass(name);
+    } catch (ClassNotFoundException cnfe) {
+        // The exception we&apos;re catching here is the CNFE thrown by the parent of this
+        // classloader. However, we would like to throw a CNFE that provides details about
+        // the class path / list of dex files associated with *this* classloader, so we choose
+        // to throw the exception thrown from that lookup.
+        throw fromSuper;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;首先，判断该类是否已经被加载，如果已加载直接返回。&lt;/p&gt;
+
+&lt;p&gt;然后，尝试由BootClassLoader加载。&lt;/p&gt;
+
+&lt;p&gt;接着，尝试由DelegateLastClassLoader自身加载。&lt;/p&gt;
+
+&lt;p&gt;最后，尝试由DelegateLastClassLoader的父加载器加载。&lt;/p&gt;
+
+&lt;p&gt;可以看到DelegateLastClassLoader打破了双亲委派模型，先尝试自身加载，在交由parent加载。&lt;/p&gt;
+
+&lt;h1 id=&quot;6replugin&quot;&gt;6.RePlugin&lt;/h1&gt;
+
+&lt;p&gt;项目地址：https://github.com/Qihoo360/RePlugin&lt;/p&gt;
+
+&lt;p&gt;其核心是在应用Application创建的时候，通过hook替换掉应用Context中的mPackageInfo中的mClassLoader，在自定义的DexClassLoader中优先加载插件类。&lt;/p&gt;
+
+&lt;p&gt;RePluginClassLoader：用于替换Context中的mPackageInfo中的mClassLoader。&lt;/p&gt;
+
+&lt;p&gt;PluginDexClassLoader：处理类加载逻辑，优先加载插件类。&lt;/p&gt;
+
+&lt;p&gt;PatchClassLoaderUtils：通过hook实现替换Context中的mPackageInfo中的mClassLoader的功能。&lt;/p&gt;
+
+&lt;h1 id=&quot;参考文档&quot;&gt;参考文档：&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://cloud.tencent.com/developer/article/1517603&quot;&gt;彻底搞懂JVM类加载器：基本概念&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://cloud.tencent.com/developer/article/1520709&quot;&gt;类加载器中的双亲委派模型详解&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;http://gityuan.com/2017/03/19/android-classloader/&quot;&gt;Android类加载器ClassLoader&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Wed, 24 Aug 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/08/24/Android%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/08/24/Android%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/</guid>
+        
+        <category>Android</category>
+        
+        <category>ClassLoader</category>
         
         
       </item>

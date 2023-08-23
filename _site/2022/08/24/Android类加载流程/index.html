@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Android学习笔记">
+    <meta name="keywords" content="Android, 博客, 互联网">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Open Graph -->
+    <meta property="og:title"
+        content="Android类加载流程 - Android学习笔记 | Yaku Blog">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="1.基本概念
+">
+    
+    <meta property="article:published_time" content=" 2022-08-24T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Android">
+    
+    <meta property="article:tag" content="ClassLoader">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
+    <meta property="og:url" content="http://localhost:4000/2022/08/24/Android%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
+    <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
+
+    <title>Android类加载流程 - Android学习笔记 | Yaku Blog</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/2022/08/24/Android%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href=" /css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href=" /css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet"
+        type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+
+    <!-- Google AdSense -->
+    <script data-ad-client="ca-pub-6487568398225121" async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">Android学习笔记</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/img/post-bg-2015.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+
+
+
+<header class="intro-header" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
+                        
+                        <a class="tag" href="/archive/?tag=ClassLoader" title="ClassLoader">ClassLoader</a>
+                        
+                    </div>
+                    <h1>Android类加载流程</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on August 24, 2022</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<h1 id="1基本概念">1.基本概念</h1>
+
+<p><strong>1.1 类加载器的作用</strong></p>
+
+<p>类的加载需要类加载器完成，在JVM中，一个类的唯一性是需要这个类本身和类加载器一起才能确定的，每个类加载器都有一个独立的命名空间。</p>
+
+<p>不同的类加载器，即使是同一个类字节码文件，最后再JVM里的类对象也不是同一个。</p>
+
+<p><strong>1.2 双亲委派模型</strong></p>
+
+<p>如果一个类加载器收到了类加载的请求，它首先不会自己去尝试加载这个类，而是把这个请求委派给父类加载器去完成，每一个层次的类加载器都是如此，</p>
+
+<p>因此所有的加载请求最终都应该传送到顶层的启动类加载器中，只有当父加载器反馈自己无法完成这个加载请求（它的搜索范围中没有找到所需的类）时，子加载器才会尝试自己去加载。</p>
+
+<pre><code class="language-Java">protected Class&lt;?&gt; loadClass(String name, boolean resolve)
+    throws ClassNotFoundException
+{
+    synchronized (getClassLoadingLock(name)) {
+        // First, check if the class has already been loaded
+        Class&lt;?&gt; c = findLoadedClass(name);
+        if (c == null) {
+            long t0 = System.nanoTime();
+            try {
+                if (parent != null) {
+                    // 交给父类加载器尝试加载
+                    c = parent.loadClass(name, false);
+                } else {
+                    c = findBootstrapClassOrNull(name);
+                }
+            } catch (ClassNotFoundException e) {
+                // ClassNotFoundException thrown if class not found
+                // from the non-null parent class loader
+            }
+
+            if (c == null) {
+                // If still not found, then invoke findClass in order
+                // to find the class.
+                long t1 = System.nanoTime();
+                // 父类加载器无法加载时自身尝试加载
+                c = findClass(name);
+
+                // this is the defining class loader; record the stats
+                PerfCounter.getParentDelegationTime().addTime(t1 - t0);
+                PerfCounter.getFindClassTime().addElapsedTimeFrom(t1);
+                PerfCounter.getFindClasses().increment();
+            }
+        }
+        if (resolve) {
+            resolveClass(c);
+        }
+        return c;
+    }
+}
+</code></pre>
+
+<p>使用双亲委派模型来组织类加载器之间的关系，有一个显而易见的好处就是Java类随着它的类加载器一起具备了一种带有优先级的层次关系。</p>
+
+<p>例如类java.lang.Object，它存放在rt.jar之中，无论哪一个类加载器要加载这个类，最终都是委派给处于模型最顶端的启动类加载器进行加载，</p>
+
+<p>因此Object类在程序的各种类加载器环境中都是同一个类。相反，如果没有使用双亲委派模型，由各个类加载器自行去加载的话，如果用户自己编写了一个称为java.lang.Object的类，</p>
+
+<p>并放在程序的Class Path中，那系统中将会出现多个不同的Object类，Java类型体系中最基础的行为也就无法保证，应用程序也将会变得一片混乱。</p>
+
+<p><strong>1.3 Java与Android类加载器比较</strong></p>
+
+<p>JVM加载的是class文件，ART加载的是dex文件。</p>
+
+<p>Java中四种类加载器：</p>
+
+<p><img src="/img/ClassLoader/java.png" alt="java" /></p>
+
+<p>Android中类加载器：</p>
+
+<p><img src="/img/ClassLoader/android.png" alt="android" /></p>
+
+<h1 id="2android类加载器">2.Android类加载器</h1>
+
+<p><strong>ClassLoader：</strong>对Java的ClassLoader代码做了精简，其中loadClass()核心逻辑不变，仍采用双亲委派模型。</p>
+
+<p><strong>BootClassLoader</strong>：继承于ClassLoader，是ClassLoader的内部类。是SystemClassLoader的父加载器，同时也是Android中所有ClassLoader的最终parent。</p>
+
+<pre><code class="language-Java">// ClassLoader.java 
+private static ClassLoader createSystemClassLoader() {
+    String classPath = System.getProperty("java.class.path", ".");
+    String librarySearchPath = System.getProperty("java.library.path", "");
+    return new PathClassLoader(classPath, librarySearchPath, BootClassLoader.getInstance());
+}
+
+public ClassLoader getClassLoader() {
+    return (classLoader == null) ? BootClassLoader.getInstance() : classLoader;
+}
+</code></pre>
+
+<p><strong>BaseDexClassLoader</strong>：继承于ClassLoader，是PathClassLoader和DexClassLoader的父类。</p>
+
+<p>BaseDexClassLoader重写了ClassLoader的findClass()方法，核心在于维护了DexPathList这个类对象。</p>
+
+<pre><code class="language-Java">// BaseDexClassLoader.java 
+private final DexPathList pathList;
+
+public BaseDexClassLoader(String dexPath,
+        String librarySearchPath, ClassLoader parent, ClassLoader[] sharedLibraryLoaders,
+        ClassLoader[] sharedLibraryLoadersAfter,
+        boolean isTrusted) {
+    super(parent);
+    ...
+    this.pathList = new DexPathList(this, dexPath, librarySearchPath, null, isTrusted);
+    ...
+}
+ 
+@Override
+protected Class&lt;?&gt; findClass(String name) throws ClassNotFoundException {
+    ...
+    Class c = pathList.findClass(name, suppressedExceptions);
+    if (c != null) {
+        return c;
+    }
+    ...
+    return c;
+}
+</code></pre>
+
+<p><strong>PathClassLoader</strong>：继承于BaseDexClassLoader，用来加载系统类和apk中的类。</p>
+
+<p><strong>DexClassLoader</strong>：继承于BaseDexClassLoader，可以用来加载外置的dex文件或者apk，jar等。</p>
+
+<p>在Android8.1之后，optimizedDirectory参数已废弃，默认传入null。也就是说Android8.1版本及以后，PathClassLoader和DexClassLoader没有区别。</p>
+
+<h1 id="3dexpathlist">3.DexPathList</h1>
+
+<p>DexPathList核心功能是维护dexElements数组，用来记录dex文件集合。在BaseDexClassLoader构造函数中将dexPath传入，在DexPathList的splitDexPath()方法解析文件路径，在makeDexElements()方法添加到dexElements数组中。</p>
+
+<pre><code class="language-Java">// DexPathList.java
+private Element[] dexElements;
+ 
+DexPathList(ClassLoader definingContext, String dexPath,
+        String librarySearchPath, File optimizedDirectory, boolean isTrusted) {
+    ...
+    this.dexElements = makeDexElements(splitDexPath(dexPath), optimizedDirectory,
+                                       suppressedExceptions, definingContext, isTrusted);
+    ...
+}
+
+// 生成dexElements数组
+private static Element[] makeDexElements(List&lt;File&gt; files, File optimizedDirectory,
+        List&lt;IOException&gt; suppressedExceptions, ClassLoader loader, boolean isTrusted) {
+  Element[] elements = new Element[files.size()];
+  int elementsPos = 0;
+  for (File file : files) {
+      if (file.isDirectory()) {
+              ...
+      } else if (file.isFile()) {
+          String name = file.getName();
+
+          DexFile dex = null;
+          if (name.endsWith(DEX_SUFFIX)) {
+              // Raw dex file (not inside a zip/jar).
+              try {
+                  dex = loadDexFile(file, optimizedDirectory, loader, elements);
+                  if (dex != null) {
+                      elements[elementsPos++] = new Element(dex, null);
+                  }
+              } catch (IOException suppressed) {
+                  ...
+              }
+          } else {
+              ...
+          }
+          if (dex != null &amp;&amp; isTrusted) {
+            dex.setTrusted();
+          }
+      } else {
+          System.logW("ClassLoader referenced unknown path: " + file);
+      }
+  }
+  if (elementsPos != elements.length) {
+      elements = Arrays.copyOf(elements, elementsPos);
+  }
+  return elements;
+}
+
+// 加载dex文件，创建DexFile对象
+private static DexFile loadDexFile(File file, File optimizedDirectory, ClassLoader loader,
+                                   Element[] elements)
+        throws IOException {
+    if (optimizedDirectory == null) {
+        return new DexFile(file, loader, elements);
+    } else {
+        String optimizedPath = optimizedPathFor(file, optimizedDirectory);
+        return DexFile.loadDex(file.getPath(), optimizedPath, 0, loader, elements);
+    }
+}
+
+static class Element {
+    private final File path;
+    private final Boolean pathIsDirectory;
+    private final DexFile dexFile;
+ 
+    public Class&lt;?&gt; findClass(String name, ClassLoader definingContext,List&lt;Throwable&gt; suppressed) {
+        return dexFile != null ? dexFile.loadClassBinaryName(name, definingContext, suppressed) : null;
+    }
+}
+</code></pre>
+
+<p>在上文提到BaseDexClassLoader重写了ClassLoader的findClass()方法，其实现是直接调用DexPathList的findClass()方法，其核心逻辑是遍历所有dex文件，调用DexFile的loadClassBinaryName()方法加载类：</p>
+
+<pre><code class="language-Java">// DexPathList.java
+public Class&lt;?&gt; findClass(String name, List&lt;Throwable&gt; suppressed) {
+    for (Element element : dexElements) {
+        Class&lt;?&gt; clazz = element.findClass(name, definingContext, suppressed);
+        if (clazz != null) {
+            return clazz;
+        }
+    }
+    ...
+    return null;
+}
+
+// DexFile.java 
+public Class loadClassBinaryName(String name, ClassLoader loader, List&lt;Throwable&gt; suppressed) {
+    return defineClass(name, loader, mCookie, this, suppressed);
+}
+
+private static Class defineClass(String name, ClassLoader loader, Object cookie,
+                                 DexFile dexFile, List&lt;Throwable&gt; suppressed) {
+    Class result = null;
+    try {
+        result = defineClassNative(name, loader, cookie, dexFile);
+    } catch (NoClassDefFoundError e) {
+        ...
+    } catch (ClassNotFoundException e) {
+        ...
+    }
+    return result;
+}
+</code></pre>
+
+<p>从DexPathList的findClass()方法我们可以看到，在尝试加载一个类的时候，会遍历所有dex文件，只要找到就会直接返回，不会再继续遍历dexElements。</p>
+
+<p>也就是说当两个类不同的dex中出现，会优先处理排在前面的dex文件，这便是热修复的核心精髓，将需要修复的类所打包的dex文件插入到dexElements前面。</p>
+
+<h1 id="4类加载流程">4.类加载流程</h1>
+
+<p>在启动应用创建进程后，会调用ActivityThread.main()方法，在main()方法中ActivityThread与AMS建立交互，</p>
+
+<p>然后AMS调用ApplicationThread.bindApplication()方法，在bindApplication()方法中发送BIND_APPLICATION消息，执行handleBindApplication()方法，</p>
+
+<pre><code class="language-Java">// ActivityThread.java
+public static void main(String[] args) {
+    ...
+    ActivityThread thread = new ActivityThread();
+    thread.attach(false, startSeq);
+    ...
+}
+ 
+private void attach(boolean system, long startSeq) {
+    ...
+    final IActivityManager mgr = ActivityManager.getService();
+    try {
+        mgr.attachApplication(mAppThread, startSeq);
+    } catch (RemoteException ex) {
+        throw ex.rethrowFromSystemServer();
+    }
+    ...
+}
+ 
+private class ApplicationThread extends IApplicationThread.Stub {
+    public final void bindApplication(String processName, ApplicationInfo appInfo,
+        ...
+        sendMessage(H.BIND_APPLICATION, data);
+    }
+}
+ 
+private void handleBindApplication(AppBindData data) {
+    ...
+    data.info = getPackageInfoNoCheck(data.appInfo, data.compatInfo, isSdkSandbox);
+    ...
+    Application app = data.info.makeApplication(data.restrictedBackupMode, null);
+}
+</code></pre>
+
+<p>在handleBindApplication()方法中会调用getPackageInfoNoCheck()方法，其过程中会创建LoadedApk对象，这里需要注意的是构建LoadedApk传入的baseLoader为null，</p>
+
+<pre><code class="language-Java">// ActivityThread.java
+public final LoadedApk getPackageInfoNoCheck(ApplicationInfo ai,
+        CompatibilityInfo compatInfo) {
+    return getPackageInfo(ai, compatInfo, null, false, true, false, isSdkSandbox);
+}
+ 
+private LoadedApk getPackageInfo(ApplicationInfo aInfo, CompatibilityInfo compatInfo,
+        ClassLoader baseLoader, boolean securityViolation, boolean includeCode,
+        boolean registerPackage, boolean isSdkSandbox) {
+        ...
+        packageInfo =
+                new LoadedApk(this, aInfo, compatInfo, baseLoader,
+                        securityViolation, includeCode
+                        &amp;&amp; (aInfo.flags &amp; ApplicationInfo.FLAG_HAS_CODE) != 0, registerPackage);
+        ...
+        return packageInfo;
+    }
+}
+</code></pre>
+
+<p>至此，LoadedApk对象已经创建，其mBaseClassLoader为null。接下来继续makeApplication()的逻辑，</p>
+
+<p>这里会调用getClassLoader()方法，此时mClassLoader为null，调用createOrUpdateClassLoaderLocked()方法，</p>
+
+<p>此时mDefaultClassLoader也为null，调用ApplicationLoaders创建DefaultClassLoader，</p>
+
+<p>最后初始化mClassLoader，这里mDefaultClassLoader==mClassLoader，两者是相同的。</p>
+
+<pre><code class="language-Java">// LoadedApk.java
+public Application makeApplication(boolean forceDefaultAppClass,
+        Instrumentation instrumentation) {
+    return makeApplicationInner(forceDefaultAppClass, instrumentation,
+            /* allowDuplicateInstances= */ true);
+}
+
+private Application makeApplicationInner(boolean forceDefaultAppClass,
+        Instrumentation instrumentation, boolean allowDuplicateInstances) {
+    ...
+    final String myProcessName = Process.myProcessName();
+    String appClass = mApplicationInfo.getCustomApplicationClassNameForProcess(
+            myProcessName);
+    if (forceDefaultAppClass || (appClass == null)) {
+        appClass = "android.app.Application";
+    }
+
+    try {
+        final java.lang.ClassLoader cl = getClassLoader();
+        ...
+        ContextImpl appContext = ContextImpl.createAppContext(mActivityThread, this);
+        ...
+        app = mActivityThread.mInstrumentation.newApplication(
+                cl, appClass, appContext);
+        appContext.setOuterContext(app);
+    } catch (Exception e) {
+        ...
+    } 
+    ...
+    return app;
+}
+ 
+public ClassLoader getClassLoader() {
+    synchronized (this) {
+        if (mClassLoader == null) {
+            createOrUpdateClassLoaderLocked(null /*addedPaths*/);
+        }
+        return mClassLoader;
+    }
+}
+ 
+private void createOrUpdateClassLoaderLocked(List&lt;String&gt; addedPaths) {
+    ...
+    final List&lt;String&gt; zipPaths = new ArrayList&lt;&gt;(10);
+    final List&lt;String&gt; libPaths = new ArrayList&lt;&gt;(10);
+    ...
+    makePaths(mActivityThread, isBundledApp, mApplicationInfo, zipPaths, libPaths);
+    ...
+    final String zip = (zipPaths.size() == 1) ? zipPaths.get(0) :
+        TextUtils.join(File.pathSeparator, zipPaths);
+    if (mDefaultClassLoader == null) {
+        ...
+        mDefaultClassLoader = ApplicationLoaders.getDefault().getClassLoaderWithSharedLibraries(
+                zip, mApplicationInfo.targetSdkVersion, isBundledApp, librarySearchPath,
+                libraryPermittedPath, mBaseClassLoader,
+                mApplicationInfo.classLoaderName, sharedLibraries.first, nativeSharedLibraries,
+                sharedLibraries.second);
+        mAppComponentFactory = createAppFactory(mApplicationInfo, mDefaultClassLoader);
+        ...
+    }
+    if (!libPaths.isEmpty()) {
+        ...
+        try {
+            ApplicationLoaders.getDefault().addNative(mDefaultClassLoader, libPaths);
+        } finally {
+            ...
+        }
+    }
+    if (addedPaths != null &amp;&amp; addedPaths.size() &gt; 0) {
+        final String add = TextUtils.join(File.pathSeparator, addedPaths);
+        ApplicationLoaders.getDefault().addPath(mDefaultClassLoader, add);
+        ...
+    }
+    ...
+    if (mClassLoader == null) {
+        mClassLoader = mAppComponentFactory.instantiateClassLoader(mDefaultClassLoader,
+                new ApplicationInfo(mApplicationInfo));
+    }
+}
+
+public static void makePaths(ActivityThread activityThread,
+                             boolean isBundledApp,
+                             ApplicationInfo aInfo,
+                             List&lt;String&gt; outZipPaths,
+                             List&lt;String&gt; outLibPaths) {
+    final String appDir = aInfo.sourceDir; // Full path to the base APK for this application.
+    final String libDir = aInfo.nativeLibraryDir; // Full path to the directory where native JNI libraries are stored.
+
+    outZipPaths.clear();
+    outZipPaths.add(appDir); // data/app/**/base.apk
+    ...
+    if (outLibPaths != null) {
+        if (outLibPaths.isEmpty()) {
+            outLibPaths.add(libDir); 
+        }
+
+        if (aInfo.primaryCpuAbi != null) {
+            ...
+            for (String apk : outZipPaths) {
+                outLibPaths.add(apk + "!/lib/" + aInfo.primaryCpuAbi);
+            }
+        }
+        ...
+    }
+    ...
+    appendSharedLibrariesLibPathsIfNeeded(
+            aInfo.sharedLibraryInfos, aInfo, outSeenPaths, outLibPaths);
+    ...
+}
+</code></pre>
+
+<p>接下来看ApplicationLoaders里的逻辑，在getClassLoaderWithSharedLibraries()方法中会调用getClassLoader()方法，</p>
+
+<pre><code class="language-Java">// ApplicationLoaders.java
+ClassLoader getClassLoaderWithSharedLibraries(
+        String zip, int targetSdkVersion, boolean isBundled,
+        String librarySearchPath, String libraryPermittedPath,
+        ClassLoader parent, String classLoaderName,
+        List&lt;ClassLoader&gt; sharedLibraries, List&lt;String&gt; nativeSharedLibraries,
+        List&lt;ClassLoader&gt; sharedLibrariesLoadedAfterApp) {
+    // For normal usage the cache key used is the same as the zip path.
+    return getClassLoader(zip, targetSdkVersion, isBundled, librarySearchPath,
+                          libraryPermittedPath, parent, zip, classLoaderName, sharedLibraries,
+                          nativeSharedLibraries, sharedLibrariesLoadedAfterApp);
+}
+
+// 这里传入的parent==null
+private ClassLoader getClassLoader(String zip, int targetSdkVersion, boolean isBundled,
+                                  String librarySearchPath, String libraryPermittedPath,
+                                  ClassLoader parent, String cacheKey,
+                                  String classLoaderName, List&lt;ClassLoader&gt; sharedLibraries,
+                                  List&lt;String&gt; nativeSharedLibraries,
+                                  List&lt;ClassLoader&gt; sharedLibrariesLoadedAfterApp) {
+    ClassLoader baseParent = ClassLoader.getSystemClassLoader().getParent(); // java.lang.BootClassLoader
+
+    synchronized (mLoaders) {
+        if (parent == null) {
+            parent = baseParent;
+        }
+
+        if (parent == baseParent) {
+            ...
+            ClassLoader classloader = ClassLoaderFactory.createClassLoader(
+                    zip,  librarySearchPath, libraryPermittedPath, parent,
+                    targetSdkVersion, isBundled, classLoaderName, sharedLibraries,
+                    nativeSharedLibraries, sharedLibrariesLoadedAfterApp);
+            ...
+            return classloader;
+        }
+
+        ClassLoader loader = ClassLoaderFactory.createClassLoader(
+                zip, null, parent, classLoaderName, sharedLibraries,
+                null /*sharedLibrariesLoadedAfterApp*/);
+
+        return loader;
+    }
+}
+</code></pre>
+
+<p>接着看ClassLoaderFactory的逻辑，这里classloaderName为null，因此创建的是PathClassLoader。</p>
+
+<pre><code class="language-Java">// ClassLoaderFactory.java
+public static ClassLoader createClassLoader(String dexPath,
+       String librarySearchPath, ClassLoader parent, String classloaderName,
+       List&lt;ClassLoader&gt; sharedLibraries, List&lt;ClassLoader&gt; sharedLibrariesLoadedAfter) {
+   ...
+   if (isPathClassLoaderName(classloaderName)) {
+       return new PathClassLoader(dexPath, librarySearchPath, parent, arrayOfSharedLibraries,
+               arrayOfSharedLibrariesLoadedAfterApp);
+   } else if (isDelegateLastClassLoaderName(classloaderName)) {
+       return new DelegateLastClassLoader(dexPath, librarySearchPath, parent,
+               arrayOfSharedLibraries, arrayOfSharedLibrariesLoadedAfterApp);
+   }
+
+    throw new AssertionError("Invalid classLoaderName: " + classloaderName);
+}
+ 
+public static boolean isPathClassLoaderName(String name) {
+    return name == null || PATH_CLASS_LOADER_NAME.equals(name) ||
+            DEX_CLASS_LOADER_NAME.equals(name);
+}
+</code></pre>
+
+<p>回到LoadedApk.makeApplication()的逻辑，接下来会创建Application，</p>
+
+<pre><code class="language-Java">// Instrumentation.java 
+public Application newApplication(ClassLoader cl, String className, Context context)
+        throws InstantiationException, IllegalAccessException,
+        ClassNotFoundException {
+    Application app = getFactory(context.getPackageName())
+            .instantiateApplication(cl, className);
+    app.attach(context);
+    return app;
+}
+</code></pre>
+
+<p>这里的className默认是android.app.Application，cl是之前创建的PathClassLoader。</p>
+
+<pre><code class="language-Java">// instantiateApplication.java
+public @NonNull Application instantiateApplication(@NonNull ClassLoader cl,
+        @NonNull String className)
+        throws InstantiationException, IllegalAccessException, ClassNotFoundException {
+    return (Application) cl.loadClass(className).newInstance();
+}
+</code></pre>
+
+<p>以上就是应用PathClassLoader的创建流程以及应用代码是如何被加载的。需要注意的是基于双亲委派模型，最终加载android.app.Application类的classloader是BootClassLoader。</p>
+
+<h1 id="5delegatelastclassloader">5.DelegateLastClassLoader</h1>
+
+<p>在上文分析创建PathClassLoader代码中，还有一种类加载器DelegateLastClassLoader，继承于PathClassLoader，其加载class核心逻辑如下：</p>
+
+<pre><code class="language-Java">@Override
+protected Class&lt;?&gt; loadClass(String name, boolean resolve) throws ClassNotFoundException {
+    // First, check whether the class has already been loaded. Return it if that's the
+    // case.
+    Class&lt;?&gt; cl = findLoadedClass(name);
+    if (cl != null) {
+        return cl;
+    }
+ 
+    // Next, check whether the class in question is present in the boot classpath.
+    try {
+        return Object.class.getClassLoader().loadClass(name);
+    } catch (ClassNotFoundException ignored) {
+    }
+ 
+    // Next, check whether the class in question is present in the dexPath that this classloader
+    // operates on, or its shared libraries.
+    ClassNotFoundException fromSuper = null;
+    try {
+        return findClass(name);
+    } catch (ClassNotFoundException ex) {
+        fromSuper = ex;
+    }
+ 
+    // Finally, check whether the class in question is present in the parent classloader.
+    try {
+        return getParent().loadClass(name);
+    } catch (ClassNotFoundException cnfe) {
+        // The exception we're catching here is the CNFE thrown by the parent of this
+        // classloader. However, we would like to throw a CNFE that provides details about
+        // the class path / list of dex files associated with *this* classloader, so we choose
+        // to throw the exception thrown from that lookup.
+        throw fromSuper;
+    }
+}
+</code></pre>
+
+<p>首先，判断该类是否已经被加载，如果已加载直接返回。</p>
+
+<p>然后，尝试由BootClassLoader加载。</p>
+
+<p>接着，尝试由DelegateLastClassLoader自身加载。</p>
+
+<p>最后，尝试由DelegateLastClassLoader的父加载器加载。</p>
+
+<p>可以看到DelegateLastClassLoader打破了双亲委派模型，先尝试自身加载，在交由parent加载。</p>
+
+<h1 id="6replugin">6.RePlugin</h1>
+
+<p>项目地址：https://github.com/Qihoo360/RePlugin</p>
+
+<p>其核心是在应用Application创建的时候，通过hook替换掉应用Context中的mPackageInfo中的mClassLoader，在自定义的DexClassLoader中优先加载插件类。</p>
+
+<p>RePluginClassLoader：用于替换Context中的mPackageInfo中的mClassLoader。</p>
+
+<p>PluginDexClassLoader：处理类加载逻辑，优先加载插件类。</p>
+
+<p>PatchClassLoaderUtils：通过hook实现替换Context中的mPackageInfo中的mClassLoader的功能。</p>
+
+<h1 id="参考文档">参考文档：</h1>
+
+<p><a href="https://cloud.tencent.com/developer/article/1517603">彻底搞懂JVM类加载器：基本概念</a><br />
+<a href="https://cloud.tencent.com/developer/article/1520709">类加载器中的双亲委派模型详解</a><br />
+<a href="http://gityuan.com/2017/03/19/android-classloader/">Android类加载器ClassLoader</a></p>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2020/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="Recovery机制介绍">
+                        Previous<br>
+                        <span>Recovery机制介绍</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/" data-toggle="tooltip" data-placement="top" title="DisplayArea树层级结构">
+                        Next<br>
+                        <span>DisplayArea树层级结构</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0000" 
+                    href="/archive/?tag=Android"
+                    title="Android"
+                    rel="6">Android</a>
+        
+                <a data-sort="0004" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="2">Activity</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+  <li><a href="https://weishu.me/">weishu</a></li>
+  
+  <li><a href="https://androidperformance.com/">Gracker</a></li>
+  
+  <li><a href="http://gityuan.com/">Gityuan</a></li>
+  
+  <li><a href="https://juejin.cn/user/149189312913511/posts">芦半山</a></li>
+  
+</ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; Android学习笔记 2023
+                    <br>
+                    Powered by <a href="http://huangxuan.me">Hux Blog</a> |
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0" width="100px"
+                        height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=huxpro&repo=huxpro.github.io&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/js/snackbar.js "></script>
+<script src="/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4aa6afabf05ffd2ce6f459088368d4a3';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function () {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?" + _baId;
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2><h3 class="post-subtitle">{subtitle}</h3><hr></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false,
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        templateMiddleware: function (prop, value, template) {
+            if (prop === 'subtitle' || prop === 'title') {
+                if (value.indexOf("code")) {
+                    return htmlDecode(value);
+                } else {
+                    return value;
+                }
+            }
+        }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+<!-- Image to hack wechat -->
+<img src="/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>
