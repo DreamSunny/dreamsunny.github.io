@@ -12,13 +12,13 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="抖音Android基础技术大揭秘 - Android学习笔记 | Yaku Blog">
+        content="Android源码编译mk转bp - Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="1.抖音Android基础技术大揭秘 Vol.01
+    <meta property="og:description" content="1. 基本概念介绍
 ">
     
-    <meta property="article:published_time" content=" 2023-05-29T20:00:00Z">
+    <meta property="article:published_time" content=" 2020-04-08T20:00:00Z">
     
     
     <meta property="article:author" content="Yaku">
@@ -26,16 +26,12 @@
     
     <meta property="article:tag" content="Android">
     
-    <meta property="article:tag" content="Performance">
-    
-    <meta property="article:tag" content="Stability">
-    
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/2023/05/29/%E6%8A%96%E9%9F%B3Android%E5%9F%BA%E7%A1%80%E6%8A%80%E6%9C%AF%E5%A4%A7%E6%8F%AD%E7%A7%98/">
+    <meta property="og:url" content="http://localhost:4000/2020/04/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>抖音Android基础技术大揭秘 - Android学习笔记 | Yaku Blog</title>
+    <title>Android源码编译mk转bp - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -44,7 +40,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/2023/05/29/%E6%8A%96%E9%9F%B3Android%E5%9F%BA%E7%A1%80%E6%8A%80%E6%9C%AF%E5%A4%A7%E6%8F%AD%E7%A7%98/">
+    <link rel="canonical" href="http://localhost:4000/2020/04/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -241,15 +237,11 @@
                         
                         <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
                         
-                        <a class="tag" href="/archive/?tag=Performance" title="Performance">Performance</a>
-                        
-                        <a class="tag" href="/archive/?tag=Stability" title="Stability">Stability</a>
-                        
                     </div>
-                    <h1>抖音Android基础技术大揭秘</h1>
+                    <h1>Android源码编译mk转bp</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">Posted by Yaku on May 29, 2023</span>
+                    <span class="meta">Posted by Yaku on April 8, 2020</span>
                 </div>
             </div>
         </div>
@@ -276,44 +268,346 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="1抖音android基础技术大揭秘-vol01">1.抖音Android基础技术大揭秘 Vol.01</h1>
+				<h3 id="1-基本概念介绍">1. 基本概念介绍</h3>
 
-<p>掘金：<a href="https://live.juejin.cn/4354/6654710">字节跳动技术沙龙（第10期）</a><br />
-B站：<a href="https://www.bilibili.com/video/BV1eh4y1s7kR">字节跳动技术沙龙（第10期）</a></p>
+<p>自Android N开始，Google开始用Ninja来替代Makefile编译系统。编译时，会先把Android.mk通过kati转换成.ninja文件，然后使用ninja命令进行编译。</p>
 
-<p><img src="/img/douyin/douyin1.png" alt="douyin1" /></p>
+<p>Android.bp是替代Android.mk的配置文件，在Android O默认开启相关支持。编译时，由Soong解析转换成.ninja文件。</p>
 
-<h1 id="2抖音android基础技术大揭秘-vol02">2.抖音Android基础技术大揭秘 Vol.02</h1>
+<p>Soong是为Android编译设计的工具，Blueprint和Soong都是由Golang写的项目，Blueprint解析文件的格式，而Soong解释内容的含义，bp即Blueprint的缩写。</p>
 
-<p>掘金：<a href="https://live.juejin.cn/4354/9932368">字节跳动技术沙龙（第12期）</a><br />
-B站：<a href="https://www.bilibili.com/video/BV1bc411V7tE">字节跳动技术沙龙（第12期）</a></p>
+<p>与Android.mk不同的是，Android.bp是纯粹的配置文件，不包含分支、循环等流程控制，也不能做算数、逻辑运算，需使用Golang编写控制逻辑。</p>
 
-<p><img src="/img/douyin/douyin2.png" alt="douyin2" /></p>
+<p>注意：Android.mk文件中的模块可以依赖Android.bp文件中的模块，但不能相反。</p>
 
-<h1 id="3抖音android基础技术大揭秘-vol03">3.抖音Android基础技术大揭秘 Vol.03</h1>
+<h3 id="2-androidbp文件格式">2. Android.bp文件格式</h3>
 
-<p>掘金：<a href="https://live.byteoc.com/9281/2307433">抖音Android基础技术大揭秘第三期</a><br />
-B站：<a href="https://www.bilibili.com/video/BV1Fh4y1X71b">抖音Android基础技术大揭秘第三期</a></p>
+<p>Android.bp文件的语法和语义与Bazel BUILD文件类似，参考：<a href="https://docs.bazel.build/versions/master/be/overview.html">bazel</a></p>
 
-<p><img src="/img/douyin/douyin3.png" alt="douyin3" /></p>
+<p>模块：Android.bp文件中的模块以一个模块类型开始，后面跟着一组属性，以名值对(name: value)表示。每个模块必须有一个name属性，并且在所有的Android.bp文件中必须是唯一的。</p>
 
-<h1 id="4抖音android基础技术大揭秘-vol04">4.抖音Android基础技术大揭秘 Vol.04</h1>
+<p>Globs：用于获取文件列表，可以包含普通的Unix通配符*，如”*.java”，还可以包含单个**通配符作为路径元素，它将匹配零个或多个路径元素。</p>
 
-<p>B站：<a href="https://www.bilibili.com/video/BV1zu4y1o74x/">抖音Android基础技术大揭秘第四期</a></p>
+<p>变量：Android.bp文件可以包含顶级变量并赋值。变量的范围被限定为它们声明的文件的剩余部分，以及任何子 blueprint 文件。一个例外是变量不可变，能够被 += 进行附加赋值，而且只能在被引用之前。</p>
 
-<p><img src="/img/douyin/douyin4.png" alt="douyin4" /></p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre>gzip_srcs = ["src/test/minigzip.c"],
+ 
+cc_binary {
+    name: "gzip",
+    srcs: gzip_srcs,
+}
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>注释：Android.bp文件能包含C风格的多行/* */注释和C++风格的单行注释//。</p>
+
+<p>类型：变量和属性是强类型的，基于第一个赋值动态变量，以及模块类型静态属性。他们支持的类型有：布尔型（bool) 整型（int）字符串（string）字符串列表（”string1”, “string2”）Maps ({key1: “value1”, key2: [“value2”]})。</p>
+
+<p>Map 可以包含任意类型的值，包括嵌套的maps。列表和 maps 允许在最后一个值之后有逗号。</p>
+
+<p>操作符：字符串、字符串列表、和maps能使用+操作符进行附加。整型可以用+操作符来总结。附加的maps将生成两个map中键的并集，并附加的两个map中存在任何键的值。</p>
+
+<p>缺省模块：缺省模块可用于在多个模块中重复相同的属性。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class="rouge-code"><pre>cc_defaults {
+    name: "gzip_defaults",
+}
+ 
+cc_binary {
+    name: "gzip",
+    defaults: ["gzip_defaults"],
+}
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>名称解析：Soong为不同目录中的模块提供了指定相同名称的能力。只要每个模块在一个单独的名称空间中声明。 命名空间可以这样声明：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>soong_namespace {
+    imports: ["path/to/otherNamespace1", "path/to/otherNamespace2"],
+}
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>每个Soong模块都会根据其在树中的位置分配一个名称空间，除非找不到soong_namespace模块，否则每个Soong模块都被认为位于当前目录或最接近的父目录中的Android.bp中的soong_namespace所定义的名称空间中。在这种情况下，该模块被认为处于隐式根目录命名空间。</p>
+
+<p>格式化：Soong 包含了一个 blueprint 文件的格式化器，类似于 gofmt。使用以下命令来递归格式化当前目录中的所有 Android.bp 文件：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>bpfmt -w .
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>标准格式包括 4 个空格的缩进，包含多个元素的列表中，每个元素之后的换行符，并且始终包括列表和 maps中的逗号。</p>
+
+<h3 id="3-mk与bp对照">3. mk与bp对照</h3>
+
+<p>参考：<a href="https://android.googlesource.com/platform/build/soong/+/a930003/androidmk/cmd/androidmk/android.go">android.go</a></p>
+
+<h3 id="4-go语言">4. go语言</h3>
+
+<p>声明变量：var identifier type ，简短形式使用 := 赋值操作符</p>
+
+<p>声明常量：const identifier [type] = value</p>
+
+<p>声明数组：var variable_name [SIZE] variable_type</p>
+
+<p>指针：var var_name *var-type</p>
+
+<p>type关键字：定义结构体，定义接口，类型定义，类型别名，类型查询</p>
+
+<p>结构体：结构体是由一系列具有相同类型或不同类型的数据构成的数据集合。也可以不包含任何字段，称为空结构体。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre>type struct_variable_type struct {
+   member definition;
+   member definition;
+   ...
+   member definition;
+}
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>接口：把所有的具有共性的方法定义在一起，任何其他类型只要实现了这些方法就是实现了这个接口。也可以不带任何方法，成为空接口。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class="rouge-code"><pre>type interface_name interface {
+   method_name1 [return_type]
+   method_name2 [return_type]
+   method_name3 [return_type]
+   ...
+   method_namen [return_type]
+}
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>切片(Slice)：是对数组的抽象，实现“动态数组”。append()用来将元素添加到切片末尾并返回结果。</p>
+
+<p>范围(Range)：用于 for 循环中迭代数组(array)、切片(slice)、通道(channel)或集合(map)的元素。在数组和切片中它返回元素的索引和索引对应的值，在集合中返回 key-value 对的 key 值。</p>
+
+<p>Map(集合)：可以使用内建函数 make 也可以使用 map 关键字来定义 Map</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre>/* 声明变量，默认 map 是 nil */
+var map_variable map[key_data_type]value_data_type
+ 
+/* 使用 make 函数 */
+map_variable := make(map[key_data_type]value_data_type)
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>函数定义：不属于任何结构体、类型的方法。</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>func function_name([parameter list]) [return_types] {
+   函数体
+}
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>方法定义：与函数区别的是，方法在定义的时候，会在func和方法名之间增加一个参数，这个参数就是接收者，这样我们定义的这个方法就和接收者绑定在了一起，称之为这个接收者的方法。</p>
+
+<p>init()函数：没有输入参数和返回值，用于包(package)的初始化，先于main()函数执行，不被其他函数调用，主要用于程序运行前的注册。</p>
+
+<h3 id="5-添加逻辑控制">5. 添加逻辑控制</h3>
+
+<ol>
+  <li>
+    <p>在bp中添加bluetoothext_defaults模块并指定go文件：</p>
+
+    <p>bootstrap_go_package {
+    name: “soong-xxx”,
+    pkgPath: “android/soong/xxx”,
+    deps: [
+    ],
+    srcs: [
+        “bluetoothext.go”,
+    ],
+    pluginFor: [“soong_build”],
+}</p>
+
+    <p>// 定义模块
+bluetoothext_defaults {
+    name: “bluetoothext_defaults”,
+}</p>
+  </li>
+</ol>
+
+<p>这里需要注意的是，bluetoothext_defaults是自定义的模块，bluetoothext.go配置这个模块包含了哪些内容，编译时需要在Android.bp中引用这个模块。</p>
+
+<p>2.编写go文件，定制bluetoothext_defaults模块的编译内容：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+</pre></td><td class="rouge-code"><pre>package bluetoothext
+ 
+import (
+    "android/soong/android"
+    "android/soong/cc"
+)
+ 
+func init() {
+    // bluetoothext_defaults在Android.bp中定义
+    android.RegisterModuleType("bluetoothext_defaults", bluetoothextDefaultsFactory)
+}
+ 
+...
+ 
+func bluetoothextDefaultsFactory() android.Module {
+    module := cc.DefaultsFactory()
+    android.AddLoadHook(module, bluetoothextDefaults)
+ 
+    return module
+}
+ 
+func bluetoothextDefaults(ctx android.LoadHookContext) {
+    type props struct {
+    //参考mk与bp对照
+    }
+ 
+    p := &amp;props{}
+    //定制模块内容
+ 
+    ctx.AppendProperties(p)
+}
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>3.引用自定义的bluetoothext_defaults模块：</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class="rouge-code"><pre>// 编译模块中添加定义的模块
+cc_library_shared {
+    name: "libbluetooth_jni",
+    defaults: ["bluetoothext_defaults"]
+    ...
+}
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h3 id="6-config常用方法">6. config常用方法</h3>
+
+<p>参考：<a href="https://android.googlesource.com/platform/build/soong/+/master/android/config.go">config.go</a></p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+</pre></td><td class="rouge-code"><pre>// 获取编译常量
+func (c *config) Getenv(key string) string {}
+func (c *config) GetenvWithDefault(key string, defaultValue string) string {}
+ 
+// 判断常量值是否为true
+func (c *config) IsEnvTrue(key string) bool {}
+ 
+// 判断常量值是否为false
+func (c *config) IsEnvFalse(key string) bool {}
+ 
+// 获取机器名
+func (c *config) DeviceName() string {}
+ 
+// 获取Android版本名
+func (c *config) PlatformVersionName() string {}
+ 
+// 获取Android版本int值
+func (c *config) PlatformSdkVersionInt() int {}
+ 
+// 获取Android版本String值
+func (c *config) PlatformSdkVersion() string {}
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h3 id="参考资料">参考资料</h3>
+
+<p><a href="https://android.googlesource.com/platform/build/soong">soong</a><br />
+<a href="https://www.jianshu.com/p/699cfa0f8a74">Android soong 代码分析</a><br />
+<a href="https://note.qidong.name/2017/08/android-ninja/">Android中的Ninja简介</a><br />
+<a href="https://note.qidong.name/2017/08/android-blueprint/">Android编译系统中的Android.bp、Blueprint与Soong</a></p>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
-                    <li class="previous">
-                        <a href="/2023/01/19/Activity%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/" data-toggle="tooltip" data-placement="top" title="Activity显示流程">
-                        Previous<br>
-                        <span>Activity显示流程</span>
+                    
+                    <li class="next">
+                        <a href="/2020/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="Recovery机制介绍">
+                        Next<br>
+                        <span>Recovery机制介绍</span>
                         </a>
                     </li>
-                    
                     
                 </ul>
                 <hr style="visibility: hidden;">
