@@ -283,6 +283,38 @@ B站：抖音Android基础技...
 <hr>
 
 <div class="post-preview">
+    <a href="/2023/03/24/Android%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
+        <h2 class="post-title">
+            Android类加载流程
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.基本概念
+
+1.1 类加载器的作用
+
+类的加载需要类加载器完成，在JVM中，一个类的唯一性是需要这个类本身和类加载器一起才能确定的，每个类加载器都有一个独立的命名空间。
+
+不同的类加载器，即使是同一个类字节码文件，最后再JVM里的类对象也不是同一个。
+
+1.2 双亲委派模型
+
+如果一个类加载器收到了类加载的请求，它首先不会自己去尝试加载这个类，而是把这个请求委派给父类加载器去完成，每一个...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on March 24, 2023
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/2023/01/19/Activity%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/">
         <h2 class="post-title">
             Activity显示流程
@@ -355,7 +387,7 @@ sta...
 <hr>
 
 <div class="post-preview">
-    <a href="/2022/12/24/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/">
+    <a href="/2023/01/04/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/">
         <h2 class="post-title">
             DisplayArea树层级结构
         </h2>
@@ -385,45 +417,13 @@ sta...
         </div>
     </a>
     <p class="post-meta">
-        Posted by Yaku on December 24, 2022
+        Posted by Yaku on January 4, 2023
     </p>
 </div>
 <hr>
 
 <div class="post-preview">
-    <a href="/2022/08/24/Android%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
-        <h2 class="post-title">
-            Android类加载流程
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1.基本概念
-
-1.1 类加载器的作用
-
-类的加载需要类加载器完成，在JVM中，一个类的唯一性是需要这个类本身和类加载器一起才能确定的，每个类加载器都有一个独立的命名空间。
-
-不同的类加载器，即使是同一个类字节码文件，最后再JVM里的类对象也不是同一个。
-
-1.2 双亲委派模型
-
-如果一个类加载器收到了类加载的请求，它首先不会自己去尝试加载这个类，而是把这个请求委派给父类加载器去完成，每一个...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on August 24, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2020/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
+    <a href="/2022/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
         <h2 class="post-title">
             Recovery机制介绍
         </h2>
@@ -443,13 +443,13 @@ sta...
         </div>
     </a>
     <p class="post-meta">
-        Posted by Yaku on May 29, 2020
+        Posted by Yaku on May 29, 2022
     </p>
 </div>
 <hr>
 
 <div class="post-preview">
-    <a href="/2020/04/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/">
+    <a href="/2022/05/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/">
         <h2 class="post-title">
             Android源码编译mk转bp
         </h2>
@@ -471,7 +471,67 @@ Soong是为Android编译...
         </div>
     </a>
     <p class="post-meta">
-        Posted by Yaku on April 8, 2020
+        Posted by Yaku on May 8, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2021/10/29/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/">
+        <h2 class="post-title">
+            微信Tinker热修复
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                Github地址：https://github.com/Tencent/tinker/tree/dev/tinker-android
+
+
+  
+    如何快速接入请参考Tinker 接入指南；
+  
+  
+    如何自定义类请参考Tinker 自定义扩展；
+  
+  
+    Tinker的API预览请参考Tinker API预览；
+  
+
+
+tinker-android的源码主要包括三...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on October 29, 2021
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2021/10/19/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/">
+        <h2 class="post-title">
+            美团Robust热修复
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                Github地址：https://github.com/Meituan-Dianping/Robust
+WIKI：https://github.com/Meituan-Dianping/Robust/wiki
+Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on October 19, 2021
     </p>
 </div>
 <hr>
@@ -501,12 +561,17 @@ Soong是为Android编译...
                 <a data-sort="0000" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="7">Android</a>
+                    rel="9">Android</a>
         
-                <a data-sort="0005" 
+                <a data-sort="0007" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
+        
+                <a data-sort="0007" 
+                    href="/archive/?tag=HotFix"
+                    title="HotFix"
+                    rel="2">HotFix</a>
     </div>
 </section>
 

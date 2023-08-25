@@ -12,13 +12,13 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="抖音Android基础技术大揭秘 - Android学习笔记 | Yaku Blog">
+        content="Recovery机制介绍 - Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="1.抖音Android基础技术大揭秘 Vol.01
+    <meta property="og:description" content="2020年三星手机发生了一场严重事故，中国三星手机用户在5月23日这一天凌晨突然无限重启，事故原因是因SystemUI发生异常重复Crash导致手机进入Recovery界面，用户只能选择恢复出厂设置导致用户数据永久丢失。
 ">
     
-    <meta property="article:published_time" content=" 2023-05-29T20:00:00Z">
+    <meta property="article:published_time" content=" 2022-05-29T20:00:00Z">
     
     
     <meta property="article:author" content="Yaku">
@@ -26,16 +26,16 @@
     
     <meta property="article:tag" content="Android">
     
-    <meta property="article:tag" content="Performance">
+    <meta property="article:tag" content="SystemUI">
     
-    <meta property="article:tag" content="Stability">
+    <meta property="article:tag" content="Recovery">
     
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/2023/05/29/%E6%8A%96%E9%9F%B3Android%E5%9F%BA%E7%A1%80%E6%8A%80%E6%9C%AF%E5%A4%A7%E6%8F%AD%E7%A7%98/">
+    <meta property="og:url" content="http://localhost:4000/2022/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>抖音Android基础技术大揭秘 - Android学习笔记 | Yaku Blog</title>
+    <title>Recovery机制介绍 - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -44,7 +44,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/2023/05/29/%E6%8A%96%E9%9F%B3Android%E5%9F%BA%E7%A1%80%E6%8A%80%E6%9C%AF%E5%A4%A7%E6%8F%AD%E7%A7%98/">
+    <link rel="canonical" href="http://localhost:4000/2022/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -241,15 +241,15 @@
                         
                         <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
                         
-                        <a class="tag" href="/archive/?tag=Performance" title="Performance">Performance</a>
+                        <a class="tag" href="/archive/?tag=SystemUI" title="SystemUI">SystemUI</a>
                         
-                        <a class="tag" href="/archive/?tag=Stability" title="Stability">Stability</a>
+                        <a class="tag" href="/archive/?tag=Recovery" title="Recovery">Recovery</a>
                         
                     </div>
-                    <h1>抖音Android基础技术大揭秘</h1>
+                    <h1>Recovery机制介绍</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">Posted by Yaku on May 29, 2023</span>
+                    <span class="meta">Posted by Yaku on May 29, 2022</span>
                 </div>
             </div>
         </div>
@@ -276,44 +276,93 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="1抖音android基础技术大揭秘-vol01">1.抖音Android基础技术大揭秘 Vol.01</h1>
+				<p>2020年三星手机发生了一场严重事故，中国三星手机用户在5月23日这一天凌晨突然无限重启，事故原因是因SystemUI发生异常重复Crash导致手机进入Recovery界面，用户只能选择恢复出厂设置导致用户数据永久丢失。</p>
 
-<p>掘金：<a href="https://live.juejin.cn/4354/6654710">字节跳动技术沙龙（第10期）</a><br />
-B站：<a href="https://www.bilibili.com/video/BV1eh4y1s7kR">字节跳动技术沙龙（第10期）</a></p>
+<p><a href="https://www.zhihu.com/question/396666758/answer/1245994988">怎么看待三星大量手机在今天（5.23）凌晨系统崩溃并数据丢失？</a></p>
 
-<p><img src="/img/douyin/douyin1.png" alt="douyin1" /></p>
+<p>知乎上已经有大佬详细分析了事故原因，本文重点介绍下为什么SystemUI频繁Crash会进入Recovery界面。</p>
 
-<h1 id="2抖音android基础技术大揭秘-vol02">2.抖音Android基础技术大揭秘 Vol.02</h1>
+<h1 id="1-resureparty功能初始化"><strong>1. ResureParty功能初始化</strong></h1>
 
-<p>掘金：<a href="https://live.juejin.cn/4354/9932368">字节跳动技术沙龙（第12期）</a><br />
-B站：<a href="https://www.bilibili.com/video/BV1bc411V7tE">字节跳动技术沙龙（第12期）</a></p>
+<p>ResureParty是一套系统自救机制，当监控到系统核心程序出现循环崩溃时，通过尝试一系列措施达到恢复设备正常运行的目的，直到所有措施都无济于事，则会进入Recovery界面让用户通过擦除数据的方式进行设备恢复。</p>
 
-<p><img src="/img/douyin/douyin2.png" alt="douyin2" /></p>
+<p>其初始化流程如下图：</p>
 
-<h1 id="3抖音android基础技术大揭秘-vol03">3.抖音Android基础技术大揭秘 Vol.03</h1>
+<p><img src="/img/Recovery/r1.png" alt="r1" /></p>
 
-<p>掘金：<a href="https://live.byteoc.com/9281/2307433">抖音Android基础技术大揭秘第三期</a><br />
-B站：<a href="https://www.bilibili.com/video/BV1Fh4y1X71b">抖音Android基础技术大揭秘第三期</a></p>
+<p>在SystemServer启动时，会初始化ResureParty机制。核心逻辑在PackageWatchDog，当应用发生异常退出时，PackageWatchDog会记录相关异常信息。</p>
 
-<p><img src="/img/douyin/douyin3.png" alt="douyin3" /></p>
+<p>​</p>
 
-<h1 id="4抖音android基础技术大揭秘-vol04">4.抖音Android基础技术大揭秘 Vol.04</h1>
+<h1 id="2-systemui发生crash被系统重新拉起"><strong>2. SystemUI发生Crash被系统重新拉起</strong></h1>
 
-<p>B站：<a href="https://www.bilibili.com/video/BV1zu4y1o74x/">抖音Android基础技术大揭秘第四期</a></p>
+<p>SystemUI是常驻进程，当其发生异常退出时，系统会尝试重新启动，其流程图如下：</p>
 
-<p><img src="/img/douyin/douyin4.png" alt="douyin4" /></p>
+<p><img src="/img/Recovery/r2.png" alt="r2" /></p>
+
+<p>ActivityManagerService中收到应用死亡的回调后，会判断应用是否为系统常驻进程。如果应用是系统常驻进程，则会重新启动该进程。</p>
+
+<h1 id="3-systemui频繁重启触发resureparty机制"><strong>3. SystemUI频繁重启触发ResureParty机制</strong></h1>
+
+<p>当SystemUI发生异常退出时，系统会重新启动SystemUI。但如果SystemUI的异常状态没有恢复，即重启后依然发生异常退出，则会陷入到异常退出-重启-异常退出-重启…这种循环崩溃的状态，此时就会触发ResureParty机制。</p>
+
+<p>触发ResureParty机制的流程图如下：</p>
+
+<p><img src="/img/Recovery/r3.png" alt="r3" /></p>
+
+<p>当应用异常退出后，会上报到PackageWatchDog，其onPackageFailureLocked方法中会判断当前应用是否为系统常驻进程，如果应用是系统常驻进程，则会更新mitigationCount，其对应的严重等级如下表：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>mitigationCount</th>
+      <th>严重等级</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>LEVEL_RESET_SETTINGS_UNTRUSTED_DEFAULTS</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>LEVEL_RESET_SETTINGS_UNTRUSTED_CHANGES</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>LEVEL_RESET_SETTINGS_TRUSTED_DEFAULTS</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>LEVEL_WARM_REBOOT</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>LEVEL_FACTORY_RESET</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>当达到严重等级达到LEVEL_FACTORY_RESET级别后，系统就会进入Recovery界面2</p>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/2023/03/24/Android%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/" data-toggle="tooltip" data-placement="top" title="Android类加载流程">
+                        <a href="/2022/05/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/" data-toggle="tooltip" data-placement="top" title="Android源码编译mk转bp">
                         Previous<br>
-                        <span>Android类加载流程</span>
+                        <span>Android源码编译mk转bp</span>
                         </a>
                     </li>
                     
+                    
+                    <li class="next">
+                        <a href="/2023/01/04/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/" data-toggle="tooltip" data-placement="top" title="DisplayArea树层级结构">
+                        Next<br>
+                        <span>DisplayArea树层级结构</span>
+                        </a>
+                    </li>
                     
                 </ul>
                 <hr style="visibility: hidden;">

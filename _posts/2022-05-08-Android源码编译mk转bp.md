@@ -2,7 +2,7 @@
 layout:     post
 title:      "Android源码编译mk转bp"
 subtitle:   ""
-date:       2020-04-08 12:00:00
+date:       2022-05-08 12:00:00
 author:     "Yaku"
 header-img: "img/post-bg-2015.jpg"
 tags:
