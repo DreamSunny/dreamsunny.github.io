@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Android学习笔记">
+    <meta name="keywords" content="Android, 博客, 互联网">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Open Graph -->
+    <meta property="og:title"
+        content="SystemUI-通知显示流程 - Android学习笔记 | Yaku Blog">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="官方文档：
+">
+    
+    <meta property="article:published_time" content=" 2022-04-17T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Android">
+    
+    <meta property="article:tag" content="SystemUI">
+    
+    <meta property="article:tag" content="Notification">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
+    <meta property="og:url" content="http://localhost:4000/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/">
+    <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
+
+    <title>SystemUI-通知显示流程 - Android学习笔记 | Yaku Blog</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href=" /css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href=" /css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet"
+        type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+
+    <!-- Google AdSense -->
+    <script data-ad-client="ca-pub-6487568398225121" async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">Android学习笔记</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/img/post-bg-2015.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+
+
+
+<header class="intro-header" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
+                        
+                        <a class="tag" href="/archive/?tag=SystemUI" title="SystemUI">SystemUI</a>
+                        
+                        <a class="tag" href="/archive/?tag=Notification" title="Notification">Notification</a>
+                        
+                    </div>
+                    <h1>SystemUI-通知显示流程</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on April 17, 2022</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<p>官方文档：</p>
+
+<p><a href="https://developer.android.com/guide/topics/ui/notifiers/notifications?hl=zh-cn">通知概览</a><br />
+<a href="https://developer.android.google.cn/training/notify-user/build-notification?hl=zh-cn">创建通知</a></p>
+
+<h1 id="1应用发送通知">1.应用发送通知</h1>
+
+<p>应用侧发通知代码：</p>
+
+<pre><code class="language-Java">// 构建Notification
+NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        .setSmallIcon(R.drawable.notification_icon)
+        .setContentTitle(textTitle)
+        .setContentText(textContent)
+        .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+
+NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+// notificationId是通知的唯一标识
+notificationManager.notify(notificationId, builder.build());
+</code></pre>
+
+<p>向NMS发送请求：</p>
+
+<pre><code class="language-Java">// NotificationManager.java
+public void notify(int id, Notification notification) {
+    notify(null, id, notification);
+}
+
+public void notify(String tag, int id, Notification notification) {
+    notifyAsUser(tag, id, notification, mContext.getUser());
+}
+
+public void notifyAsUser(String tag, int id, Notification notification, UserHandle user) {
+    INotificationManager service = getService();
+    String pkg = mContext.getPackageName();
+
+    try {
+        if (localLOGV) Log.v(TAG, pkg + ": notify(" + id + ", " + notification + ")");
+        service.enqueueNotificationWithTag(pkg, mContext.getOpPackageName(), tag, id,
+                fixNotification(notification), user.getIdentifier());
+    } catch (RemoteException e) {
+        throw e.rethrowFromSystemServer();
+    }
+}
+</code></pre>
+
+<h1 id="2nms处理通知">2.NMS处理通知</h1>
+
+<p>NMS处理显示通知请求：</p>
+
+<pre><code class="language-Java">// NotificationManagerService
+public void enqueueNotificationWithTag(String pkg, String opPkg, String tag, int id,
+        Notification notification, int userId) throws RemoteException {
+    enqueueNotificationInternal(pkg, opPkg, Binder.getCallingUid(),
+            Binder.getCallingPid(), tag, id, notification, userId, false);
+}
+
+void enqueueNotificationInternal(final String pkg, final String opPkg, final int callingUid,
+        final int callingPid, final String tag, final int id, final Notification notification,
+        int incomingUserId, boolean postSilently) {
+    ...
+    // 创建StatusBarNotification
+    final StatusBarNotification n = new StatusBarNotification(
+            pkg, opPkg, id, tag, notificationUid, callingPid, notification,
+            user, null, System.currentTimeMillis());
+
+    // Android O增加通知Channel
+    String channelId = notification.getChannelId();
+
+    ...
+    // 创建NotificationRecord
+    final NotificationRecord r = new NotificationRecord(getContext(), n, channel);
+
+    ...
+    mHandler.post(new EnqueueNotificationRunnable(userId, r, isAppForeground,
+            SystemClock.elapsedRealtime()));
+}
+</code></pre>
+
+<p>这里主要创建StatusBarNotification和NotificationRecord，其中pkg表示发通知的应用，opPkg表示通知显示的应用。举个例子，比如小米服务框架XMSF发送一条通知，opPkg设置为微信的包名，那么在通知栏中显示的通知包名为微信。</p>
+
+<p>EnqueueNotificationRunnable核心逻辑：</p>
+
+<pre><code class="language-Java">public void run() {
+    synchronized (mNotificationLock) {
+        ...
+        mEnqueuedNotifications.add(r);
+        ...
+
+        // tell the assistant service about the notification
+        if (mAssistants.isEnabled()) {
+            mAssistants.onNotificationEnqueuedLocked(r);
+            mHandler.postDelayed(
+                    new PostNotificationRunnable(r.getKey(), r.getSbn().getPackageName(),
+                            r.getUid(), enqueueElapsedTimeMs),
+                    DELAY_FOR_ASSISTANT_TIME);
+        } else {
+            mHandler.post(new PostNotificationRunnable(r.getKey(),
+                    r.getSbn().getPackageName(), r.getUid(), enqueueElapsedTimeMs));
+        }
+    }
+}
+</code></pre>
+
+<p>PostNotificationRunnable核心逻辑：</p>
+
+<pre><code class="language-Java">public void run() {
+    ...
+    synchronized (mNotificationLock) {
+        try {
+            ...
+            NotificationRecord old = mNotificationsByKey.get(key);
+            ...
+            int index = indexOfNotificationLocked(n.getKey());
+            if (index &lt; 0) {
+                mNotificationList.add(r);
+                ...
+            } else {
+                old = mNotificationList.get(index);  // Potentially *changes* old
+                mNotificationList.set(index, r);
+                ...
+            }
+
+            mNotificationsByKey.put(n.getKey(), r);
+            ...
+            if (notification.getSmallIcon() != null) {
+                StatusBarNotification oldSbn = (old != null) ? old.getSbn() : null;
+                mListeners.notifyPostedLocked(r, old);
+                ...
+            } else {
+                ...
+            }
+            ...
+        } finally {
+            ...
+        }
+    }
+}
+</code></pre>
+
+<p>这里mListeners是NotificationListeners：</p>
+
+<pre><code class="language-Java">// NotificationListeners.java
+public void notifyPostedLocked(NotificationRecord r, NotificationRecord old) {
+    notifyPostedLocked(r, old, true);
+}
+
+void notifyPostedLocked(NotificationRecord r, NotificationRecord old,
+        boolean notifyAllListeners) {
+    ...
+    try {
+        StatusBarNotification sbn = r.getSbn();
+        StatusBarNotification oldSbn = (old != null) ? old.getSbn() : null;
+        TrimCache trimCache = new TrimCache(sbn);
+
+        for (final ManagedServiceInfo info : getServices()) {
+            ...
+            final StatusBarNotification sbnToPost = trimCache.ForListener(info);
+            mHandler.post(() -&gt; notifyPosted(info, sbnToPost, update));
+        }
+    } catch (Exception e) {
+        Slog.e(TAG, "Could not notify listeners for " + r.getKey(), e);
+    }
+}
+
+private void notifyPosted(final ManagedServiceInfo info,
+        final StatusBarNotification sbn, NotificationRankingUpdate rankingUpdate) {
+    final INotificationListener listener = (INotificationListener) info.service;
+    StatusBarNotificationHolder sbnHolder = new StatusBarNotificationHolder(sbn);
+    try {
+        listener.onNotificationPosted(sbnHolder, rankingUpdate);
+    } catch (RemoteException ex) {
+        Slog.e(TAG, "unable to notify listener (posted): " + info, ex);
+    }
+}
+</code></pre>
+
+<p>NotificationListenerService中封装了NMS与客户端通信：</p>
+
+<pre><code class="language-Java">// NotificationListenerService.java
+protected class NotificationListenerWrapper extends INotificationListener.Stub {
+    @Override
+    public void onNotificationPosted(IStatusBarNotificationHolder sbnHolder,
+            NotificationRankingUpdate update) {
+        ...
+        synchronized (mLock) {
+            applyUpdateLocked(update);
+            if (sbn != null) {
+                SomeArgs args = SomeArgs.obtain();
+                args.arg1 = sbn;
+                args.arg2 = mRankingMap;
+                mHandler.obtainMessage(MyHandler.MSG_ON_NOTIFICATION_POSTED,
+                        args).sendToTarget();
+            } else {
+                // still pass along the ranking map, it may contain other information
+                mHandler.obtainMessage(MyHandler.MSG_ON_NOTIFICATION_RANKING_UPDATE,
+                        mRankingMap).sendToTarget();
+            }
+        }
+    }
+
+    @Override
+    public void onNotificationRemoved(IStatusBarNotificationHolder sbnHolder,
+            NotificationRankingUpdate update, NotificationStats stats, int reason) {
+        ...
+        synchronized (mLock) {
+            applyUpdateLocked(update);
+            SomeArgs args = SomeArgs.obtain();
+            args.arg1 = sbn;
+            args.arg2 = mRankingMap;
+            args.arg3 = reason;
+            args.arg4 = stats;
+            mHandler.obtainMessage(MyHandler.MSG_ON_NOTIFICATION_REMOVED,
+                    args).sendToTarget();
+        }
+    }
+
+    ...
+}
+
+public IBinder onBind(Intent intent) {
+    if (mWrapper == null) {
+        mWrapper = new NotificationListenerWrapper();
+    }
+    return mWrapper;
+}
+</code></pre>
+
+<p>应用开发者需要申请BIND_NOTIFICATION_LISTENER_SERVICE权限，并在AndroidManifest.xml声明服务。</p>
+
+<h1 id="3systemui显示通知">3.SystemUI显示通知</h1>
+
+<p>SystemUI收到新通知：</p>
+
+<pre><code class="language-Java">// NotificationListener.java
+public void onNotificationPosted(final StatusBarNotification sbn,
+        final RankingMap rankingMap) {
+    if (DEBUG) Log.d(TAG, "onNotificationPosted: " + sbn);
+    if (sbn != null &amp;&amp; !onPluginNotificationPosted(sbn, rankingMap)) {
+        mMainExecutor.execute(() -&gt; {
+            processForRemoteInput(sbn.getNotification(), mContext);
+
+            for (NotificationHandler handler : mNotificationHandlers) {
+                handler.onNotificationPosted(sbn, rankingMap);
+            }
+        });
+    }
+}
+</code></pre>
+
+<p>创建NotificationEntry，保存到mAllNotifications，</p>
+
+<pre><code class="language-Java">// NotificationEntryManager.java
+private final NotificationHandler mNotifListener = new NotificationHandler() {
+    @Override
+    public void onNotificationPosted(StatusBarNotification sbn, RankingMap rankingMap) {
+        final boolean isUpdateToInflatedNotif = mActiveNotifications.containsKey(sbn.getKey());
+        if (isUpdateToInflatedNotif) {
+            updateNotification(sbn, rankingMap);
+        } else {
+            addNotification(sbn, rankingMap);
+        }
+    }
+};
+
+public void addNotification(StatusBarNotification notification, RankingMap ranking) {
+    try {
+        addNotificationInternal(notification, ranking);
+    } catch (InflationException e) {
+        handleInflationException(notification, e);
+    }
+}
+
+private void addNotificationInternal(
+        StatusBarNotification notification,
+        RankingMap rankingMap) throws InflationException {
+    Trace.beginSection("NotificationEntryManager.addNotificationInternal");
+    String key = notification.getKey();
+    if (DEBUG) {
+        Log.d(TAG, "addNotification key=" + key);
+    }
+
+    updateRankingAndSort(rankingMap, "addNotificationInternal");
+
+    Ranking ranking = new Ranking();
+    rankingMap.getRanking(key, ranking);
+
+    NotificationEntry entry = mPendingNotifications.get(key);
+    if (entry != null) {
+        entry.setSbn(notification);
+        entry.setRanking(ranking);
+    } else {
+        entry = new NotificationEntry(
+                notification,
+                ranking,
+                SystemClock.uptimeMillis());
+        mAllNotifications.add(entry);
+        mLeakDetector.trackInstance(entry);
+
+        for (NotifCollectionListener listener : mNotifCollectionListeners) {
+            listener.onEntryInit(entry);
+        }
+    }
+
+    for (NotifCollectionListener listener : mNotifCollectionListeners) {
+        listener.onEntryBind(entry, notification);
+    }
+
+    // Construct the expanded view.
+    if (!mNotifPipelineFlags.isNewPipelineEnabled()) {
+        // 旧方案，直接inflateViews
+        mNotificationRowBinderLazy.get().inflateViews(entry, null, mInflationCallback);
+    }
+
+    mPendingNotifications.put(key, entry);
+    mLogger.logNotifAdded(entry.getKey());
+    for (NotificationEntryListener listener : mNotificationEntryListeners) {
+        listener.onPendingEntryAdded(entry);
+    }
+    for (NotifCollectionListener listener : mNotifCollectionListeners) {
+        listener.onEntryAdded(entry);
+    }
+    for (NotifCollectionListener listener : mNotifCollectionListeners) {
+        listener.onRankingApplied();
+    }
+    Trace.endSection();
+}
+</code></pre>
+
+<p>通知布局inflate分为新旧两个方案，最终都会调用到 NotificationRowBinderImpl 的 inflateViews 方法：</p>
+
+<pre><code class="language-Java">// NotificationRowBinderImpl.java
+public void inflateViews(
+        NotificationEntry entry,
+        NotifInflater.Params params,
+        NotificationRowContentBinder.InflationCallback callback)
+        throws InflationException {
+    if (params == null) {
+        // weak assert that the params should always be passed in the new pipeline
+        mNotifPipelineFlags.checkLegacyPipelineEnabled();
+    }
+    ViewGroup parent = mListContainer.getViewParentForNotification(entry);
+
+    if (entry.rowExists()) {
+        mIconManager.updateIcons(entry);
+        ExpandableNotificationRow row = entry.getRow();
+        row.reset();
+        updateRow(entry, row);
+        inflateContentViews(entry, params, row, callback);
+    } else {
+        mIconManager.createIcons(entry);
+        mRowInflaterTaskProvider.get().inflate(mContext, parent, entry,
+                row -&gt; {
+                    // Setup the controller for the view.
+                    ExpandableNotificationRowComponent component =
+                            mExpandableNotificationRowComponentBuilder
+                                    .expandableNotificationRow(row)
+                                    .notificationEntry(entry)
+                                    .onExpandClickListener(mPresenter)
+                                    .listContainer(mListContainer)
+                                    .build();
+                    ExpandableNotificationRowController rowController =
+                            component.getExpandableNotificationRowController();
+                    rowController.init(entry);
+                    entry.setRowController(rowController);
+                    bindRow(entry, row);
+                    updateRow(entry, row);
+                    inflateContentViews(entry, params, row, callback);
+                });
+    }
+}
+</code></pre>
+
+<p>调用RowInflaterTask的inflate方法：</p>
+
+<pre><code class="language-Java">// RowInflaterTask.java
+public void inflate(Context context, ViewGroup parent, NotificationEntry entry,
+        RowInflationFinishedListener listener) {
+    if (TRACE_ORIGIN) {
+        mInflateOrigin = new Throwable("inflate requested here");
+    }
+    mListener = listener;
+    AsyncLayoutInflater inflater = new AsyncLayoutInflater(context);
+    mEntry = entry;
+    entry.setInflationTask(this);
+    inflater.inflate(R.layout.status_bar_notification_row, parent, this);
+}
+
+public void onInflateFinished(View view, int resid, ViewGroup parent) {
+    if (!mCancelled) {
+        try {
+            mEntry.onInflationTaskFinished();
+            mListener.onInflationFinished((ExpandableNotificationRow) view);
+        } catch (Throwable t) {
+            if (mInflateOrigin != null) {
+                Log.e(TAG, "Error in inflation finished listener: " + t, mInflateOrigin);
+                t.addSuppressed(mInflateOrigin);
+            }
+            throw t;
+        }
+    }
+}
+</code></pre>
+
+<p>在SystemUI中通知的根布局是status_bar_notification_row，根布局inflate完成后会继续执行inflateContentViews方法，这里涉及到通知布局3种形态：</p>
+
+<pre><code class="language-Java">private void inflateContentViews(
+        NotificationEntry entry,
+        NotifInflater.Params inflaterParams,
+        ExpandableNotificationRow row,
+        @Nullable NotificationRowContentBinder.InflationCallback inflationCallback) {
+    final boolean useIncreasedCollapsedHeight =
+            mMessagingUtil.isImportantMessaging(entry.getSbn(), entry.getImportance());
+    final boolean isLowPriority; // 1.显示成单行
+    if (inflaterParams != null) {
+        // NEW pipeline
+        isLowPriority = inflaterParams.isLowPriority();
+    } else {
+        // LEGACY pipeline
+        mNotifPipelineFlags.checkLegacyPipelineEnabled();
+        // If this is our first time inflating, we don't actually know the groupings for real
+        // yet, so we might actually inflate a low priority content view incorrectly here and
+        // have to correct it later in the pipeline. On subsequent inflations (i.e. updates),
+        // this should inflate the correct view.
+        isLowPriority = mLowPriorityInflationHelper.shouldUseLowPriorityView(entry);
+    }
+
+    RowContentBindParams params = mRowContentBindStage.getStageParams(entry);
+    params.setUseIncreasedCollapsedHeight(useIncreasedCollapsedHeight);
+    params.setUseLowPriority(isLowPriority);
+
+    if (mNotificationLockscreenUserManager.needsRedaction(entry)) {
+        params.requireContentViews(FLAG_CONTENT_VIEW_PUBLIC); // 2.隐藏通知内容
+    } else {
+        params.markContentViewsFreeable(FLAG_CONTENT_VIEW_PUBLIC); // 3.正常显示
+    }
+
+    params.rebindAllContentViews();
+    mRowContentBindStage.requestRebind(entry, en -&gt; {
+        row.setUsesIncreasedCollapsedHeight(useIncreasedCollapsedHeight);
+        row.setIsLowPriority(isLowPriority);
+        if (inflationCallback != null) {
+            inflationCallback.onAsyncInflationFinished(en);
+        }
+    });
+}
+</code></pre>
+
+<p>最终会调用到NotificationContentInflater的bindContent方法，通过创建AsyncInflationTask异步inflate布局：</p>
+
+<pre><code class="language-Java">public void bindContent(
+        NotificationEntry entry,
+        ExpandableNotificationRow row,
+        @InflationFlag int contentToBind,
+        BindParams bindParams,
+        boolean forceInflate,
+        @Nullable InflationCallback callback) {
+    if (row.isRemoved()) {
+        // We don't want to reinflate anything for removed notifications. Otherwise views might
+        // be readded to the stack, leading to leaks. This may happen with low-priority groups
+        // where the removal of already removed children can lead to a reinflation.
+        return;
+    }
+
+    StatusBarNotification sbn = entry.getSbn();
+
+    // To check if the notification has inline image and preload inline image if necessary.
+    row.getImageResolver().preloadImages(sbn.getNotification());
+
+    if (forceInflate) {
+        mRemoteViewCache.clearCache(entry);
+    }
+
+    // Cancel any pending frees on any view we're trying to bind since we should be bound after.
+    cancelContentViewFrees(row, contentToBind);
+
+    AsyncInflationTask task = new AsyncInflationTask(
+            mBgExecutor,
+            mInflateSynchronously,
+            contentToBind,
+            mRemoteViewCache,
+            entry,
+            mConversationProcessor,
+            row,
+            bindParams.isLowPriority,
+            bindParams.usesIncreasedHeight,
+            bindParams.usesIncreasedHeadsUpHeight,
+            callback,
+            mRemoteInputManager.getRemoteViewsOnClickHandler(),
+            mIsMediaInQS,
+            mSmartReplyStateInflater);
+    if (mInflateSynchronously) {
+        task.onPostExecute(task.doInBackground());
+    } else {
+        task.executeOnExecutor(mBgExecutor);
+    }
+}
+</code></pre>
+
+<p>AsyncInflationTask是一个AsyncTask，在onPostExecute回调中调用apply方法：</p>
+
+<pre><code class="language-Java">private static CancellationSignal apply(
+        Executor bgExecutor,
+        boolean inflateSynchronously,
+        InflationProgress result,
+        @InflationFlag int reInflateFlags,
+        NotifRemoteViewCache remoteViewCache,
+        NotificationEntry entry,
+        ExpandableNotificationRow row,
+        RemoteViews.InteractionHandler remoteViewClickHandler,
+        @Nullable InflationCallback callback) {
+    NotificationContentView privateLayout = row.getPrivateLayout();
+    NotificationContentView publicLayout = row.getPublicLayout();
+    final HashMap&lt;Integer, CancellationSignal&gt; runningInflations = new HashMap&lt;&gt;();
+
+    int flag = FLAG_CONTENT_VIEW_CONTRACTED;
+    if ((reInflateFlags &amp; flag) != 0) {
+        boolean isNewView =
+                !canReapplyRemoteView(result.newContentView,
+                        remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_CONTRACTED));
+        ApplyCallback applyCallback = new ApplyCallback() {
+            @Override
+            public void setResultView(View v) {
+                result.inflatedContentView = v;
+            }
+
+            @Override
+            public RemoteViews getRemoteView() {
+                return result.newContentView;
+            }
+        };
+        applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
+                remoteViewCache, entry, row, isNewView, remoteViewClickHandler, callback,
+                privateLayout,  privateLayout.getContractedChild(),
+                privateLayout.getVisibleWrapper(
+                        NotificationContentView.VISIBLE_TYPE_CONTRACTED),
+                runningInflations, applyCallback);
+    }
+
+    flag = FLAG_CONTENT_VIEW_EXPANDED;
+    if ((reInflateFlags &amp; flag) != 0) {
+        if (result.newExpandedView != null) {
+            boolean isNewView =
+                    !canReapplyRemoteView(result.newExpandedView,
+                            remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_EXPANDED));
+            ApplyCallback applyCallback = new ApplyCallback() {
+                @Override
+                public void setResultView(View v) {
+                    result.inflatedExpandedView = v;
+                }
+
+                @Override
+                public RemoteViews getRemoteView() {
+                    return result.newExpandedView;
+                }
+            };
+            applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
+                    remoteViewCache, entry, row, isNewView, remoteViewClickHandler,
+                    callback, privateLayout, privateLayout.getExpandedChild(),
+                    privateLayout.getVisibleWrapper(
+                            NotificationContentView.VISIBLE_TYPE_EXPANDED), runningInflations,
+                    applyCallback);
+        }
+    }
+
+    flag = FLAG_CONTENT_VIEW_HEADS_UP;
+    if ((reInflateFlags &amp; flag) != 0) {
+        if (result.newHeadsUpView != null) {
+            boolean isNewView =
+                    !canReapplyRemoteView(result.newHeadsUpView,
+                            remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_HEADS_UP));
+            ApplyCallback applyCallback = new ApplyCallback() {
+                @Override
+                public void setResultView(View v) {
+                    result.inflatedHeadsUpView = v;
+                }
+
+                @Override
+                public RemoteViews getRemoteView() {
+                    return result.newHeadsUpView;
+                }
+            };
+            applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
+                    remoteViewCache, entry, row, isNewView, remoteViewClickHandler,
+                    callback, privateLayout, privateLayout.getHeadsUpChild(),
+                    privateLayout.getVisibleWrapper(
+                            VISIBLE_TYPE_HEADSUP), runningInflations,
+                    applyCallback);
+        }
+    }
+
+    flag = FLAG_CONTENT_VIEW_PUBLIC;
+    if ((reInflateFlags &amp; flag) != 0) {
+        boolean isNewView =
+                !canReapplyRemoteView(result.newPublicView,
+                        remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_PUBLIC));
+        ApplyCallback applyCallback = new ApplyCallback() {
+            @Override
+            public void setResultView(View v) {
+                result.inflatedPublicView = v;
+            }
+
+            @Override
+            public RemoteViews getRemoteView() {
+                return result.newPublicView;
+            }
+        };
+        applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
+                remoteViewCache, entry, row, isNewView, remoteViewClickHandler, callback,
+                publicLayout, publicLayout.getContractedChild(),
+                publicLayout.getVisibleWrapper(NotificationContentView.VISIBLE_TYPE_CONTRACTED),
+                runningInflations, applyCallback);
+    }
+
+    // Let's try to finish, maybe nobody is even inflating anything
+    finishIfDone(result, reInflateFlags, remoteViewCache, runningInflations, callback, entry,
+            row);
+    CancellationSignal cancellationSignal = new CancellationSignal();
+    cancellationSignal.setOnCancelListener(
+            () -&gt; runningInflations.values().forEach(CancellationSignal::cancel));
+
+    return cancellationSignal;
+}
+</code></pre>
+
+<p>这里根据条件会创建通知正常视图、大视图、悬浮通知视图、隐藏通知内容视图。这些视图全部inflate完成后才会调用到<em>finishIfDone方法。</em></p>
+
+<p>至此通知相关的所有布局都inflate完成，最终会添加到<em>NotificationStackScrollLayout中显示出来。</em></p>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2022/03/28/SystemUI-%E5%AD%97%E8%8A%82%E7%A0%81%E6%8F%92%E6%A1%A9/" data-toggle="tooltip" data-placement="top" title="SystemUI-字节码插桩">
+                        Previous<br>
+                        <span>SystemUI-字节码插桩</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2022/05/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/" data-toggle="tooltip" data-placement="top" title="Android源码编译mk转bp">
+                        Next<br>
+                        <span>Android源码编译mk转bp</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0000" 
+                    href="/archive/?tag=Android"
+                    title="Android"
+                    rel="14">Android</a>
+        
+                <a data-sort="0008" 
+                    href="/archive/?tag=SystemUI"
+                    title="SystemUI"
+                    rel="6">SystemUI</a>
+        
+                <a data-sort="0012" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="2">Activity</a>
+        
+                <a data-sort="0012" 
+                    href="/archive/?tag=HotFix"
+                    title="HotFix"
+                    rel="2">HotFix</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+  <li><a href="https://weishu.me/">weishu</a></li>
+  
+  <li><a href="https://androidperformance.com/">Gracker</a></li>
+  
+  <li><a href="http://gityuan.com/">Gityuan</a></li>
+  
+  <li><a href="https://juejin.cn/user/149189312913511/posts">芦半山</a></li>
+  
+</ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; Android学习笔记 2023
+                    <br>
+                    Powered by <a href="http://huangxuan.me">Hux Blog</a> |
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0" width="100px"
+                        height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=huxpro&repo=huxpro.github.io&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/js/snackbar.js "></script>
+<script src="/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4aa6afabf05ffd2ce6f459088368d4a3';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function () {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?" + _baId;
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2><h3 class="post-subtitle">{subtitle}</h3><hr></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false,
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        templateMiddleware: function (prop, value, template) {
+            if (prop === 'subtitle' || prop === 'title') {
+                if (value.indexOf("code")) {
+                    return htmlDecode(value);
+                } else {
+                    return value;
+                }
+            }
+        }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+<!-- Image to hack wechat -->
+<img src="/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

@@ -12,17 +12,28 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="About - Android学习笔记 | Yaku Blog">
+        content="SystemUI-使用GarbageMonitor - Android学习笔记 | Yaku Blog">
     
-    <meta property="og:type" content="website">
-    <meta property="og:description"
-        content="「假如生活欺骗了你」">
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="1.简介
+">
+    
+    <meta property="article:published_time" content=" 2022-03-14T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Android">
+    
+    <meta property="article:tag" content="SystemUI">
+    
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/about/">
+    <meta property="og:url" content="http://localhost:4000/2022/03/14/SystemUI-%E4%BD%BF%E7%94%A8GarbageMonitor/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>About - Android学习笔记 | Yaku Blog</title>
+    <title>SystemUI-使用GarbageMonitor - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -31,7 +42,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/about/">
+    <link rel="canonical" href="http://localhost:4000/2022/03/14/SystemUI-%E4%BD%BF%E7%94%A8GarbageMonitor/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -197,102 +208,246 @@
   </div>
 </div>
 
-    <!-- Page Header -->
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
 
 
 
 <style type="text/css">
     header.intro-header{
         position: relative;
-        background-image: url('/img/bg-me-2022.jpg');
+        background-image: url('/img/post-bg-2015.jpg');
         background: ;
     }
 
-    
-    header.intro-header .header-mask{
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        background: rgba(0,0,0, 0.3);
-    }
     
 </style>
 
 
 
 
+<header class="intro-header" >
 
-
-
-<header class="intro-header" style="background-image: url('/img/bg-me-2022.jpg')">
-  <div class="header-mask"></div>
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-        
-        <div class="site-heading">
-        
-          <h1>About</h1>
-          <span class="subheading">「假如生活欺骗了你」</span>
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
+                        
+                        <a class="tag" href="/archive/?tag=SystemUI" title="SystemUI">SystemUI</a>
+                        
+                    </div>
+                    <h1>SystemUI-使用GarbageMonitor</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on March 14, 2022</span>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </header>
 
 
 
-<!-- Main Content -->
-<div class="container">
-  <div class="row">
-    
-
-    <!-- USE SIDEBAR -->
-    <!-- PostList Container -->
-    <div class="col-lg-8 col-lg-offset-1 col-md-8 col-md-offset-1 col-sm-12
-      col-xs-12 postlist-container">
-                      <!-- Language Selector -->
-                <select class="sel-lang" onchange= "onLanChange(this.options[this.options.selectedIndex].value)">
-                    <option value="0" selected> 中文 | Chinese </option>
-                    <option value="1"> 英文 | English </option>
-                </select>
-
-
-
-<!-- Chinese Version -->
-<div class="zh post-container">
-    
-    <p>Hey，我是Yaku，8年Android开发经验，目前就职于小米，主要负责应用性能稳定性相关工作。</p>
-
-<p>Github：<a href="https://github.com/DreamSunny">https://github.com/DreamSunny</a></p>
-
-<p>简书：<a href="https://www.jianshu.com/u/70cccf742ec9">https://www.jianshu.com/u/70cccf742ec9</a></p>
-
-</div>
-
-<!-- English Version -->
-<div class="en post-container">
-    
-    <p>Hey, I’m Yaku. I have 8 years of experience in Android development. I’m currently working for Xiaomi. I’m mainly responsible for application performance and stability.</p>
-
-<p>Github：<a href="https://github.com/DreamSunny">https://github.com/DreamSunny</a></p>
-
-<p>JianShu：<a href="https://www.jianshu.com/u/70cccf742ec9">https://www.jianshu.com/u/70cccf742ec9</a></p>
-
-</div>
 
 
 
 
-    </div>
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<h1 id="1简介">1.简介</h1>
+
+<p>GarbageMonitor 用于定期监测 SystemUI 堆内存，提供了一个自定义快捷开关方便生成 hprof 文件。</p>
+
+<p>目前仅支持 UserDebug 版本中使用，其核心功能是在内部 Service 中启动的，且有一定的条件限制，需要手动写入 Settings 值或 SystemProperties 值：</p>
+
+<pre><code class="language-Java">public static final boolean LEAK_REPORTING_ENABLED = Build.IS_DEBUGGABLE
+        &amp;&amp; SystemProperties.getBoolean("debug.enable_leak_reporting", false);
+public static final boolean HEAP_TRACKING_ENABLED = Build.IS_DEBUGGABLE;
+
+public void start() {
+    boolean forceEnable =
+            Settings.Secure.getInt(
+                            mContext.getContentResolver(), FORCE_ENABLE_LEAK_REPORTING, 0) //sysui_force_enable_leak_reporting
+                    != 0;
+    if (LEAK_REPORTING_ENABLED || forceEnable) {
+        // 内存泄漏检测
+        mGarbageMonitor.startLeakMonitor();
+    }
+    if (HEAP_TRACKING_ENABLED || forceEnable) {
+        // 每隔1分钟记录rss值
+        mGarbageMonitor.startHeapTracking();
+    }
+}
+</code></pre>
+
+<p>1.使用 UserDebug 版本，在命令行中执行：adb shell settings put secure sysui_force_enable_leak_reporting 1 ，重启 SystemUI ，开启 GarbageMonitor 的所有功能。</p>
+
+<p>2.在自定义快捷开关中找到“转储 SysUI 堆”，点击后会在 /data/user_de/0/com.android.systemui/cache/leak/ 目录下生成对应进程id的 ahprof 文件，拷贝出来后重命名为 hprof 后可拖拽到 AndroidStudio 查看。</p>
+
+<h1 id="2如何检测内存泄漏-leakdetector">2.如何检测内存泄漏-LeakDetector</h1>
+
+<p>LeakDetector 主要提供了3种监测场景：</p>
+
+<p><strong>1.监测类创建实例的数量，主要监控占用较大的对象，从而监测内存占用大小</strong></p>
+
+<p>对应方法：public <T> void trackInstance(T object) {}</T></p>
+
+<p>注意事项：在创建对象实例时需调用此方法。</p>
+
+<p><strong>2.监测集合内元素的数量，从而监控内存占用大小</strong></p>
+
+<p>对应方法：public <T> void trackCollection(Collection<T> collection, String tag) {}</T></T></p>
+
+<p>注意事项：每当向集合内添加新的元素时需调用此方法。</p>
+
+<p><strong>3.监测快要被</strong><strong>JVM</strong><strong>回收的实例，如果1分钟内实例没有被回收，则可能存在内存泄漏</strong></p>
+
+<p>对应方法：public void trackGarbage(Object o) {}</p>
+
+<p>注意事项：删除实例的最后一个强引用时需调用此方法。</p>
+
+<p>小结：</p>
+
+<p>1.代码中可通过依赖注入的方式，也可以通过 Dependency 获取 LeakDetector 的实例。</p>
+
+<p>2.场景1,2用于主动监测内存占用，场景3可检测可能存在的内存泄漏。</p>
+
+<p>3.内存泄漏发生后会自动生成 leak.hprof 文件，并提示获取此文件，也可通过 dump 查看统计信息。</p>
+
+<h1 id="3检测内存泄漏原理-trackedgarbage">3.检测内存泄漏原理-TrackedGarbage</h1>
+
+<p>TrackedGarbage 类中包含两个关键成员变量：mGarbage和mRefQueue：</p>
+
+<pre><code class="language-Java">private final HashSet&lt;LeakReference&gt; mGarbage = new HashSet&lt;&gt;();
+private final ReferenceQueue&lt;Object&gt; mRefQueue = new ReferenceQueue&lt;&gt;();
+ 
+public synchronized void track(Object o) {
+    mGarbage.add(new LeakReference(o, mRefQueue));
+}
+</code></pre>
+
+<p>当调用 track() 方法传入一个需要被监测的对象时，会首先创建改对象的弱引用并与 mRefQueue 关联，其作用是：</p>
+
+<p>该对象被虚拟机回收后，会将该对象 Reference 添加到 ReferenceQueue 中，也就是 mRefQueue 中。通过遍历 mRefQueue 即可确认被追踪的对象是否被正常回收。</p>
+
+<p>mGarbage 用来保存所有被追踪对象的弱引用，通过遍历 mRefQueue 获取到被追踪对象的引用，从而确认有哪些对象没有被回收，具体参考 cleanUp() 方法：</p>
+
+<pre><code class="language-Java">private void cleanUp() {
+    Reference&lt;?&gt; ref;
+    while ((ref = mRefQueue.poll()) != null) {
+        mGarbage.remove(ref);
+    }
+}
+</code></pre>
+
+<p>检测内存泄漏方法是：每间隔15分钟统计一次1分钟之内没有被回收的对象个数，如果&gt;=5个，则上报内存泄漏，需要开发者分析。</p>
+
+<h1 id="4使用示例">4.使用示例</h1>
+
+<p>原生示例：在通知移除时监测是否有内存泄漏的发生，具体可参考 NotificationEntryManager.removeNotificationInternal() 方法。</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>具体实践：使用测试应用发送通知，然后删除通知，间隔超过一分钟后，执行：adb shell dumpsys activity service SystemUIService</td>
+      <td>grep TrackedGarbage</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>TrackedGarbage:com.android.systemui.statusbar.notification.collection.NotificationEntry: 5 total, 5 old</p>
+
+<p>发现有5个old对象（当old数&gt;=5时会自动生成leak.hprof文件），点击“转储 SysUI 堆”快捷开关生成hprof文件，</p>
+
+<p>导出后拖拽到AndroidStudio中，搜索“NotificationEnrty”，点击存疑的 instance，点击 References ，勾选 Show nearest GC root only ：</p>
+
+<p><img src="/img/sysui/garbage.png" alt="img" /></p>
+
+<p>可以分析出是 NotificationAlertController 的类成员遍历 mEntries 持有 NotificationEnrty 。</p>
+
+<h1 id="5总结">5.总结</h1>
+
+<p>GarbageMonitor 只能辅助开发人员主动监控内存大小和检测内存泄漏，适用于开发阶段。</p>
+
+<p>从以往的经验来看，SystemUI相关的内存泄漏主要发生在：横竖屏转换，主题切换，屏幕刘海切换，新旧板子切换等场景，可以基于以上问题场景定制智能化监测方案。</p>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="SystemUI-功能介绍">
+                        Previous<br>
+                        <span>SystemUI-功能介绍</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/" data-toggle="tooltip" data-placement="top" title="SystemUI-支持gradle编译">
+                        Next<br>
+                        <span>SystemUI-支持gradle编译</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
     <!-- Sidebar Container -->
-    <div class="col-lg-3 col-lg-offset-0 col-md-3 col-md-offset-0 col-sm-12
-      col-xs-12 sidebar-container">
-      <!-- Featured Tags -->
-      
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
 
 
 <section>
+    
+        <hr class="hidden-sm hidden-xs">
     
     <h5><a href="/archive/">FEATURED TAGS</a></h5>
     <div class="tags">
@@ -325,37 +480,8 @@
 </section>
 
 
-      <!-- Short About -->
-      <section class="visible-md visible-lg">
-  <hr>
-  <h5><a href="/about/">ABOUT ME</a></h5>
-  <div class="short-about">
-    
-    <img src="/img/avatar-yaku.jpg" />
-    
-    
-    <p>假如生活欺骗了你</p>
-    
-    <!-- SNS Link -->
-    
-
-
-<ul class="list-inline">
-
-
-  
-  
-  
-  
-  
-  
-  
-</ul>
-  </div>
-</section>
-
-      <!-- Friends Blog -->
-      
+                <!-- Friends Blog -->
+                
 <hr>
 <h5>FRIENDS</h5>
 <ul class="list-inline">
@@ -370,21 +496,54 @@
   
 </ul>
 
-
-      <!-- Ads -->
-      <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-<!-- first shot -->
-<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6487568398225121" data-ad-slot="4814308751"
-     data-ad-format="auto" data-full-width-responsive="true"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
+            </div>
+        </div>
     </div>
-    
-  </div>
-</div>
+</article>
 
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
 
 
 
@@ -516,7 +675,7 @@
     function generateCatalog(selector) {
 
         // interop with multilangual 
-        if ('true' == 'true') {
+        if ('' == 'true') {
             _containerSelector = 'div.post-container.active'
         } else {
             _containerSelector = 'div.post-container'
@@ -573,58 +732,6 @@
 
 
 <!-- Multi-Lingual -->
-
-<!-- Handle Language Change -->
-<script type="text/javascript">
-    // get nodes
-    var $zh = document.querySelector(".zh");
-    var $en = document.querySelector(".en");
-    var $select = document.querySelector("select");
-
-    // Changes at v1.8.1: include lang flag as a url query. This interop well with catalog hash anchors.
-    function getLang() { return new URLSearchParams(document.location.search).get("lang") }
-
-    function setLang(newLang) {
-        var params = new URLSearchParams(document.location.search)
-        params.set("lang", newLang)
-        document.location.search = params.toString()  // refresh.
-    }
-
-    // handle render
-    function _render() {
-        var lang = getLang()
-        // en
-        if (lang == "en") {
-            $select.selectedIndex = 1;
-            $en.style.display = "block";
-            $en.classList.add("active");
-            $zh.style.display = "none";
-            $zh.classList.remove("active");
-            // default to zh-cn
-        } else {
-            $select.selectedIndex = 0;
-            $zh.style.display = "block";
-            $zh.classList.add("active");
-            $en.style.display = "none";
-            $en.classList.remove("active");
-        }
-        // interop with catalog 
-        generateCatalog(".catalog-body");
-    }
-
-    // handle select change
-    function onLanChange(index) {
-        if (index == 0) {
-            lang = "zh"
-        } else {
-            lang = "en"
-        }
-        setLang(lang)
-    }
-
-    // init
-    _render();
-</script>
 
 
 <!-- Simple Jekyll Search -->

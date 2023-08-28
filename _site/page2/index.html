@@ -12,17 +12,17 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="About - Android学习笔记 | Yaku Blog">
+        content="Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="website">
     <meta property="og:description"
-        content="「假如生活欺骗了你」">
+        content="「离开世界之前 一切都是过程」">
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/about/">
+    <meta property="og:url" content="http://localhost:4000/page2/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>About - Android学习笔记 | Yaku Blog</title>
+    <title>Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -31,7 +31,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/about/">
+    <link rel="canonical" href="http://localhost:4000/page2/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -204,17 +204,10 @@
 <style type="text/css">
     header.intro-header{
         position: relative;
-        background-image: url('/img/bg-me-2022.jpg');
+        background-image: url('/img/home-bg.jpg');
         background: ;
     }
 
-    
-    header.intro-header .header-mask{
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        background: rgba(0,0,0, 0.3);
-    }
     
 </style>
 
@@ -224,7 +217,7 @@
 
 
 
-<header class="intro-header" style="background-image: url('/img/bg-me-2022.jpg')">
+<header class="intro-header" style="background-image: url('/img/home-bg.jpg')">
   <div class="header-mask"></div>
   <div class="container">
     <div class="row">
@@ -232,8 +225,8 @@
         
         <div class="site-heading">
         
-          <h1>About</h1>
-          <span class="subheading">「假如生活欺骗了你」</span>
+          <h1>Android学习笔记</h1>
+          <span class="subheading">「离开世界之前 一切都是过程」</span>
         </div>
       </div>
     </div>
@@ -251,37 +244,138 @@
     <!-- PostList Container -->
     <div class="col-lg-8 col-lg-offset-1 col-md-8 col-md-offset-1 col-sm-12
       col-xs-12 postlist-container">
-                      <!-- Language Selector -->
-                <select class="sel-lang" onchange= "onLanChange(this.options[this.options.selectedIndex].value)">
-                    <option value="0" selected> 中文 | Chinese </option>
-                    <option value="1"> 英文 | English </option>
-                </select>
+      
+<div class="post-preview">
+    <a href="/2022/03/14/SystemUI-%E4%BD%BF%E7%94%A8GarbageMonitor/">
+        <h2 class="post-title">
+            SystemUI-使用GarbageMonitor
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.简介
 
+GarbageMonitor 用于定期监测 SystemUI 堆内存，提供了一个自定义快捷开关方便生成 hprof 文件。
 
+目前仅支持 UserDebug 版本中使用，其核心功能是在内部 Service 中启动的，且有一定的条件限制，需要手动写入 Settings 值或 SystemProperties 值：
 
-<!-- Chinese Version -->
-<div class="zh post-container">
-    
-    <p>Hey，我是Yaku，8年Android开发经验，目前就职于小米，主要负责应用性能稳定性相关工作。</p>
-
-<p>Github：<a href="https://github.com/DreamSunny">https://github.com/DreamSunny</a></p>
-
-<p>简书：<a href="https://www.jianshu.com/u/70cccf742ec9">https://www.jianshu.com/u/70cccf742ec9</a></p>
-
+public static final boolean LEAK_...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on March 14, 2022
+    </p>
 </div>
+<hr>
 
-<!-- English Version -->
-<div class="en post-container">
-    
-    <p>Hey, I’m Yaku. I have 8 years of experience in Android development. I’m currently working for Xiaomi. I’m mainly responsible for application performance and stability.</p>
+<div class="post-preview">
+    <a href="/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
+        <h2 class="post-title">
+            SystemUI-功能介绍
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1. SystemUI介绍
 
-<p>Github：<a href="https://github.com/DreamSunny">https://github.com/DreamSunny</a></p>
+SystemUI正如其名，即系统的显示界面。它是一个常驻进程，独立于system_server进程。
 
-<p>JianShu：<a href="https://www.jianshu.com/u/70cccf742ec9">https://www.jianshu.com/u/70cccf742ec9</a></p>
+SystemUI内部包含一系列组件，在其启动的时候会初始化这些组件。
 
+SystemUI通过IStatusBar接口收到系统侧的回调，又通过一系列私有APIs与系统通信。
+
+2. SystemUI启动流程
+
+SystemUIService 继承于 Servic...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on March 4, 2022
+    </p>
 </div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2021/10/29/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/">
+        <h2 class="post-title">
+            微信Tinker热修复
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                Github地址：https://github.com/Tencent/tinker/tree/dev/tinker-android
 
 
+  
+    如何快速接入请参考Tinker 接入指南；
+  
+  
+    如何自定义类请参考Tinker 自定义扩展；
+  
+  
+    Tinker的API预览请参考Tinker API预览；
+  
+
+
+tinker-android的源码主要包括三...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on October 29, 2021
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2021/10/19/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/">
+        <h2 class="post-title">
+            美团Robust热修复
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                Github地址：https://github.com/Meituan-Dianping/Robust
+WIKI：https://github.com/Meituan-Dianping/Robust/wiki
+Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on October 19, 2021
+    </p>
+</div>
+<hr>
+
+
+<!-- Pager -->
+
+<ul class="pager">
+    
+    <li class="previous">
+        <a href="/">&larr; Newer Posts</a>
+    </li>
+    
+    
+</ul>
 
 
     </div>
@@ -516,7 +610,7 @@
     function generateCatalog(selector) {
 
         // interop with multilangual 
-        if ('true' == 'true') {
+        if ('' == 'true') {
             _containerSelector = 'div.post-container.active'
         } else {
             _containerSelector = 'div.post-container'
@@ -573,58 +667,6 @@
 
 
 <!-- Multi-Lingual -->
-
-<!-- Handle Language Change -->
-<script type="text/javascript">
-    // get nodes
-    var $zh = document.querySelector(".zh");
-    var $en = document.querySelector(".en");
-    var $select = document.querySelector("select");
-
-    // Changes at v1.8.1: include lang flag as a url query. This interop well with catalog hash anchors.
-    function getLang() { return new URLSearchParams(document.location.search).get("lang") }
-
-    function setLang(newLang) {
-        var params = new URLSearchParams(document.location.search)
-        params.set("lang", newLang)
-        document.location.search = params.toString()  // refresh.
-    }
-
-    // handle render
-    function _render() {
-        var lang = getLang()
-        // en
-        if (lang == "en") {
-            $select.selectedIndex = 1;
-            $en.style.display = "block";
-            $en.classList.add("active");
-            $zh.style.display = "none";
-            $zh.classList.remove("active");
-            // default to zh-cn
-        } else {
-            $select.selectedIndex = 0;
-            $zh.style.display = "block";
-            $zh.classList.add("active");
-            $en.style.display = "none";
-            $en.classList.remove("active");
-        }
-        // interop with catalog 
-        generateCatalog(".catalog-body");
-    }
-
-    // handle select change
-    function onLanChange(index) {
-        if (index == 0) {
-            lang = "zh"
-        } else {
-            lang = "en"
-        }
-        setLang(lang)
-    }
-
-    // init
-    _render();
-</script>
 
 
 <!-- Simple Jekyll Search -->

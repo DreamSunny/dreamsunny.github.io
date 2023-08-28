@@ -12,17 +12,28 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="About - Android学习笔记 | Yaku Blog">
+        content="SystemUI-字节码插桩 - Android学习笔记 | Yaku Blog">
     
-    <meta property="og:type" content="website">
-    <meta property="og:description"
-        content="「假如生活欺骗了你」">
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="1.java_genrule介绍
+">
+    
+    <meta property="article:published_time" content=" 2022-03-28T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Android">
+    
+    <meta property="article:tag" content="SystemUI">
+    
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/about/">
+    <meta property="og:url" content="http://localhost:4000/2022/03/28/SystemUI-%E5%AD%97%E8%8A%82%E7%A0%81%E6%8F%92%E6%A1%A9/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>About - Android学习笔记 | Yaku Blog</title>
+    <title>SystemUI-字节码插桩 - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -31,7 +42,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/about/">
+    <link rel="canonical" href="http://localhost:4000/2022/03/28/SystemUI-%E5%AD%97%E8%8A%82%E7%A0%81%E6%8F%92%E6%A1%A9/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -197,102 +208,427 @@
   </div>
 </div>
 
-    <!-- Page Header -->
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
 
 
 
 <style type="text/css">
     header.intro-header{
         position: relative;
-        background-image: url('/img/bg-me-2022.jpg');
+        background-image: url('/img/post-bg-2015.jpg');
         background: ;
     }
 
-    
-    header.intro-header .header-mask{
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        background: rgba(0,0,0, 0.3);
-    }
     
 </style>
 
 
 
 
+<header class="intro-header" >
 
-
-
-<header class="intro-header" style="background-image: url('/img/bg-me-2022.jpg')">
-  <div class="header-mask"></div>
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-        
-        <div class="site-heading">
-        
-          <h1>About</h1>
-          <span class="subheading">「假如生活欺骗了你」</span>
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
+                        
+                        <a class="tag" href="/archive/?tag=SystemUI" title="SystemUI">SystemUI</a>
+                        
+                    </div>
+                    <h1>SystemUI-字节码插桩</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on March 28, 2022</span>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </header>
 
 
 
-<!-- Main Content -->
-<div class="container">
-  <div class="row">
-    
-
-    <!-- USE SIDEBAR -->
-    <!-- PostList Container -->
-    <div class="col-lg-8 col-lg-offset-1 col-md-8 col-md-offset-1 col-sm-12
-      col-xs-12 postlist-container">
-                      <!-- Language Selector -->
-                <select class="sel-lang" onchange= "onLanChange(this.options[this.options.selectedIndex].value)">
-                    <option value="0" selected> 中文 | Chinese </option>
-                    <option value="1"> 英文 | English </option>
-                </select>
-
-
-
-<!-- Chinese Version -->
-<div class="zh post-container">
-    
-    <p>Hey，我是Yaku，8年Android开发经验，目前就职于小米，主要负责应用性能稳定性相关工作。</p>
-
-<p>Github：<a href="https://github.com/DreamSunny">https://github.com/DreamSunny</a></p>
-
-<p>简书：<a href="https://www.jianshu.com/u/70cccf742ec9">https://www.jianshu.com/u/70cccf742ec9</a></p>
-
-</div>
-
-<!-- English Version -->
-<div class="en post-container">
-    
-    <p>Hey, I’m Yaku. I have 8 years of experience in Android development. I’m currently working for Xiaomi. I’m mainly responsible for application performance and stability.</p>
-
-<p>Github：<a href="https://github.com/DreamSunny">https://github.com/DreamSunny</a></p>
-
-<p>JianShu：<a href="https://www.jianshu.com/u/70cccf742ec9">https://www.jianshu.com/u/70cccf742ec9</a></p>
-
-</div>
 
 
 
 
-    </div>
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<h1 id="1java_genrule介绍">1.java_genrule介绍</h1>
+
+<p>在阅读系统源码时，发现了一个有意思的工具lockedregioncodeinjection，从命名来看是对锁处理的地方做代码插桩，其使用的代码如下：</p>
+
+<pre><code class="language-Java">java_genrule {
+    name: "services.core.priorityboosted",
+    srcs: [":services.core.unboosted"],
+    tools: ["lockedregioncodeinjection"],
+    cmd: "$(location lockedregioncodeinjection) " +
+        "  --targets \"Lcom/android/server/am/ActivityManagerService;,Lcom/android/server/wm/WindowManagerGlobalLock;\" " +
+        "  --pre \"com/android/server/am/ActivityManagerService.boostPriorityForLockedSection,com/android/server/wm/WindowManagerService.boostPriorityForLockedSection\" " +
+        "  --post \"com/android/server/am/ActivityManagerService.resetPriorityAfterLockedSection,com/android/server/wm/WindowManagerService.resetPriorityAfterLockedSection\" " +
+        "  -o $(out) " +
+        "  -i $(in)",
+    out: ["services.core.priorityboosted.jar"],
+}
+</code></pre>
+
+<p>从源码中查找 java_genrule 的定义：</p>
+
+<pre><code class="language-Plain">// genrule.go
+
+java_genrule is a genrule that can depend on other java_* objects.
+
+By default a java_genrule has a single variant that will run against the device variant of its dependencies and
+produce an output that can be used as an input to a device java rule.
+
+Specifying `host_supported: true` will produce two variants, one that uses device dependencies and one that uses
+host dependencies.  Each variant will run the command.
+
+Use a java_genrule instead of a genrule when it needs to depend on or be depended on by other java modules, unless
+the dependency is for a generated source file.
+
+Examples:
+
+Use a java_genrule to package generated java resources:
+
+    java_genrule {
+        name: "generated_resources",
+        tools: [
+            "generator",
+            "soong_zip",
+        ],
+        srcs: ["generator_inputs/**/*"],
+        out: ["generated_android_icu4j_resources.jar"],
+        cmd: "$(location generator) $(in) -o $(genDir) " +
+            "&amp;&amp; $(location soong_zip) -o $(out) -C $(genDir)/res -D $(genDir)/res",
+    }
+
+    java_library {
+        name: "lib_with_generated_resources",
+        srcs: ["src/**/*.java"],
+        static_libs: ["generated_resources"],
+    }
+</code></pre>
+
+<p>大意是 java_genrule 是一个依赖其他 java_* 对象的生成规则，比如java_library。这里的cmd参数是要执行的命令，tools是命令中使用的工具，srcs是输入文件，out是输出文件。</p>
+
+<p>接着查找lockedregioncodeinjection工具的位置：</p>
+
+<pre><code class="language-SQL">java_binary_host {
+    name: "lockedregioncodeinjection",
+    manifest: "manifest.txt",
+    srcs: ["src/**/*.java"],
+    static_libs: [
+        "asm-9.2",
+        "asm-commons-9.2",
+        "asm-tree-9.2",
+        "asm-analysis-9.2",
+        "guava-21.0",
+    ],
+}
+</code></pre>
+
+<p>可以看到lockedregioncodeinjection是一个可运行的jar包，其入口定义在manifest.txt：</p>
+
+<pre><code class="language-Plain">Main-Class: lockedregioncodeinjection.Main
+</code></pre>
+
+<p>整个jar包入口在工程的Main类中：</p>
+
+<pre><code class="language-Java">public static void main(String[] args) throws IOException {
+    String inJar = null;
+    String outJar = null;
+
+    String legacyTargets = null;
+    String legacyPreMethods = null;
+    String legacyPostMethods = null;
+    for (int i = 0; i &lt; args.length; i++) {
+        if ("-i".equals(args[i].trim())) {
+            i++;
+            inJar = args[i].trim();
+        } else if ("-o".equals(args[i].trim())) {
+            i++;
+            outJar = args[i].trim();
+        } else if ("--targets".equals(args[i].trim())) {
+            i++;
+            legacyTargets = args[i].trim();
+        } else if ("--pre".equals(args[i].trim())) {
+            i++;
+            legacyPreMethods = args[i].trim();
+        } else if ("--post".equals(args[i].trim())) {
+            i++;
+            legacyPostMethods = args[i].trim();
+        }
+
+    }
+
+    // TODO(acleung): Better help message than asserts.
+    assert inJar != null;
+    assert outJar != null;
+    assert legacyTargets == null || (legacyPreMethods != null &amp;&amp; legacyPostMethods != null);
+
+    ZipFile zipSrc = new ZipFile(inJar);
+    ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(outJar));
+    List&lt;LockTarget&gt; targets = null;
+    if (legacyTargets != null) {
+        targets = Utils.getTargetsFromLegacyJackConfig(legacyTargets, legacyPreMethods,
+                legacyPostMethods);
+    } else {
+        targets = Collections.emptyList();
+    }
+
+    Enumeration&lt;? extends ZipEntry&gt; srcEntries = zipSrc.entries();
+    while (srcEntries.hasMoreElements()) {
+        ZipEntry entry = srcEntries.nextElement();
+        ZipEntry newEntry = new ZipEntry(entry.getName());
+        newEntry.setTime(entry.getTime());
+        zos.putNextEntry(newEntry);
+        BufferedInputStream bis = new BufferedInputStream(zipSrc.getInputStream(entry));
+
+        if (entry.getName().endsWith(".class")) {
+            convert(bis, zos, targets);
+        } else {
+            while (bis.available() &gt; 0) {
+                zos.write(bis.read());
+            }
+            zos.closeEntry();
+            bis.close();
+        }
+    }
+    zos.finish();
+    zos.close();
+    zipSrc.close();
+}
+</code></pre>
+
+<p>核心逻辑为解析命令参数，对代码做插桩。</p>
+
+<p>如何使用生成的 services.core.priorityboosted.jar 呢？可以看到 java_genrule 可以像其他 java_* 对象一样，直接作为编译依赖项。</p>
+
+<pre><code class="language-Plain">java_library {
+    name: "services.core",
+    static_libs: ["services.core.priorityboosted"],
+}
+</code></pre>
+
+<h1 id="2应用字节码插桩">2.应用字节码插桩</h1>
+
+<p>无论是Gradle编译还是bp编译，其核心流程都是一致的，在编译前都会生成基于拓扑排序的编译依赖关系。基于SystemUI的Android.bp文件，来分析下编译依赖关系：</p>
+
+<pre><code class="language-Plain">android_app {
+    name: "SystemUI",
+    defaults: [
+
+    ],
+    static_libs: [
+        "SystemUI-core",
+    ],
+    resource_dirs: [],
+
+    platform_apis: true,
+    system_ext_specific: true,
+    certificate: "platform",
+    privileged: true,
+
+    libs: [
+        "android.car",
+        "ims-common",
+        "extphonelib",
+    ],
+    enforce_uses_libs: false,
+
+    kotlincflags: ["-Xjvm-default=enable"],
+
+    dxflags: ["--multi-dex"],
+    required: [
+        "privapp_whitelist_com.android.systemui",
+    ],
+}
+</code></pre>
+
+<p>可以看到编译SystemUI.apk主要依赖SystemUI-core，</p>
+
+<pre><code class="language-Plain">android_app {
+    name: "SystemUI",
+    static_libs: [
+        "SystemUI-core",
+    ],
+    resource_dirs: [],
+
+    platform_apis: true,
+    product_specific: true,
+    certificate: "platform",
+    privileged: true,
+
+    optimize: {
+        proguard_flags_files: ["proguard.flags"],
+    },
+
+    libs: [
+        "android.car",
+        "android.car.userlib",
+        "ims-common",
+        "telephony-common",
+        "telephony-ext",
+        "miuisdk",
+    ],
+
+    kotlincflags: ["-Xjvm-default=enable"],
+
+    dxflags: ["--multi-dex"],
+    required: ["privapp_whitelist_com.android.systemui"],
+
+}
+
+android_library {
+    name: "SystemUI-core",
+    srcs: [
+        "src/**/*.kt",
+        "src/**/*.java",
+        "src/**/I*.aidl",
+    ],
+    resource_dirs: [
+        "res-keyguard",
+        "res",
+    ],
+    static_libs: [
+        "SystemUIPluginLib",
+        "SystemUISharedLib",
+        "SettingsLib",
+        "androidx.legacy_legacy-support-v4",
+        "androidx.recyclerview_recyclerview",
+        "androidx.preference_preference",
+        "androidx.appcompat_appcompat",
+        "androidx.mediarouter_mediarouter",
+        "androidx.palette_palette",
+        "androidx.legacy_legacy-preference-v14",
+        "androidx.leanback_leanback",
+        "androidx.slice_slice-core",
+        "androidx.slice_slice-view",
+        "androidx.slice_slice-builders",
+        "androidx.arch.core_core-runtime",
+        "androidx.lifecycle_lifecycle-extensions",
+        "androidx.dynamicanimation_dynamicanimation",
+        "androidx-constraintlayout_constraintlayout",
+        "iconloader_base",
+        "SystemUI-tags",
+        "SystemUI-proto",
+        "dagger2-2.19",
+        "jsr330"
+    ],
+    manifest: "AndroidManifest.xml",
+
+    libs: [
+        "android.car",
+        "android.car.userlib",
+        "telephony-common",
+        "telephony-ext",
+        "ims-common",
+        "miuisdk",
+    ],
+
+    kotlincflags: ["-Xjvm-default=enable"],
+
+    plugins: ["dagger2-compiler-2.19"],
+}
+</code></pre>
+
+<p>而SystemUI-core是一个jar包，可以在这二者之间插入java_genrule实现代码插桩，示例如下：</p>
+
+<pre><code class="language-Plain">genrule {
+    name: "SystemUI-codeinjection",
+    srcs: [":SystemUI-core"],
+    tools: ["xx"],
+    cmd: "xx"
+    out: ["SystemUI-core-codeinjection.jar"],
+}
+
+android_app {
+    name: "SystemUI",
+    static_libs: [
+        "SystemUI-codeinjection",
+    ],
+    ...
+}
+</code></pre>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/" data-toggle="tooltip" data-placement="top" title="SystemUI-支持gradle编译">
+                        Previous<br>
+                        <span>SystemUI-支持gradle编译</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/" data-toggle="tooltip" data-placement="top" title="SystemUI-通知显示流程">
+                        Next<br>
+                        <span>SystemUI-通知显示流程</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
     <!-- Sidebar Container -->
-    <div class="col-lg-3 col-lg-offset-0 col-md-3 col-md-offset-0 col-sm-12
-      col-xs-12 sidebar-container">
-      <!-- Featured Tags -->
-      
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
 
 
 <section>
+    
+        <hr class="hidden-sm hidden-xs">
     
     <h5><a href="/archive/">FEATURED TAGS</a></h5>
     <div class="tags">
@@ -325,37 +661,8 @@
 </section>
 
 
-      <!-- Short About -->
-      <section class="visible-md visible-lg">
-  <hr>
-  <h5><a href="/about/">ABOUT ME</a></h5>
-  <div class="short-about">
-    
-    <img src="/img/avatar-yaku.jpg" />
-    
-    
-    <p>假如生活欺骗了你</p>
-    
-    <!-- SNS Link -->
-    
-
-
-<ul class="list-inline">
-
-
-  
-  
-  
-  
-  
-  
-  
-</ul>
-  </div>
-</section>
-
-      <!-- Friends Blog -->
-      
+                <!-- Friends Blog -->
+                
 <hr>
 <h5>FRIENDS</h5>
 <ul class="list-inline">
@@ -370,21 +677,54 @@
   
 </ul>
 
-
-      <!-- Ads -->
-      <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-<!-- first shot -->
-<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6487568398225121" data-ad-slot="4814308751"
-     data-ad-format="auto" data-full-width-responsive="true"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
+            </div>
+        </div>
     </div>
-    
-  </div>
-</div>
+</article>
 
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
 
 
 
@@ -516,7 +856,7 @@
     function generateCatalog(selector) {
 
         // interop with multilangual 
-        if ('true' == 'true') {
+        if ('' == 'true') {
             _containerSelector = 'div.post-container.active'
         } else {
             _containerSelector = 'div.post-container'
@@ -573,58 +913,6 @@
 
 
 <!-- Multi-Lingual -->
-
-<!-- Handle Language Change -->
-<script type="text/javascript">
-    // get nodes
-    var $zh = document.querySelector(".zh");
-    var $en = document.querySelector(".en");
-    var $select = document.querySelector("select");
-
-    // Changes at v1.8.1: include lang flag as a url query. This interop well with catalog hash anchors.
-    function getLang() { return new URLSearchParams(document.location.search).get("lang") }
-
-    function setLang(newLang) {
-        var params = new URLSearchParams(document.location.search)
-        params.set("lang", newLang)
-        document.location.search = params.toString()  // refresh.
-    }
-
-    // handle render
-    function _render() {
-        var lang = getLang()
-        // en
-        if (lang == "en") {
-            $select.selectedIndex = 1;
-            $en.style.display = "block";
-            $en.classList.add("active");
-            $zh.style.display = "none";
-            $zh.classList.remove("active");
-            // default to zh-cn
-        } else {
-            $select.selectedIndex = 0;
-            $zh.style.display = "block";
-            $zh.classList.add("active");
-            $en.style.display = "none";
-            $en.classList.remove("active");
-        }
-        // interop with catalog 
-        generateCatalog(".catalog-body");
-    }
-
-    // handle select change
-    function onLanChange(index) {
-        if (index == 0) {
-            lang = "zh"
-        } else {
-            lang = "en"
-        }
-        setLang(lang)
-    }
-
-    // init
-    _render();
-</script>
 
 
 <!-- Simple Jekyll Search -->

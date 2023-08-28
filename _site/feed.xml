@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 25 Aug 2023 22:27:59 +0800</pubDate>
-    <lastBuildDate>Fri, 25 Aug 2023 22:27:59 +0800</lastBuildDate>
+    <pubDate>Mon, 28 Aug 2023 23:23:10 +0800</pubDate>
+    <lastBuildDate>Mon, 28 Aug 2023 23:23:10 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -3222,737 +3222,1129 @@ func (c *config) PlatformSdkVersion() string {}
       </item>
     
       <item>
-        <title>微信Tinker热修复</title>
-        <description>&lt;p&gt;Github地址：&lt;a href=&quot;https://github.com/Tencent/tinker/tree/dev/tinker-android&quot;&gt;https://github.com/Tencent/tinker/tree/dev/tinker-android&lt;/a&gt;&lt;/p&gt;
+        <title>SystemUI-通知显示流程</title>
+        <description>&lt;p&gt;官方文档：&lt;/p&gt;
 
-&lt;ol&gt;
-  &lt;li&gt;
-    &lt;p&gt;如何快速接入请参考&lt;a href=&quot;https://github.com/Tencent/tinker/wiki/Tinker-接入指南&quot;&gt;Tinker 接入指南&lt;/a&gt;；&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;如何自定义类请参考&lt;a href=&quot;https://github.com/Tencent/tinker/wiki/Tinker-自定义扩展&quot;&gt;Tinker 自定义扩展&lt;/a&gt;；&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;Tinker的API预览请参考&lt;a href=&quot;https://github.com/Tencent/tinker/wiki/Tinker-API概览&quot;&gt;Tinker API预览&lt;/a&gt;；&lt;/p&gt;
-  &lt;/li&gt;
-&lt;/ol&gt;
+&lt;p&gt;&lt;a href=&quot;https://developer.android.com/guide/topics/ui/notifiers/notifications?hl=zh-cn&quot;&gt;通知概览&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://developer.android.google.cn/training/notify-user/build-notification?hl=zh-cn&quot;&gt;创建通知&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;tinker-android的源码主要包括三大模块：&lt;/p&gt;
+&lt;h1 id=&quot;1应用发送通知&quot;&gt;1.应用发送通知&lt;/h1&gt;
 
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;模块类库&lt;/th&gt;
-      &lt;th&gt;功能&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;tinker-android-annotinker-android-anno-support&lt;/td&gt;
-      &lt;td&gt;编译时注解，用于生成空的Application类。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;tinker-android-lib&lt;/td&gt;
-      &lt;td&gt;开发者API，提供三方开发接口。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;tinker-android-loader&lt;/td&gt;
-      &lt;td&gt;补丁包加载，热修复核心逻辑。&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
+&lt;p&gt;应用侧发通知代码：&lt;/p&gt;
 
-&lt;h1 id=&quot;1tinker-android-anno&quot;&gt;1.tinker-android-anno&lt;/h1&gt;
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// 构建Notification
+NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        .setSmallIcon(R.drawable.notification_icon)
+        .setContentTitle(textTitle)
+        .setContentText(textContent)
+        .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
-&lt;p&gt;Android应用启动时会先创建Application类，tinker加载Patch补丁包的逻辑也在Application初始化流程中。如果Application类中还引用了其他类，就有可能导致在tinker加载Patch补丁包前就已经加载过了其他类，这样一来就无法通过优先加载补丁包里的类达到热修复的目的，因此要将这些类从Application类中解耦出来。&lt;/p&gt;
-
-&lt;p&gt;为了实现业务逻辑与Application解耦，tinker设计了一个基于TinkerApplication和ApplicationLike的解耦方案，开发者需要继承TinkerApplication自定义一个空的Application，同时将业务逻辑写到ApplicationLike中。&lt;/p&gt;
-
-&lt;p&gt;这个插件的作用是通过解析配置在自定义ApplicationLike类的DefaultLifeCycle注解，在编译期间生成一个自定义Application类，其逻辑在AnnotationProcessor，其模板代码如下：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// TinkerAnnoApplication.tmpl
-package %PACKAGE%;
-
-import com.tencent.tinker.loader.app.TinkerApplication;
-
-public class %APPLICATION% extends TinkerApplication {
-
-    public %APPLICATION%() {
-        super(%TINKER_FLAGS%, &quot;%APPLICATION_LIFE_CYCLE%&quot;, &quot;%TINKER_LOADER_CLASS%&quot;, %TINKER_LOAD_VERIFY_FLAG%, %TINKER_USE_DLC%, %TINKER_USE_INTERPRET_MODE_ON_SUPPORTED_32BIT_SYSTEM%);
-    }
-
-}
+NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
+// notificationId是通知的唯一标识
+notificationManager.notify(notificationId, builder.build());
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;此外还设计了TinkerApplicationInlineFence类来阻止方法内联。&lt;/p&gt;
+&lt;p&gt;向NMS发送请求：&lt;/p&gt;
 
-&lt;h1 id=&quot;2tinker-android-lib&quot;&gt;2.tinker-android-lib&lt;/h1&gt;
-
-&lt;p&gt;这个类库主要功能包括：初始化tinker，通知tinker合成patch，tinker合成patch，触发dex2oat。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/HotFix/tinker1.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;h2 id=&quot;21-tinker初始化&quot;&gt;2.1 Tinker初始化&lt;/h2&gt;
-
-&lt;p&gt;Tinker类的构造方法：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private Tinker(Context context, int tinkerFlags, LoadReporter loadReporter, PatchReporter patchReporter,
-               PatchListener listener, File patchDirectory, File patchInfoFile, File patchInfoLockFile,
-               AbstractFilePatch customPatcher, boolean isInMainProc, boolean isPatchProcess, boolean tinkerLoadVerifyFlag) {
-    this.context = context;
-    this.listener = listener; // 通知tinker合成新patch， 默认实现DefaultPatchListener
-    this.loadReporter = loadReporter; // 加载补丁回调，默认实现DefaultLoadReporter
-    this.patchReporter = patchReporter; // 合成补丁回调，默认实现DefaultPatchReporter
-    this.tinkerFlags = tinkerFlags; // 定制tinker功能
-    this.patchDirectory = patchDirectory; // /data/data/xx.xx.xx/tinker
-    this.patchInfoFile = patchInfoFile; // /data/data/xx.xx.xx/tinker/patch.info
-    this.patchInfoLockFile = patchInfoLockFile; // /data/data/xx.xx.xx/tinker/info.lock
-    this.customPatcher = customPatcher; // patch合成策略
-    this.isMainProcess = isInMainProc; // 是否是主进程
-    this.tinkerLoadVerifyFlag = tinkerLoadVerifyFlag; // 加载补丁是否校验md5
-    this.isPatchProcess = isPatchProcess; // 是否是patch进程
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Tinker初始化：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-TypeScript&quot;&gt;public void install(Intent intentResult) {
-    install(intentResult, DefaultTinkerResultService.class, new UpgradePatch());
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationManager.java
+public void notify(int id, Notification notification) {
+    notify(null, id, notification);
 }
 
-// intentResult 是ApplicationLike.getTinkerResultIntent()返回值
-// serviceClass 默认是DefaultTinkerResultService ，合成patch后策略
-// upgradePatch 默认是UpgradePatch，合成patch过程
-public void install(Intent intentResult, Class&amp;lt;? extends AbstractResultService&amp;gt; serviceClass,
-                    AbstractPatch upgradePatch) {
-    sInstalled = true;
-    TinkerPatchService.setPatchProcessor(upgradePatch, serviceClass);
-    ...
-    tinkerLoadResult = new TinkerLoadResult();
-    tinkerLoadResult.parseTinkerResult(getContext(), intentResult);
-    //after load code set
-    loadReporter.onLoadResult(patchDirectory, tinkerLoadResult.loadCode, tinkerLoadResult.costTime);
-    ...
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h2 id=&quot;22-应用通知tinker合成patch&quot;&gt;2.2 应用通知tinker合成patch&lt;/h2&gt;
-
-&lt;p&gt;应用基于PatchListener接口通知Tinker有新patch，传入的path是patch的绝对路径。&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public interface PatchListener {
-    int onPatchReceived(String path);
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;PatchListener的默认实现类是DefaultPatchListener，当收onPatchReceived回调后会先做校验，再启动TinkerPatchService合成new patch。&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-TypeScript&quot;&gt;public int onPatchReceived(String path) {
-    return checkPackageAndRunPatchService(path, false);
+public void notify(String tag, int id, Notification notification) {
+    notifyAsUser(tag, id, notification, mContext.getUser());
 }
 
-protected int checkPackageAndRunPatchService(String path, boolean useEmergencyMode) {
-    final File patchFile = new File(path);
-    final String patchMD5 = SharePatchFileUtil.getMD5(patchFile);
-    final int returnCode = patchCheck(path, patchMD5);
-    if (returnCode == ShareConstants.ERROR_PATCH_OK) {
-        runForgService();
-        TinkerPatchService.runPatchService(context, path, useEmergencyMode);
-    } else {
-        Tinker.with(context).getLoadReporter().onLoadPatchListenerReceiveFail(new File(path), returnCode);
-    }
-    return returnCode;
-}
-&lt;/code&gt;&lt;/pre&gt;
+public void notifyAsUser(String tag, int id, Notification notification, UserHandle user) {
+    INotificationManager service = getService();
+    String pkg = mContext.getPackageName();
 
-&lt;h2 id=&quot;23-合成new-patch&quot;&gt;2.3 合成new patch&lt;/h2&gt;
-
-&lt;p&gt;Tinker会启动TinkerPatchService来合成new patch，运行在一个独立的patch进程中：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private static void doApplyPatch(Context context, Intent intent) {
     try {
-        PatchResult patchResult = new PatchResult();
-        try {
-            result = upgradePatchProcessor.tryPatch(context, path, useEmergencyMode, patchResult);
-        } catch (Throwable throwable) {
+        if (localLOGV) Log.v(TAG, pkg + &quot;: notify(&quot; + id + &quot;, &quot; + notification + &quot;)&quot;);
+        service.enqueueNotificationWithTag(pkg, mContext.getOpPackageName(), tag, id,
+                fixNotification(notification), user.getIdentifier());
+    } catch (RemoteException e) {
+        throw e.rethrowFromSystemServer();
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;2nms处理通知&quot;&gt;2.NMS处理通知&lt;/h1&gt;
+
+&lt;p&gt;NMS处理显示通知请求：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationManagerService
+public void enqueueNotificationWithTag(String pkg, String opPkg, String tag, int id,
+        Notification notification, int userId) throws RemoteException {
+    enqueueNotificationInternal(pkg, opPkg, Binder.getCallingUid(),
+            Binder.getCallingPid(), tag, id, notification, userId, false);
+}
+
+void enqueueNotificationInternal(final String pkg, final String opPkg, final int callingUid,
+        final int callingPid, final String tag, final int id, final Notification notification,
+        int incomingUserId, boolean postSilently) {
+    ...
+    // 创建StatusBarNotification
+    final StatusBarNotification n = new StatusBarNotification(
+            pkg, opPkg, id, tag, notificationUid, callingPid, notification,
+            user, null, System.currentTimeMillis());
+
+    // Android O增加通知Channel
+    String channelId = notification.getChannelId();
+
+    ...
+    // 创建NotificationRecord
+    final NotificationRecord r = new NotificationRecord(getContext(), n, channel);
+
+    ...
+    mHandler.post(new EnqueueNotificationRunnable(userId, r, isAppForeground,
+            SystemClock.elapsedRealtime()));
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里主要创建StatusBarNotification和NotificationRecord，其中pkg表示发通知的应用，opPkg表示通知显示的应用。举个例子，比如小米服务框架XMSF发送一条通知，opPkg设置为微信的包名，那么在通知栏中显示的通知包名为微信。&lt;/p&gt;
+
+&lt;p&gt;EnqueueNotificationRunnable核心逻辑：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public void run() {
+    synchronized (mNotificationLock) {
+        ...
+        mEnqueuedNotifications.add(r);
+        ...
+
+        // tell the assistant service about the notification
+        if (mAssistants.isEnabled()) {
+            mAssistants.onNotificationEnqueuedLocked(r);
+            mHandler.postDelayed(
+                    new PostNotificationRunnable(r.getKey(), r.getSbn().getPackageName(),
+                            r.getUid(), enqueueElapsedTimeMs),
+                    DELAY_FOR_ASSISTANT_TIME);
+        } else {
+            mHandler.post(new PostNotificationRunnable(r.getKey(),
+                    r.getSbn().getPackageName(), r.getUid(), enqueueElapsedTimeMs));
         }
-        AbstractResultService.runResultService(context, patchResult, getPatchResultExtra(intent));
-    } finally {
     }
 }
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;合成new patch的核心逻辑在UpgradePatch，主要步骤包括：&lt;/p&gt;
+&lt;p&gt;PostNotificationRunnable核心逻辑：&lt;/p&gt;
 
-&lt;ol&gt;
-  &lt;li&gt;基于ShareSecurityCheck校验应用签名、tinkerID、tinkerFlag。&lt;/li&gt;
-  &lt;li&gt;基于本地记录的已加载的patch信息，校验new patch是否可以被合成。&lt;/li&gt;
-  &lt;li&gt;将new patch拷贝到 data/data/xx.xx.xx/tinker/patch-xxx 目录，并重命名为.apk。&lt;/li&gt;
-  &lt;li&gt;分别合成补丁中dex文件，so库，资源文件，合成dex后对新dex做dex2oat操作。&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;DexDiffPatchInternal.tryRecoverDexFiles(..)&lt;/th&gt;
-      &lt;th&gt;合成dex&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;ArkHotDiffPatchInternal.tryRecoverArkHotLibrary(..)&lt;/td&gt;
-      &lt;td&gt;适配华为方舟编译器&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;SoDiffPatchInternal.tryRecoverLibraryFiles(..)&lt;/td&gt;
-      &lt;td&gt;合成so库&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;ResDiffPatchInternal.tryRecoverResourceFiles(..)&lt;/td&gt;
-      &lt;td&gt;合成资源文件&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;h2 id=&quot;24-触发dex2oat&quot;&gt;2.4 触发dex2oat&lt;/h2&gt;
-
-&lt;p&gt;核心逻辑在TinkerDexOptimizer的OptimizeWorker内部类中，不同Android版本触发方式有区别：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;boolean run() {
-    try {
-        String optimizedPath = SharePatchFileUtil.optimizedPathFor(this.dexFile, this.optimizedDir);
-        if (!ShareTinkerInternals.isArkHotRuning()) {
-            if (useInterpretMode) { // VM_IS_ART &amp;amp;&amp;amp; L &amp;lt;= SDK_INT &amp;lt;= N &amp;amp;&amp;amp; isSystemOTA
-                interpretDex2Oat(dexFile.getAbsolutePath(), optimizedPath, targetISA);
-            } else if (TinkerApplication.getInstance().isUseInterpretModeOnSupported32BitSystem() &amp;amp;&amp;amp;
-                    ShareTinkerInternals.isVersionInRange(21, 25, true) &amp;amp;&amp;amp;
-                    ShareTinkerInternals.is32BitEnv()
-            ) { // L &amp;lt;= SDK_INT &amp;lt;= N
-                interpretDex2Oat(dexFile.getAbsolutePath(), optimizedPath, targetISA);
-                DexFile.loadDex(dexFile.getAbsolutePath(), optimizedPath, 0);
-            } else if (ShareTinkerInternals.isNewerOrEqualThanVersion(26, true)) { // SDK_INT &amp;gt;= O
-                if (ShareTinkerInternals.isNewerOrEqualThanVersion(29, true)) { // SDK_INT &amp;gt;= Q
-                    NewClassLoaderInjector.triggerDex2Oat(context, optimizedDir,
-                            useDLC, dexFile.getAbsolutePath());
-                    triggerPMDexOptOnDemand(context, dexFile.getAbsolutePath(), optimizedPath);
-                } else {
-                    NewClassLoaderInjector.triggerDex2Oat(context, optimizedDir,
-                            useDLC, dexFile.getAbsolutePath());
-                }
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public void run() {
+    ...
+    synchronized (mNotificationLock) {
+        try {
+            ...
+            NotificationRecord old = mNotificationsByKey.get(key);
+            ...
+            int index = indexOfNotificationLocked(n.getKey());
+            if (index &amp;lt; 0) {
+                mNotificationList.add(r);
+                ...
             } else {
-                DexFile.loadDex(dexFile.getAbsolutePath(), optimizedPath, 0);
+                old = mNotificationList.get(index);  // Potentially *changes* old
+                mNotificationList.set(index, r);
+                ...
+            }
+
+            mNotificationsByKey.put(n.getKey(), r);
+            ...
+            if (notification.getSmallIcon() != null) {
+                StatusBarNotification oldSbn = (old != null) ? old.getSbn() : null;
+                mListeners.notifyPostedLocked(r, old);
+                ...
+            } else {
+                ...
+            }
+            ...
+        } finally {
+            ...
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里mListeners是NotificationListeners：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationListeners.java
+public void notifyPostedLocked(NotificationRecord r, NotificationRecord old) {
+    notifyPostedLocked(r, old, true);
+}
+
+void notifyPostedLocked(NotificationRecord r, NotificationRecord old,
+        boolean notifyAllListeners) {
+    ...
+    try {
+        StatusBarNotification sbn = r.getSbn();
+        StatusBarNotification oldSbn = (old != null) ? old.getSbn() : null;
+        TrimCache trimCache = new TrimCache(sbn);
+
+        for (final ManagedServiceInfo info : getServices()) {
+            ...
+            final StatusBarNotification sbnToPost = trimCache.ForListener(info);
+            mHandler.post(() -&amp;gt; notifyPosted(info, sbnToPost, update));
+        }
+    } catch (Exception e) {
+        Slog.e(TAG, &quot;Could not notify listeners for &quot; + r.getKey(), e);
+    }
+}
+
+private void notifyPosted(final ManagedServiceInfo info,
+        final StatusBarNotification sbn, NotificationRankingUpdate rankingUpdate) {
+    final INotificationListener listener = (INotificationListener) info.service;
+    StatusBarNotificationHolder sbnHolder = new StatusBarNotificationHolder(sbn);
+    try {
+        listener.onNotificationPosted(sbnHolder, rankingUpdate);
+    } catch (RemoteException ex) {
+        Slog.e(TAG, &quot;unable to notify listener (posted): &quot; + info, ex);
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;NotificationListenerService中封装了NMS与客户端通信：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationListenerService.java
+protected class NotificationListenerWrapper extends INotificationListener.Stub {
+    @Override
+    public void onNotificationPosted(IStatusBarNotificationHolder sbnHolder,
+            NotificationRankingUpdate update) {
+        ...
+        synchronized (mLock) {
+            applyUpdateLocked(update);
+            if (sbn != null) {
+                SomeArgs args = SomeArgs.obtain();
+                args.arg1 = sbn;
+                args.arg2 = mRankingMap;
+                mHandler.obtainMessage(MyHandler.MSG_ON_NOTIFICATION_POSTED,
+                        args).sendToTarget();
+            } else {
+                // still pass along the ranking map, it may contain other information
+                mHandler.obtainMessage(MyHandler.MSG_ON_NOTIFICATION_RANKING_UPDATE,
+                        mRankingMap).sendToTarget();
             }
         }
-    } catch (final Throwable e) {
     }
-}
-&lt;/code&gt;&lt;/pre&gt;
 
-&lt;ol&gt;
-  &lt;li&gt;interpretDex2Oat是通过新创建一个进程执行command来执行dex2oat：&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;final List&amp;lt;String&amp;gt; commandAndParams = new ArrayList&amp;lt;&amp;gt;();
-commandAndParams.add(&quot;dex2oat&quot;);
-// for 7.1.1, duplicate class fix
-if (Build.VERSION.SDK_INT &amp;gt;= 24) {
-    commandAndParams.add(&quot;--runtime-arg&quot;);
-    commandAndParams.add(&quot;-classpath&quot;);
-    commandAndParams.add(&quot;--runtime-arg&quot;);
-    commandAndParams.add(&quot;&amp;amp;&quot;);
-}
-commandAndParams.add(&quot;--dex-file=&quot; + dexFilePath);
-commandAndParams.add(&quot;--oat-file=&quot; + oatFilePath);
-commandAndParams.add(&quot;--instruction-set=&quot; + targetISA);
-if (Build.VERSION.SDK_INT &amp;gt; 25) {
-    commandAndParams.add(&quot;--compiler-filter=quicken&quot;);
-} else {
-    commandAndParams.add(&quot;--compiler-filter=interpret-only&quot;);
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;DexFile.loadDex加载dex文件触发dex2oat。&lt;/li&gt;
-  &lt;li&gt;NewClassLoaderInjector.triggerDex2Oat创建新的ClassLoader触发dex2oat。&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;h1 id=&quot;3tinker-android-loader&quot;&gt;3.tinker-android-loader&lt;/h1&gt;
-
-&lt;p&gt;这个类库的核心功能是加载已合成好的Patch，其流程如下：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/HotFix/tinker2.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;在tryLoadPatchFilesInternal方法中会读取合成patch时写入本地的PatchInfo，这里介绍各个字段含义：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;patchInfo = SharePatchInfo.readAndCheckPropertyWithLock(patchInfoFile, patchInfoLockFile);
-
-public SharePatchInfo(String oldVer, String newVer, boolean isProtectedApp, boolean useCustomPatch, String versionToRemove, String finger, String oatDir, boolean isRemoveInterpretOATDir) {
-    this.oldVersion = oldVer; // 旧patch的md5值
-    this.newVersion = newVer; // 新patch的md5值
-    this.isProtectedApp = isProtectedApp; // 是否为加固应用
-    this.versionToRemove = versionToRemove; // 要删除patch的md5值
-    this.fingerPrint = finger; // Build.FINGERPRINT
-    this.oatDir = oatDir; // 默认&quot;odex&quot;，在Android O及以下OTA升级时会被置为&quot;interpet&quot;
-    this.isRemoveInterpretOATDir = isRemoveInterpretOATDir; // 是否删除&quot;interpet&quot;
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;接下来会做一系列校验工作：&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;TinkerDexLoader.checkComplete(..)&lt;/th&gt;
-      &lt;th&gt;校验要加载的dex以及对应的的odex是否存在&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;TinkerArkHotLoader.checkComplete(..)&lt;/td&gt;
-      &lt;td&gt;适配华为方舟编译器&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;TinkerSoLoader.checkComplete(..)&lt;/td&gt;
-      &lt;td&gt;校验so库合法性&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;TinkerResourceLoader.checkComplete(..)&lt;/td&gt;
-      &lt;td&gt;校验补丁资源正确性&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;p&gt;最后会加载dex和资源文件：&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;TinkerDexLoader.loadTinkerJars(..)&lt;/th&gt;
-      &lt;th&gt;加载dex，isSystemOTA==true以解释模式加载&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;TinkerArkHotLoader.loadTinkerArkHot(..)&lt;/td&gt;
-      &lt;td&gt;适配华为方舟编译器&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;TinkerResourceLoader.loadTinkerResources(..)&lt;/td&gt;
-      &lt;td&gt;加载资源文件&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;h2 id=&quot;31-loadtinkerjars&quot;&gt;3.1 loadTinkerJars&lt;/h2&gt;
-
-&lt;p&gt;在Android N及以上版本且非加固应用，会重新创建一个ClassLoader：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// SystemClassLoaderAdder.java
-public static void installDexes(Application application, ClassLoader loader, File dexOptDir, List&amp;lt;File&amp;gt; files,
-                                boolean isProtectedApp, boolean useDLC) throws Throwable {
-    if (!files.isEmpty()) {
+    @Override
+    public void onNotificationRemoved(IStatusBarNotificationHolder sbnHolder,
+            NotificationRankingUpdate update, NotificationStats stats, int reason) {
         ...
-        if (Build.VERSION.SDK_INT &amp;gt;= 24 &amp;amp;&amp;amp; !isProtectedApp) { // SDK_INT &amp;gt;= N
-            classLoader = NewClassLoaderInjector.inject(application, loader, dexOptDir, useDLC, files);
-        } else {
-            injectDexesInternal(classLoader, files, dexOptDir);
+        synchronized (mLock) {
+            applyUpdateLocked(update);
+            SomeArgs args = SomeArgs.obtain();
+            args.arg1 = sbn;
+            args.arg2 = mRankingMap;
+            args.arg3 = reason;
+            args.arg4 = stats;
+            mHandler.obtainMessage(MyHandler.MSG_ON_NOTIFICATION_REMOVED,
+                    args).sendToTarget();
         }
-        ...
+    }
+
+    ...
+}
+
+public IBinder onBind(Intent intent) {
+    if (mWrapper == null) {
+        mWrapper = new NotificationListenerWrapper();
+    }
+    return mWrapper;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;应用开发者需要申请BIND_NOTIFICATION_LISTENER_SERVICE权限，并在AndroidManifest.xml声明服务。&lt;/p&gt;
+
+&lt;h1 id=&quot;3systemui显示通知&quot;&gt;3.SystemUI显示通知&lt;/h1&gt;
+
+&lt;p&gt;SystemUI收到新通知：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationListener.java
+public void onNotificationPosted(final StatusBarNotification sbn,
+        final RankingMap rankingMap) {
+    if (DEBUG) Log.d(TAG, &quot;onNotificationPosted: &quot; + sbn);
+    if (sbn != null &amp;amp;&amp;amp; !onPluginNotificationPosted(sbn, rankingMap)) {
+        mMainExecutor.execute(() -&amp;gt; {
+            processForRemoteInput(sbn.getNotification(), mContext);
+
+            for (NotificationHandler handler : mNotificationHandlers) {
+                handler.onNotificationPosted(sbn, rankingMap);
+            }
+        });
     }
 }
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;p&gt;在Android O_MR1及以上版本可以指定创建DelegateLastClassLoader：&lt;/p&gt;
+&lt;p&gt;创建NotificationEntry，保存到mAllNotifications，&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NewClassLoaderInjector.java
-public static ClassLoader inject(Application app, ClassLoader oldClassLoader, File dexOptDir,
-                                 boolean useDLC, List&amp;lt;File&amp;gt; patchedDexes) throws Throwable {
-    final String[] patchedDexPaths = new String[patchedDexes.size()];
-    for (int i = 0; i &amp;lt; patchedDexPaths.length; ++i) {
-        patchedDexPaths[i] = patchedDexes.get(i).getAbsolutePath();
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationEntryManager.java
+private final NotificationHandler mNotifListener = new NotificationHandler() {
+    @Override
+    public void onNotificationPosted(StatusBarNotification sbn, RankingMap rankingMap) {
+        final boolean isUpdateToInflatedNotif = mActiveNotifications.containsKey(sbn.getKey());
+        if (isUpdateToInflatedNotif) {
+            updateNotification(sbn, rankingMap);
+        } else {
+            addNotification(sbn, rankingMap);
+        }
     }
-    final ClassLoader newClassLoader = createNewClassLoader(oldClassLoader,
-          dexOptDir, useDLC, true, patchedDexPaths);
-    doInject(app, newClassLoader);
-    return newClassLoader;
+};
+
+public void addNotification(StatusBarNotification notification, RankingMap ranking) {
+    try {
+        addNotificationInternal(notification, ranking);
+    } catch (InflationException e) {
+        handleInflationException(notification, e);
+    }
 }
 
-private static ClassLoader createNewClassLoader(ClassLoader oldClassLoader,
-                                                File dexOptDir,
-                                                boolean useDLC,
-                                                boolean forActualLoading,
-                                                String... patchDexPaths) throws Throwable {
-    ...
-    final String combinedDexPath = dexPathBuilder.toString(); // 拼接patchDexPaths
-    ...
-    final String combinedLibraryPath = libraryPathBuilder.toString();
+private void addNotificationInternal(
+        StatusBarNotification notification,
+        RankingMap rankingMap) throws InflationException {
+    Trace.beginSection(&quot;NotificationEntryManager.addNotificationInternal&quot;);
+    String key = notification.getKey();
+    if (DEBUG) {
+        Log.d(TAG, &quot;addNotification key=&quot; + key);
+    }
 
-    ClassLoader result = null;
-    if (useDLC &amp;amp;&amp;amp; ShareTinkerInternals.isNewerOrEqualThanVersion(27, true)) { // SDK_INT &amp;gt;= O_MR1
-        if (ShareTinkerInternals.isNewerOrEqualThanVersion(31, true)) { // SDK_INT &amp;gt;= S
-            result = new DelegateLastClassLoader(combinedDexPath, combinedLibraryPath, oldClassLoader);
-        } else {
-            result = new DelegateLastClassLoader(combinedDexPath, combinedLibraryPath, ClassLoader.getSystemClassLoader());
-            final Field parentField = ClassLoader.class.getDeclaredField(&quot;parent&quot;);
-            parentField.setAccessible(true);
-            parentField.set(result, oldClassLoader);
-        }
+    updateRankingAndSort(rankingMap, &quot;addNotificationInternal&quot;);
+
+    Ranking ranking = new Ranking();
+    rankingMap.getRanking(key, ranking);
+
+    NotificationEntry entry = mPendingNotifications.get(key);
+    if (entry != null) {
+        entry.setSbn(notification);
+        entry.setRanking(ranking);
     } else {
-        result = new TinkerClassLoader(combinedDexPath, dexOptDir, combinedLibraryPath, oldClassLoader);
-    }
-    ...
-    return result;
-}
-&lt;/code&gt;&lt;/pre&gt;
+        entry = new NotificationEntry(
+                notification,
+                ranking,
+                SystemClock.uptimeMillis());
+        mAllNotifications.add(entry);
+        mLeakDetector.trackInstance(entry);
 
-&lt;p&gt;doInject方法中会替换ContextImpl，LoadedApk，Resources，DrawableInflater类的mClassLoader成员变量。&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private static void doInject(Application app, ClassLoader classLoader) throws Throwable {
-    Thread.currentThread().setContextClassLoader(classLoader);
-
-    final Context baseContext = (Context) findField(app.getClass(), &quot;mBase&quot;).get(app);
-    try {
-        findField(baseContext.getClass(), &quot;mClassLoader&quot;).set(baseContext, classLoader);
-    } catch (Throwable ignored) {
-        // There&apos;s no mClassLoader field in ContextImpl before Android O.
-        // However we should try our best to replace this field in case some
-        // customized system has one.
-    }
-
-    final Object basePackageInfo = findField(baseContext.getClass(), &quot;mPackageInfo&quot;).get(baseContext);
-    findField(basePackageInfo.getClass(), &quot;mClassLoader&quot;).set(basePackageInfo, classLoader);
-
-    final Resources res = app.getResources();
-    try {
-        findField(res.getClass(), &quot;mClassLoader&quot;).set(res, classLoader);
-    } catch (Throwable ignored) {
-        // Ignored.
-    }
-    try {
-        final Object drawableInflater = findField(res.getClass(), &quot;mDrawableInflater&quot;).get(res);
-        if (drawableInflater != null) {
-            findField(drawableInflater.getClass(), &quot;mClassLoader&quot;).set(drawableInflater, classLoader);
+        for (NotifCollectionListener listener : mNotifCollectionListeners) {
+            listener.onEntryInit(entry);
         }
-    } catch (Throwable ignored) {
-        // Ignored.
+    }
+
+    for (NotifCollectionListener listener : mNotifCollectionListeners) {
+        listener.onEntryBind(entry, notification);
+    }
+
+    // Construct the expanded view.
+    if (!mNotifPipelineFlags.isNewPipelineEnabled()) {
+        // 旧方案，直接inflateViews
+        mNotificationRowBinderLazy.get().inflateViews(entry, null, mInflationCallback);
+    }
+
+    mPendingNotifications.put(key, entry);
+    mLogger.logNotifAdded(entry.getKey());
+    for (NotificationEntryListener listener : mNotificationEntryListeners) {
+        listener.onPendingEntryAdded(entry);
+    }
+    for (NotifCollectionListener listener : mNotifCollectionListeners) {
+        listener.onEntryAdded(entry);
+    }
+    for (NotifCollectionListener listener : mNotifCollectionListeners) {
+        listener.onRankingApplied();
+    }
+    Trace.endSection();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;通知布局inflate分为新旧两个方案，最终都会调用到 NotificationRowBinderImpl 的 inflateViews 方法：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationRowBinderImpl.java
+public void inflateViews(
+        NotificationEntry entry,
+        NotifInflater.Params params,
+        NotificationRowContentBinder.InflationCallback callback)
+        throws InflationException {
+    if (params == null) {
+        // weak assert that the params should always be passed in the new pipeline
+        mNotifPipelineFlags.checkLegacyPipelineEnabled();
+    }
+    ViewGroup parent = mListContainer.getViewParentForNotification(entry);
+
+    if (entry.rowExists()) {
+        mIconManager.updateIcons(entry);
+        ExpandableNotificationRow row = entry.getRow();
+        row.reset();
+        updateRow(entry, row);
+        inflateContentViews(entry, params, row, callback);
+    } else {
+        mIconManager.createIcons(entry);
+        mRowInflaterTaskProvider.get().inflate(mContext, parent, entry,
+                row -&amp;gt; {
+                    // Setup the controller for the view.
+                    ExpandableNotificationRowComponent component =
+                            mExpandableNotificationRowComponentBuilder
+                                    .expandableNotificationRow(row)
+                                    .notificationEntry(entry)
+                                    .onExpandClickListener(mPresenter)
+                                    .listContainer(mListContainer)
+                                    .build();
+                    ExpandableNotificationRowController rowController =
+                            component.getExpandableNotificationRowController();
+                    rowController.init(entry);
+                    entry.setRowController(rowController);
+                    bindRow(entry, row);
+                    updateRow(entry, row);
+                    inflateContentViews(entry, params, row, callback);
+                });
     }
 }
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;h2 id=&quot;32-loadtinkerresources&quot;&gt;3.2 loadTinkerResources&lt;/h2&gt;
+&lt;p&gt;调用RowInflaterTask的inflate方法：&lt;/p&gt;
 
-&lt;ol&gt;
-  &lt;li&gt;将LoadedApk实例中mResDir成员变量设为新资源包路径。&lt;/li&gt;
-&lt;/ol&gt;
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// RowInflaterTask.java
+public void inflate(Context context, ViewGroup parent, NotificationEntry entry,
+        RowInflationFinishedListener listener) {
+    if (TRACE_ORIGIN) {
+        mInflateOrigin = new Throwable(&quot;inflate requested here&quot;);
+    }
+    mListener = listener;
+    AsyncLayoutInflater inflater = new AsyncLayoutInflater(context);
+    mEntry = entry;
+    entry.setInflationTask(this);
+    inflater.inflate(R.layout.status_bar_notification_row, parent, this);
+}
 
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// 反射ActivityThread的mPackages和mResourcePackages成员变量获取到LoadedApk
-final ArrayMap&amp;lt;String, WeakReference&amp;lt;LoadedApk&amp;gt;&amp;gt; mPackages = new ArrayMap&amp;lt;&amp;gt;();
-final ArrayMap&amp;lt;String, WeakReference&amp;lt;LoadedApk&amp;gt;&amp;gt; mResourcePackages = new ArrayMap&amp;lt;&amp;gt;();
-// 替换LoadedApk的mResDir
-private String mResDir;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;创建新的AssetManager实例，并设置它的资源路径为新资源包路径。&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;newAssetManager = (AssetManager) newAssetManagerCtor.newInstance();
-// Create a new AssetManager instance and point it to the resources installed under
-if (((Integer) addAssetPathMethod.invoke(newAssetManager, externalResourceFile)) == 0) {
-    throw new IllegalStateException(&quot;Could not create new AssetManager&quot;);
+public void onInflateFinished(View view, int resid, ViewGroup parent) {
+    if (!mCancelled) {
+        try {
+            mEntry.onInflationTaskFinished();
+            mListener.onInflationFinished((ExpandableNotificationRow) view);
+        } catch (Throwable t) {
+            if (mInflateOrigin != null) {
+                Log.e(TAG, &quot;Error in inflation finished listener: &quot; + t, mInflateOrigin);
+                t.addSuppressed(mInflateOrigin);
+            }
+            throw t;
+        }
+    }
 }
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;ol&gt;
-  &lt;li&gt;将Resources.mAssets设为新创建的AssetManager，清除原app的Resources中typedArray缓存，刷新资源配置。&lt;/li&gt;
-&lt;/ol&gt;
+&lt;p&gt;在SystemUI中通知的根布局是status_bar_notification_row，根布局inflate完成后会继续执行inflateContentViews方法，这里涉及到通知布局3种形态：&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// 反射ResourcesManager的mResourceReferences成员变量获取到Resources
-private final ArrayList&amp;lt;WeakReference&amp;lt;Resources&amp;gt;&amp;gt; mResourceReferences = new ArrayList&amp;lt;&amp;gt;();
-// 反射Resources的mResourcesImpl成员变量获取到ResourcesImpl
-private ResourcesImpl mResourcesImpl;
-// 反射ResourcesImpl的mAssets成员变量替换为newAssetManager
-final AssetManager mAssets;
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private void inflateContentViews(
+        NotificationEntry entry,
+        NotifInflater.Params inflaterParams,
+        ExpandableNotificationRow row,
+        @Nullable NotificationRowContentBinder.InflationCallback inflationCallback) {
+    final boolean useIncreasedCollapsedHeight =
+            mMessagingUtil.isImportantMessaging(entry.getSbn(), entry.getImportance());
+    final boolean isLowPriority; // 1.显示成单行
+    if (inflaterParams != null) {
+        // NEW pipeline
+        isLowPriority = inflaterParams.isLowPriority();
+    } else {
+        // LEGACY pipeline
+        mNotifPipelineFlags.checkLegacyPipelineEnabled();
+        // If this is our first time inflating, we don&apos;t actually know the groupings for real
+        // yet, so we might actually inflate a low priority content view incorrectly here and
+        // have to correct it later in the pipeline. On subsequent inflations (i.e. updates),
+        // this should inflate the correct view.
+        isLowPriority = mLowPriorityInflationHelper.shouldUseLowPriorityView(entry);
+    }
 
-// 清空Resources的typedArray缓存，循环调用其acquire方法
-final SynchronizedPool&amp;lt;TypedArray&amp;gt; mTypedArrayPool = new SynchronizedPool&amp;lt;&amp;gt;(5);
+    RowContentBindParams params = mRowContentBindStage.getStageParams(entry);
+    params.setUseIncreasedCollapsedHeight(useIncreasedCollapsedHeight);
+    params.setUseLowPriority(isLowPriority);
 
-// 刷新资源配置，调用updateConfiguration方法
-resources.updateConfiguration(resources.getConfiguration(), resources.getDisplayMetrics());
+    if (mNotificationLockscreenUserManager.needsRedaction(entry)) {
+        params.requireContentViews(FLAG_CONTENT_VIEW_PUBLIC); // 2.隐藏通知内容
+    } else {
+        params.markContentViewsFreeable(FLAG_CONTENT_VIEW_PUBLIC); // 3.正常显示
+    }
+
+    params.rebindAllContentViews();
+    mRowContentBindStage.requestRebind(entry, en -&amp;gt; {
+        row.setUsesIncreasedCollapsedHeight(useIncreasedCollapsedHeight);
+        row.setIsLowPriority(isLowPriority);
+        if (inflationCallback != null) {
+            inflationCallback.onAsyncInflationFinished(en);
+        }
+    });
+}
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;h1 id=&quot;4小结&quot;&gt;4.小结&lt;/h1&gt;
+&lt;p&gt;最终会调用到NotificationContentInflater的bindContent方法，通过创建AsyncInflationTask异步inflate布局：&lt;/p&gt;
 
-&lt;p&gt;Q：为什么要基于patch合成新的dex？&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public void bindContent(
+        NotificationEntry entry,
+        ExpandableNotificationRow row,
+        @InflationFlag int contentToBind,
+        BindParams bindParams,
+        boolean forceInflate,
+        @Nullable InflationCallback callback) {
+    if (row.isRemoved()) {
+        // We don&apos;t want to reinflate anything for removed notifications. Otherwise views might
+        // be readded to the stack, leading to leaks. This may happen with low-priority groups
+        // where the removal of already removed children can lead to a reinflation.
+        return;
+    }
 
-&lt;p&gt;Qzone热修复方案为了规避Dalvik虚拟机pre-verify问题需要代码插桩做规避，直接影响了程序运行时性能，此外在Art虚拟机上还需要规避内存错乱的问题。tinker采用合成dex的方式可以规避以上两个问题。&lt;/p&gt;
+    StatusBarNotification sbn = entry.getSbn();
 
-&lt;p&gt;Q：为什么要替换PatchClassLoader？&lt;/p&gt;
+    // To check if the notification has inline image and preload inline image if necessary.
+    row.getImageResolver().preloadImages(sbn.getNotification());
 
-&lt;p&gt;dex2oat流程中传入profile文件，会生成app_image的base.art文件。app image的作用是记录已经编译好的“热代码”，并且在启动时一次性把它们加载到缓存，预先加载代替用时查找以提升应用的性能。也就是说系统在查找类时会直接使用base.apk中的class，这样一来热修复机制就失效了，所以要创建新的ClassLoader。&lt;/p&gt;
+    if (forceInflate) {
+        mRemoteViewCache.clearCache(entry);
+    }
 
-&lt;p&gt;Q：Android8.0之前系统OTA后加载补丁为什么会ANR？&lt;/p&gt;
+    // Cancel any pending frees on any view we&apos;re trying to bind since we should be bound after.
+    cancelContentViewFrees(row, contentToBind);
 
-&lt;p&gt;A：Android 8.0之前动态加载的dex会被以speed模式全量编译，系统OTA更新后导致旧的补丁dex的oat文件失效，此时运行app就会对它重新执行dex2oat，可能耗时比较久造成ANR。&lt;/p&gt;
+    AsyncInflationTask task = new AsyncInflationTask(
+            mBgExecutor,
+            mInflateSynchronously,
+            contentToBind,
+            mRemoteViewCache,
+            entry,
+            mConversationProcessor,
+            row,
+            bindParams.isLowPriority,
+            bindParams.usesIncreasedHeight,
+            bindParams.usesIncreasedHeadsUpHeight,
+            callback,
+            mRemoteInputManager.getRemoteViewsOnClickHandler(),
+            mIsMediaInQS,
+            mSmartReplyStateInflater);
+    if (mInflateSynchronously) {
+        task.onPostExecute(task.doInBackground());
+    } else {
+        task.executeOnExecutor(mBgExecutor);
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
 
-&lt;h1 id=&quot;参考文档&quot;&gt;参考文档&lt;/h1&gt;
+&lt;p&gt;AsyncInflationTask是一个AsyncTask，在onPostExecute回调中调用apply方法：&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://github.com/WeMobileDev/article/blob/master/微信Android热补丁实践演进之路.md&quot;&gt;微信Android热补丁实践演进之路&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://mp.weixin.qq.com/s?__biz=MzAwNDY1ODY2OQ==&amp;amp;mid=2649286341&amp;amp;idx=1&amp;amp;sn=054d595af6e824cbe4edd79427fc2706#rd&quot;&gt;Android N混合编译与对热补丁影响解析&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://mp.weixin.qq.com/s?__biz=MzAwNDY1ODY2OQ==&amp;amp;mid=2649286426&amp;amp;idx=1&amp;amp;sn=eb75349c0c3663f10fbdd74ef87be338&amp;amp;chksm=8334c398b4434a8e6933ddb4fda4a4f06c729c7d2ffef37e4598cb90f4602f5310486b7f95ff#rd&quot;&gt;ART下的方法内联策略及其对Android热修复方案的影响分析&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://juejin.cn/post/6971232987681652773&quot;&gt;Android 热修复Tinker源码分析（一）补丁包的生成&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://juejin.cn/post/6980259462036586526&quot;&gt;Android 热修复Tinker源码分析（二）补丁包的合成&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://juejin.cn/post/6980259506097750030&quot;&gt;Android 热修复Tinker源码分析（三）补丁的加载&lt;/a&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private static CancellationSignal apply(
+        Executor bgExecutor,
+        boolean inflateSynchronously,
+        InflationProgress result,
+        @InflationFlag int reInflateFlags,
+        NotifRemoteViewCache remoteViewCache,
+        NotificationEntry entry,
+        ExpandableNotificationRow row,
+        RemoteViews.InteractionHandler remoteViewClickHandler,
+        @Nullable InflationCallback callback) {
+    NotificationContentView privateLayout = row.getPrivateLayout();
+    NotificationContentView publicLayout = row.getPublicLayout();
+    final HashMap&amp;lt;Integer, CancellationSignal&amp;gt; runningInflations = new HashMap&amp;lt;&amp;gt;();
+
+    int flag = FLAG_CONTENT_VIEW_CONTRACTED;
+    if ((reInflateFlags &amp;amp; flag) != 0) {
+        boolean isNewView =
+                !canReapplyRemoteView(result.newContentView,
+                        remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_CONTRACTED));
+        ApplyCallback applyCallback = new ApplyCallback() {
+            @Override
+            public void setResultView(View v) {
+                result.inflatedContentView = v;
+            }
+
+            @Override
+            public RemoteViews getRemoteView() {
+                return result.newContentView;
+            }
+        };
+        applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
+                remoteViewCache, entry, row, isNewView, remoteViewClickHandler, callback,
+                privateLayout,  privateLayout.getContractedChild(),
+                privateLayout.getVisibleWrapper(
+                        NotificationContentView.VISIBLE_TYPE_CONTRACTED),
+                runningInflations, applyCallback);
+    }
+
+    flag = FLAG_CONTENT_VIEW_EXPANDED;
+    if ((reInflateFlags &amp;amp; flag) != 0) {
+        if (result.newExpandedView != null) {
+            boolean isNewView =
+                    !canReapplyRemoteView(result.newExpandedView,
+                            remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_EXPANDED));
+            ApplyCallback applyCallback = new ApplyCallback() {
+                @Override
+                public void setResultView(View v) {
+                    result.inflatedExpandedView = v;
+                }
+
+                @Override
+                public RemoteViews getRemoteView() {
+                    return result.newExpandedView;
+                }
+            };
+            applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
+                    remoteViewCache, entry, row, isNewView, remoteViewClickHandler,
+                    callback, privateLayout, privateLayout.getExpandedChild(),
+                    privateLayout.getVisibleWrapper(
+                            NotificationContentView.VISIBLE_TYPE_EXPANDED), runningInflations,
+                    applyCallback);
+        }
+    }
+
+    flag = FLAG_CONTENT_VIEW_HEADS_UP;
+    if ((reInflateFlags &amp;amp; flag) != 0) {
+        if (result.newHeadsUpView != null) {
+            boolean isNewView =
+                    !canReapplyRemoteView(result.newHeadsUpView,
+                            remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_HEADS_UP));
+            ApplyCallback applyCallback = new ApplyCallback() {
+                @Override
+                public void setResultView(View v) {
+                    result.inflatedHeadsUpView = v;
+                }
+
+                @Override
+                public RemoteViews getRemoteView() {
+                    return result.newHeadsUpView;
+                }
+            };
+            applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
+                    remoteViewCache, entry, row, isNewView, remoteViewClickHandler,
+                    callback, privateLayout, privateLayout.getHeadsUpChild(),
+                    privateLayout.getVisibleWrapper(
+                            VISIBLE_TYPE_HEADSUP), runningInflations,
+                    applyCallback);
+        }
+    }
+
+    flag = FLAG_CONTENT_VIEW_PUBLIC;
+    if ((reInflateFlags &amp;amp; flag) != 0) {
+        boolean isNewView =
+                !canReapplyRemoteView(result.newPublicView,
+                        remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_PUBLIC));
+        ApplyCallback applyCallback = new ApplyCallback() {
+            @Override
+            public void setResultView(View v) {
+                result.inflatedPublicView = v;
+            }
+
+            @Override
+            public RemoteViews getRemoteView() {
+                return result.newPublicView;
+            }
+        };
+        applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
+                remoteViewCache, entry, row, isNewView, remoteViewClickHandler, callback,
+                publicLayout, publicLayout.getContractedChild(),
+                publicLayout.getVisibleWrapper(NotificationContentView.VISIBLE_TYPE_CONTRACTED),
+                runningInflations, applyCallback);
+    }
+
+    // Let&apos;s try to finish, maybe nobody is even inflating anything
+    finishIfDone(result, reInflateFlags, remoteViewCache, runningInflations, callback, entry,
+            row);
+    CancellationSignal cancellationSignal = new CancellationSignal();
+    cancellationSignal.setOnCancelListener(
+            () -&amp;gt; runningInflations.values().forEach(CancellationSignal::cancel));
+
+    return cancellationSignal;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里根据条件会创建通知正常视图、大视图、悬浮通知视图、隐藏通知内容视图。这些视图全部inflate完成后才会调用到&lt;em&gt;finishIfDone方法。&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;至此通知相关的所有布局都inflate完成，最终会添加到&lt;em&gt;NotificationStackScrollLayout中显示出来。&lt;/em&gt;&lt;/p&gt;
 </description>
-        <pubDate>Fri, 29 Oct 2021 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2021/10/29/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/</link>
-        <guid isPermaLink="true">http://localhost:4000/2021/10/29/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/</guid>
+        <pubDate>Sun, 17 Apr 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/</guid>
         
         <category>Android</category>
         
-        <category>HotFix</category>
+        <category>SystemUI</category>
         
-        <category>Tinker</category>
+        <category>Notification</category>
         
         
       </item>
     
       <item>
-        <title>美团Robust热修复</title>
-        <description>&lt;p&gt;Github地址：&lt;a href=&quot;https://github.com/Meituan-Dianping/Robust&quot;&gt;https://github.com/Meituan-Dianping/Robust&lt;/a&gt;&lt;br /&gt;
-WIKI：&lt;a href=&quot;https://github.com/Meituan-Dianping/Robust/wiki&quot;&gt;https://github.com/Meituan-Dianping/Robust/wiki&lt;/a&gt;&lt;br /&gt;
-Instant Run原理：&lt;a href=&quot;https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/&quot;&gt;https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/&lt;/a&gt;&lt;/p&gt;
+        <title>SystemUI-字节码插桩</title>
+        <description>&lt;h1 id=&quot;1java_genrule介绍&quot;&gt;1.java_genrule介绍&lt;/h1&gt;
 
-&lt;p&gt;Robust的源码主要包括三大模块：&lt;/p&gt;
+&lt;p&gt;在阅读系统源码时，发现了一个有意思的工具lockedregioncodeinjection，从命名来看是对锁处理的地方做代码插桩，其使用的代码如下：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;java_genrule {
+    name: &quot;services.core.priorityboosted&quot;,
+    srcs: [&quot;:services.core.unboosted&quot;],
+    tools: [&quot;lockedregioncodeinjection&quot;],
+    cmd: &quot;$(location lockedregioncodeinjection) &quot; +
+        &quot;  --targets \&quot;Lcom/android/server/am/ActivityManagerService;,Lcom/android/server/wm/WindowManagerGlobalLock;\&quot; &quot; +
+        &quot;  --pre \&quot;com/android/server/am/ActivityManagerService.boostPriorityForLockedSection,com/android/server/wm/WindowManagerService.boostPriorityForLockedSection\&quot; &quot; +
+        &quot;  --post \&quot;com/android/server/am/ActivityManagerService.resetPriorityAfterLockedSection,com/android/server/wm/WindowManagerService.resetPriorityAfterLockedSection\&quot; &quot; +
+        &quot;  -o $(out) &quot; +
+        &quot;  -i $(in)&quot;,
+    out: [&quot;services.core.priorityboosted.jar&quot;],
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;从源码中查找 java_genrule 的定义：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;// genrule.go
+
+java_genrule is a genrule that can depend on other java_* objects.
+
+By default a java_genrule has a single variant that will run against the device variant of its dependencies and
+produce an output that can be used as an input to a device java rule.
+
+Specifying `host_supported: true` will produce two variants, one that uses device dependencies and one that uses
+host dependencies.  Each variant will run the command.
+
+Use a java_genrule instead of a genrule when it needs to depend on or be depended on by other java modules, unless
+the dependency is for a generated source file.
+
+Examples:
+
+Use a java_genrule to package generated java resources:
+
+    java_genrule {
+        name: &quot;generated_resources&quot;,
+        tools: [
+            &quot;generator&quot;,
+            &quot;soong_zip&quot;,
+        ],
+        srcs: [&quot;generator_inputs/**/*&quot;],
+        out: [&quot;generated_android_icu4j_resources.jar&quot;],
+        cmd: &quot;$(location generator) $(in) -o $(genDir) &quot; +
+            &quot;&amp;amp;&amp;amp; $(location soong_zip) -o $(out) -C $(genDir)/res -D $(genDir)/res&quot;,
+    }
+
+    java_library {
+        name: &quot;lib_with_generated_resources&quot;,
+        srcs: [&quot;src/**/*.java&quot;],
+        static_libs: [&quot;generated_resources&quot;],
+    }
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;大意是 java_genrule 是一个依赖其他 java_* 对象的生成规则，比如java_library。这里的cmd参数是要执行的命令，tools是命令中使用的工具，srcs是输入文件，out是输出文件。&lt;/p&gt;
+
+&lt;p&gt;接着查找lockedregioncodeinjection工具的位置：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-SQL&quot;&gt;java_binary_host {
+    name: &quot;lockedregioncodeinjection&quot;,
+    manifest: &quot;manifest.txt&quot;,
+    srcs: [&quot;src/**/*.java&quot;],
+    static_libs: [
+        &quot;asm-9.2&quot;,
+        &quot;asm-commons-9.2&quot;,
+        &quot;asm-tree-9.2&quot;,
+        &quot;asm-analysis-9.2&quot;,
+        &quot;guava-21.0&quot;,
+    ],
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;可以看到lockedregioncodeinjection是一个可运行的jar包，其入口定义在manifest.txt：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;Main-Class: lockedregioncodeinjection.Main
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;整个jar包入口在工程的Main类中：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public static void main(String[] args) throws IOException {
+    String inJar = null;
+    String outJar = null;
+
+    String legacyTargets = null;
+    String legacyPreMethods = null;
+    String legacyPostMethods = null;
+    for (int i = 0; i &amp;lt; args.length; i++) {
+        if (&quot;-i&quot;.equals(args[i].trim())) {
+            i++;
+            inJar = args[i].trim();
+        } else if (&quot;-o&quot;.equals(args[i].trim())) {
+            i++;
+            outJar = args[i].trim();
+        } else if (&quot;--targets&quot;.equals(args[i].trim())) {
+            i++;
+            legacyTargets = args[i].trim();
+        } else if (&quot;--pre&quot;.equals(args[i].trim())) {
+            i++;
+            legacyPreMethods = args[i].trim();
+        } else if (&quot;--post&quot;.equals(args[i].trim())) {
+            i++;
+            legacyPostMethods = args[i].trim();
+        }
+
+    }
+
+    // TODO(acleung): Better help message than asserts.
+    assert inJar != null;
+    assert outJar != null;
+    assert legacyTargets == null || (legacyPreMethods != null &amp;amp;&amp;amp; legacyPostMethods != null);
+
+    ZipFile zipSrc = new ZipFile(inJar);
+    ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(outJar));
+    List&amp;lt;LockTarget&amp;gt; targets = null;
+    if (legacyTargets != null) {
+        targets = Utils.getTargetsFromLegacyJackConfig(legacyTargets, legacyPreMethods,
+                legacyPostMethods);
+    } else {
+        targets = Collections.emptyList();
+    }
+
+    Enumeration&amp;lt;? extends ZipEntry&amp;gt; srcEntries = zipSrc.entries();
+    while (srcEntries.hasMoreElements()) {
+        ZipEntry entry = srcEntries.nextElement();
+        ZipEntry newEntry = new ZipEntry(entry.getName());
+        newEntry.setTime(entry.getTime());
+        zos.putNextEntry(newEntry);
+        BufferedInputStream bis = new BufferedInputStream(zipSrc.getInputStream(entry));
+
+        if (entry.getName().endsWith(&quot;.class&quot;)) {
+            convert(bis, zos, targets);
+        } else {
+            while (bis.available() &amp;gt; 0) {
+                zos.write(bis.read());
+            }
+            zos.closeEntry();
+            bis.close();
+        }
+    }
+    zos.finish();
+    zos.close();
+    zipSrc.close();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;核心逻辑为解析命令参数，对代码做插桩。&lt;/p&gt;
+
+&lt;p&gt;如何使用生成的 services.core.priorityboosted.jar 呢？可以看到 java_genrule 可以像其他 java_* 对象一样，直接作为编译依赖项。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;java_library {
+    name: &quot;services.core&quot;,
+    static_libs: [&quot;services.core.priorityboosted&quot;],
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;2应用字节码插桩&quot;&gt;2.应用字节码插桩&lt;/h1&gt;
+
+&lt;p&gt;无论是Gradle编译还是bp编译，其核心流程都是一致的，在编译前都会生成基于拓扑排序的编译依赖关系。基于SystemUI的Android.bp文件，来分析下编译依赖关系：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;android_app {
+    name: &quot;SystemUI&quot;,
+    defaults: [
+
+    ],
+    static_libs: [
+        &quot;SystemUI-core&quot;,
+    ],
+    resource_dirs: [],
+
+    platform_apis: true,
+    system_ext_specific: true,
+    certificate: &quot;platform&quot;,
+    privileged: true,
+
+    libs: [
+        &quot;android.car&quot;,
+        &quot;ims-common&quot;,
+        &quot;extphonelib&quot;,
+    ],
+    enforce_uses_libs: false,
+
+    kotlincflags: [&quot;-Xjvm-default=enable&quot;],
+
+    dxflags: [&quot;--multi-dex&quot;],
+    required: [
+        &quot;privapp_whitelist_com.android.systemui&quot;,
+    ],
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;可以看到编译SystemUI.apk主要依赖SystemUI-core，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;android_app {
+    name: &quot;SystemUI&quot;,
+    static_libs: [
+        &quot;SystemUI-core&quot;,
+    ],
+    resource_dirs: [],
+
+    platform_apis: true,
+    product_specific: true,
+    certificate: &quot;platform&quot;,
+    privileged: true,
+
+    optimize: {
+        proguard_flags_files: [&quot;proguard.flags&quot;],
+    },
+
+    libs: [
+        &quot;android.car&quot;,
+        &quot;android.car.userlib&quot;,
+        &quot;ims-common&quot;,
+        &quot;telephony-common&quot;,
+        &quot;telephony-ext&quot;,
+        &quot;miuisdk&quot;,
+    ],
+
+    kotlincflags: [&quot;-Xjvm-default=enable&quot;],
+
+    dxflags: [&quot;--multi-dex&quot;],
+    required: [&quot;privapp_whitelist_com.android.systemui&quot;],
+
+}
+
+android_library {
+    name: &quot;SystemUI-core&quot;,
+    srcs: [
+        &quot;src/**/*.kt&quot;,
+        &quot;src/**/*.java&quot;,
+        &quot;src/**/I*.aidl&quot;,
+    ],
+    resource_dirs: [
+        &quot;res-keyguard&quot;,
+        &quot;res&quot;,
+    ],
+    static_libs: [
+        &quot;SystemUIPluginLib&quot;,
+        &quot;SystemUISharedLib&quot;,
+        &quot;SettingsLib&quot;,
+        &quot;androidx.legacy_legacy-support-v4&quot;,
+        &quot;androidx.recyclerview_recyclerview&quot;,
+        &quot;androidx.preference_preference&quot;,
+        &quot;androidx.appcompat_appcompat&quot;,
+        &quot;androidx.mediarouter_mediarouter&quot;,
+        &quot;androidx.palette_palette&quot;,
+        &quot;androidx.legacy_legacy-preference-v14&quot;,
+        &quot;androidx.leanback_leanback&quot;,
+        &quot;androidx.slice_slice-core&quot;,
+        &quot;androidx.slice_slice-view&quot;,
+        &quot;androidx.slice_slice-builders&quot;,
+        &quot;androidx.arch.core_core-runtime&quot;,
+        &quot;androidx.lifecycle_lifecycle-extensions&quot;,
+        &quot;androidx.dynamicanimation_dynamicanimation&quot;,
+        &quot;androidx-constraintlayout_constraintlayout&quot;,
+        &quot;iconloader_base&quot;,
+        &quot;SystemUI-tags&quot;,
+        &quot;SystemUI-proto&quot;,
+        &quot;dagger2-2.19&quot;,
+        &quot;jsr330&quot;
+    ],
+    manifest: &quot;AndroidManifest.xml&quot;,
+
+    libs: [
+        &quot;android.car&quot;,
+        &quot;android.car.userlib&quot;,
+        &quot;telephony-common&quot;,
+        &quot;telephony-ext&quot;,
+        &quot;ims-common&quot;,
+        &quot;miuisdk&quot;,
+    ],
+
+    kotlincflags: [&quot;-Xjvm-default=enable&quot;],
+
+    plugins: [&quot;dagger2-compiler-2.19&quot;],
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;而SystemUI-core是一个jar包，可以在这二者之间插入java_genrule实现代码插桩，示例如下：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;genrule {
+    name: &quot;SystemUI-codeinjection&quot;,
+    srcs: [&quot;:SystemUI-core&quot;],
+    tools: [&quot;xx&quot;],
+    cmd: &quot;xx&quot;
+    out: [&quot;SystemUI-core-codeinjection.jar&quot;],
+}
+
+android_app {
+    name: &quot;SystemUI&quot;,
+    static_libs: [
+        &quot;SystemUI-codeinjection&quot;,
+    ],
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+        <pubDate>Mon, 28 Mar 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/03/28/SystemUI-%E5%AD%97%E8%8A%82%E7%A0%81%E6%8F%92%E6%A1%A9/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/03/28/SystemUI-%E5%AD%97%E8%8A%82%E7%A0%81%E6%8F%92%E6%A1%A9/</guid>
+        
+        <category>Android</category>
+        
+        <category>SystemUI</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>SystemUI-支持gradle编译</title>
+        <description>&lt;h3 id=&quot;1-导入frameworkjar&quot;&gt;1. 导入framework.jar&lt;/h3&gt;
+
+&lt;p&gt;在源码根目录下执行：make framework&lt;/p&gt;
+
+&lt;p&gt;在R以下拷贝 out/target/common/obj/JAVA_LIBRARIES/framework-full_intermediates/classes.jar 重命名为 framework.jar。&lt;/p&gt;
+
+&lt;p&gt;在R及以上拷贝 out/target/common/obj/JAVA_LIBRARIES/framework_intermediates/classes.jar 重命名为 framework.jar。&lt;/p&gt;
+
+&lt;p&gt;在项目根目录下的 build.gradle 将 framework.jar 设置为核心类库：&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;allprojects {
+  gradle.projectsEvaluated {
+    tasks.withType(JavaCompile) {
+      options.compilerArgs &amp;lt;&amp;lt; &apos;-Xbootclasspath/p:libs/framework.jar&apos;
+    }
+  }
+}
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
 &lt;table&gt;
   &lt;thead&gt;
     &lt;tr&gt;
-      &lt;th&gt;模块类库&lt;/th&gt;
-      &lt;th&gt;功能&lt;/th&gt;
+      &lt;th&gt;扩展 BootStrap 级别类&lt;/th&gt;
+      &lt;th&gt;描述&lt;/th&gt;
     &lt;/tr&gt;
   &lt;/thead&gt;
   &lt;tbody&gt;
     &lt;tr&gt;
-      &lt;td&gt;gradle-plugin&lt;/td&gt;
-      &lt;td&gt;代码插桩，静态字段ChangeQuickRedirect&lt;/td&gt;
+      &lt;td&gt;-Xbootclasspath:bootclasspath&lt;/td&gt;
+      &lt;td&gt;让jvm从指定的路径中加载bootclass，用来替换jdk的rt.jar。一般不会用到。&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
-      &lt;td&gt;auto-patch-pluginautopatchbase&lt;/td&gt;
-      &lt;td&gt;生成补丁包&lt;/td&gt;
+      &lt;td&gt;-Xbootclasspath/a:path&lt;/td&gt;
+      &lt;td&gt;被指定的文件追加到默认的bootstrap路径中。&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
-      &lt;td&gt;patch&lt;/td&gt;
-      &lt;td&gt;加载补丁&lt;/td&gt;
+      &lt;td&gt;-Xbootclasspath/p:path&lt;/td&gt;
+      &lt;td&gt;让jvm优先于默认的bootstrap去加载path中指定的class。&lt;/td&gt;
     &lt;/tr&gt;
   &lt;/tbody&gt;
 &lt;/table&gt;
 
-&lt;h1 id=&quot;1代码插桩&quot;&gt;1.代码插桩&lt;/h1&gt;
+&lt;p&gt;在模块下的 build.gradle 中添加依赖：&lt;/p&gt;
 
-&lt;p&gt;基于Gradle Transform在构建阶段对字节码插桩。&lt;/p&gt;
-
-&lt;p&gt;支持两种插桩实现方式：JavaAssist和ASM。&lt;/p&gt;
-
-&lt;p&gt;核心类是：RobustTransform，AsmInsertImpl，RobustAsmUtils，JavaAssistInsertImpl&lt;/p&gt;
-
-&lt;p&gt;插入的字节码内容：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// JavaAssistInsertImpl.java
-String body = &quot;Object argThis = null;&quot;;
-if (!isStatic) {
-    body += &quot;argThis = $0;&quot;;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;dependencies {
+  compileOnly files(&apos;libs/framework.jar&apos;)
 }
-String parametersClassType = getParametersClassType(ctMethod); // 函数参数
-body += &quot;   if (com.meituan.robust.PatchProxy.isSupport($args, argThis, &quot; + Constants.INSERT_FIELD_NAME + &quot;, &quot; + isStatic +
-        &quot;, &quot; + methodMap.get(ctBehavior.getLongName()) + &quot;,&quot; + parametersClassType + &quot;,&quot; + returnTypeString + &quot;.class)) {&quot;;
-body += getReturnStatement(returnTypeString, isStatic, methodMap.get(ctBehavior.getLongName()), parametersClassType, returnTypeString + &quot;.class&quot;); // 函数返回值
-body += &quot;   }&quot;;
-&lt;/code&gt;&lt;/pre&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;p&gt;简化为Java代码：&lt;/p&gt;
+&lt;h3 id=&quot;2处理-internal-资源&quot;&gt;2.处理 internal 资源&lt;/h3&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public static ChangeQuickRedirect changeQuickRedirect;
-
-if (PatchProxy.isSupport(函数参数, this, changeQuickRedirect, 是否静态方法, 方法ID, 参数类型，返回值类型)) {
-    return PatchProxy.accessDispatch(函数参数, this, changeQuickRedirect, 是否静态方法, 方法ID, 参数类型，返回值类型);
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;2生成补丁包&quot;&gt;2.生成补丁包&lt;/h1&gt;
-
-&lt;h2 id=&quot;21-patch文件的构成&quot;&gt;2.1 Patch文件的构成&lt;/h2&gt;
+&lt;p&gt;SystemUI项目中有两种使用系统 internal 资源的方式：&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;PatchesInfoImpl&lt;/li&gt;
+  &lt;li&gt;在java代码中通过 com.android.internal.R.xxx 来引用。&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;PatchesInfoImpl实现了PatchesInfo接口&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public interface PatchesInfo {
-    List&amp;lt;PatchedClassInfo&amp;gt; getPatchedClassesInfo();
-}
-
-public class PatchedClassInfo {
-    public String patchedClassName; // apk中的类名
-    public String patchClassName; // 补丁包中的xxPatchControl
-}
-&lt;/code&gt;&lt;/pre&gt;
+&lt;p&gt;因为 R 文件是在 framework.jar 中的，所以采用 gradle 编译没有影响。&lt;/p&gt;
 
 &lt;ul&gt;
-  &lt;li&gt;xxPatch&lt;/li&gt;
+  &lt;li&gt;在资源文件xml中通过 @*android:xxx/xxx 引用。&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;修复bug的全部逻辑代码。此外把改动方法中调用的方法和字段访问全部改为了反射调用，同时要解决Proguard造成的混淆、以及内联的问题。&lt;/p&gt;
+&lt;p&gt;aapt2 在编译资源文件时会对引用资源进行转换，分为两种：&lt;/p&gt;
 
-&lt;ul&gt;
-  &lt;li&gt;xxPatchControl&lt;/li&gt;
-&lt;/ul&gt;
+&lt;p&gt;1.转换为数值：match_parent 转换 -1，wrap_content 转换为 -2；dimen值转换为 dimension(value左移8位+1)&lt;/p&gt;
 
-&lt;p&gt;实现了ChangeQuickRedirect接口，APK中的bug方法转到补丁中的fix方法。&lt;/p&gt;
+&lt;p&gt;2.转换为引用：@ref/资源id&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-TypeScript&quot;&gt;public interface ChangeQuickRedirect {
-    Object accessDispatch(String methodName, Object[] paramArrayOfObject);
-    boolean isSupport(String methodName, Object[] paramArrayOfObject);
+&lt;p&gt;因为在编译期间无法关联到 internal 资源id，会将引用的 internal 资源作为新资源生成一个新id，而运行期间找不到这个新id的资源值，从而引发异常。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;解决方案：&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;将所有引用到 @&lt;em&gt;android:xxx/xxx 资源的资源文件拷贝到一个新的目录下，通过脚本将 @&lt;/em&gt;android:xxx/xxx 替换成具体的值。&lt;/p&gt;
+
+&lt;p&gt;在 build.gradle 中通过 flavorDimensions + productFlavors 方式将新目录下资源文件覆盖掉项目中引用到 internal 资源的文件。&lt;/p&gt;
+
+&lt;p&gt;如果布局文件引用了 @*android:id/ 资源且又在 Java 代码通过 findViewById() 方式查找，这种只能重新声明一个资源id来规避。&lt;/p&gt;
+
+&lt;h3 id=&quot;3处理资源冲突&quot;&gt;3.处理资源冲突&lt;/h3&gt;
+
+&lt;p&gt;SystemUI支持gradle编译要解决的另一大难题是资源冲突。&lt;/p&gt;
+
+&lt;p&gt;原生系统中 SystemUI 是依赖 SettingsLib 编译，其中 SystemUI 的代码中就有引用 SettingsLib 的资源。我们期望是通过 make SettingsLib 可以编译出一个包含res资源的aar包，但实际上aar包中是没有res资源的。其原因是 android_library 被设计为 android_app 模块提供依赖，编译产出为 .jar + package-res.apk。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;可选方案如下：&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;方案一：SettingsLib支持gradle编译，生成包含res的aar。&lt;/p&gt;
+
+&lt;p&gt;这种方案就是成本会高一些，SettingsLib依赖简单，但子模块非常多。&lt;/p&gt;
+
+&lt;p&gt;方案二：aapt overlay&lt;/p&gt;
+
+&lt;p&gt;网上基本无法搜索到使用gradle实践的例子，学习成本较高。
+其中Link选项似乎可以解决我们遇到的问题：&lt;a href=&quot;https://developer.android.com/studio/command-line/aapt2&quot;&gt;AAPT2&lt;/a&gt;&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;选项&lt;/th&gt;
+      &lt;th&gt;说出&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;-I&lt;/td&gt;
+      &lt;td&gt;提供平台的 android.jar 或其他 APK（如 framework-res.apk）的路径，这在构建功能时可能很有用。如果您要在资源文件中使用带有 android 命名空间（例如 android:id）的属性，则必须使用此标志。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;-R file&lt;/td&gt;
+      &lt;td&gt;传递要链接的单个 .flat 文件，使用 overlay 语义，而不使用 &lt;add-resource&gt; 标记。如果您提供与现有文件重叠（扩展或修改现有文件）的资源文件，则会使用最后提供的冲突资源。&lt;/add-resource&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;方案三：&lt;a href=&quot;https://developer.android.com/studio/write/add-resources.html#resource_merging&quot;&gt;资源合并&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;如果存在同一资源的两个或多个匹配版本，则只有一个版本会包含在最终 APK 中。构建工具会根据以下优先级顺序（左侧的优先级最高）选择要保留的版本：&lt;/p&gt;
+
+&lt;p&gt;构建变体 &amp;gt; build 类型 &amp;gt; 产品变种 &amp;gt; 主源代码集 &amp;gt; 库依赖项&lt;/p&gt;
+
+&lt;p&gt;将 SettingsLib 资源文件拷贝到 SystemUI，采用 flavorDimensions + productFlavors 实现优先引用资源：&lt;/p&gt;
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;flavorDimensions &quot;overlay&quot;
+productFlavors {
+  overlay {
+    dimension &quot;overlay&quot;
+  }
 }
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;对应代码插桩里的逻辑，当isSupport方法返回true时，才会执行accessDispatch方法。在accessDispatch方法中会创建xxPatch的实例，调用xxPatch里的修复方法。&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;xxInLinePatch，处理内联问题。&lt;/li&gt;
-  &lt;li&gt;XXPatchRobustAssist，处理super问题。&lt;/li&gt;
-  &lt;li&gt;最后一种是新增类的，Add注解加在那个类上，就会把这个类放入补丁内部。&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 id=&quot;22-autopatchbase核心类&quot;&gt;2.2 autopatchbase核心类&lt;/h2&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;com.meituan.robust.patch.annotaion.Add&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;用来标记新增的类和方法的注解。&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;com.meituan.robust.patch.annotaion.Modify&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;用来标记被改动的类和方法的注解。如果这个注解是放在一个类A上面，自动化补丁会生成类APatch，APatch会被打入补丁，原始APK中的类A中每个方法都不会被执行，只会执行APatch中的方法；如果注解标记的是方法，则表明这个方法是需要被打入补丁中的，只有被标注的方法会打入补丁，打入补丁之后，就会执行补丁的方法，原始方法不会在执行。&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;com.meituan.robust.patch.RobustModify&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;针对泛型、匿名内部类等需要在泛型方法里面使用RobustModify.modify()来标注需要打入补丁中的方法。&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;com.meituan.robust.utils.EnhancedRobustUtils，反射的工具类。&lt;/li&gt;
-  &lt;li&gt;com.meituan.robust.utils.PatchTemplate，补丁的模板类。&lt;/li&gt;
-  &lt;li&gt;com.meituan.robust.ChangeQuickRedirect，xxControl的实现接口。&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h1 id=&quot;3加载补丁&quot;&gt;3.加载补丁&lt;/h1&gt;
-
-&lt;p&gt;官方热修复原理图：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/HotFix/robust.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;简单来说就是下发补丁后，会将 badClass 的 changeQuickRedirect 置为 patched.class，在 badMethod 方法中跳转到 patchedMethod ，达到热修复目的。&lt;/p&gt;
-
-&lt;p&gt;其核心流程如下：&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;创建PatchExecutor线程并执行&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public void run() {
-    try {
-        //拉取补丁列表
-        List&amp;lt;Patch&amp;gt; patches = fetchPatchList();
-        //应用补丁列表
-        applyPatchList(patches);
-    } catch (Throwable t) {
-    }
+sourceSets {
+  overlay {
+    res.srcDirs = [&apos;res-overlay&apos;]
+  }
 }
-&lt;/code&gt;&lt;/pre&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
-&lt;ol&gt;
-  &lt;li&gt;遍历patches执行patch(..)方法，创建DexClassLoader加载patch&lt;/li&gt;
-&lt;/ol&gt;
+&lt;p&gt;&lt;strong&gt;解决方案：&lt;/strong&gt;&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;try {
-    File dexOutputDir = getPatchCacheDirPath(context, patch.getName() + patch.getMd5());
-    classLoader = new DexClassLoader(patch.getTempPath(), dexOutputDir.getAbsolutePath(),
-            null, PatchExecutor.class.getClassLoader());
-} catch (Throwable throwable) {
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;加载patchesInfo类并创建实例&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;Class patchesInfoClass;
-PatchesInfo patchesInfo = null;
-try {
-    Log.d(&quot;robust&quot;, &quot;patch patch_info_name:&quot; + patch.getPatchesInfoImplClassFullName());
-    patchesInfoClass = classLoader.loadClass(patch.getPatchesInfoImplClassFullName());
-    patchesInfo = (PatchesInfo) patchesInfoClass.newInstance();
-} catch (Throwable t) {
-    Log.e(&quot;robust&quot;, &quot;patch failed 188 &quot;, t);
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;遍历patchesInfo中的PatchedClassInfo，替换changeQuickRedirect变量&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;for (PatchedClassInfo patchedClassInfo : patchedClasses) {
-    String patchedClassName = patchedClassInfo.patchedClassName;
-    String patchClassName = patchedClassInfo.patchClassName;
-
-    try {
-        // apk中的类
-        sourceClass = classLoader.loadClass(patchedClassName.trim());
-    } catch (ClassNotFoundException e) {
-        isClassNotFoundException = true;
-        continue;
-    }
-
-    // 反射获取到changeQuickRedirect
-    Field[] fields = sourceClass.getDeclaredFields();
-    Field changeQuickRedirectField = null;
-    for (Field field : fields) {
-        if (TextUtils.equals(field.getType().getCanonicalName(), ChangeQuickRedirect.class.getCanonicalName()) &amp;amp;&amp;amp; TextUtils.equals(field.getDeclaringClass().getCanonicalName(), sourceClass.getCanonicalName())) {
-            changeQuickRedirectField = field;
-            break;
-        }
-    }
-
-    // 将changeQuickRedirect替换为patchClassName的实例
-    try {
-        patchClass = classLoader.loadClass(patchClassName);
-        Object patchObject = patchClass.newInstance();
-        changeQuickRedirectField.setAccessible(true);
-        changeQuickRedirectField.set(null, patchObject);
-    } catch (Throwable t) {
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;4小结&quot;&gt;4.小结&lt;/h1&gt;
-
-&lt;p&gt;Robust热修复采用 InstantRun 的热更新机制，可以即时生效，不需要重启，采用插桩和多ClassLoader方案，兼容性和稳定性较好。核心难点在于补丁包的生成，需要考虑代码混淆、方法内联、匿名类、匿名方法的影响。&lt;/p&gt;
+&lt;p&gt;方案二和方案三均需要将SettingsLib的资源拷贝到SystemUI，后续有资源相关改动会很繁琐。而方案一在支持gradle编译后，后续有资源相关改动只需要重新编译aar，最终采用方案一实现。&lt;/p&gt;
 </description>
-        <pubDate>Tue, 19 Oct 2021 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2021/10/19/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/</link>
-        <guid isPermaLink="true">http://localhost:4000/2021/10/19/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/</guid>
+        <pubDate>Sun, 20 Mar 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/</guid>
         
         <category>Android</category>
         
-        <category>HotFix</category>
-        
-        <category>Rubust</category>
+        <category>SystemUI</category>
         
         
       </item>

@@ -12,17 +12,28 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="About - Android学习笔记 | Yaku Blog">
+        content="SystemUI-功能介绍 - Android学习笔记 | Yaku Blog">
     
-    <meta property="og:type" content="website">
-    <meta property="og:description"
-        content="「假如生活欺骗了你」">
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="1. SystemUI介绍
+">
+    
+    <meta property="article:published_time" content=" 2022-03-04T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Android">
+    
+    <meta property="article:tag" content="SystemUI">
+    
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/about/">
+    <meta property="og:url" content="http://localhost:4000/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>About - Android学习笔记 | Yaku Blog</title>
+    <title>SystemUI-功能介绍 - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -31,7 +42,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/about/">
+    <link rel="canonical" href="http://localhost:4000/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -197,102 +208,278 @@
   </div>
 </div>
 
-    <!-- Page Header -->
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
 
 
 
 <style type="text/css">
     header.intro-header{
         position: relative;
-        background-image: url('/img/bg-me-2022.jpg');
+        background-image: url('/img/post-bg-2015.jpg');
         background: ;
     }
 
-    
-    header.intro-header .header-mask{
-        width: 100%;
-        height: 100%;
-        position: absolute;
-        background: rgba(0,0,0, 0.3);
-    }
     
 </style>
 
 
 
 
+<header class="intro-header" >
 
-
-
-<header class="intro-header" style="background-image: url('/img/bg-me-2022.jpg')">
-  <div class="header-mask"></div>
-  <div class="container">
-    <div class="row">
-      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
-        
-        <div class="site-heading">
-        
-          <h1>About</h1>
-          <span class="subheading">「假如生活欺骗了你」</span>
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
+                        
+                        <a class="tag" href="/archive/?tag=SystemUI" title="SystemUI">SystemUI</a>
+                        
+                    </div>
+                    <h1>SystemUI-功能介绍</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on March 4, 2022</span>
+                </div>
+            </div>
         </div>
-      </div>
     </div>
-  </div>
 </header>
 
 
 
-<!-- Main Content -->
-<div class="container">
-  <div class="row">
-    
-
-    <!-- USE SIDEBAR -->
-    <!-- PostList Container -->
-    <div class="col-lg-8 col-lg-offset-1 col-md-8 col-md-offset-1 col-sm-12
-      col-xs-12 postlist-container">
-                      <!-- Language Selector -->
-                <select class="sel-lang" onchange= "onLanChange(this.options[this.options.selectedIndex].value)">
-                    <option value="0" selected> 中文 | Chinese </option>
-                    <option value="1"> 英文 | English </option>
-                </select>
-
-
-
-<!-- Chinese Version -->
-<div class="zh post-container">
-    
-    <p>Hey，我是Yaku，8年Android开发经验，目前就职于小米，主要负责应用性能稳定性相关工作。</p>
-
-<p>Github：<a href="https://github.com/DreamSunny">https://github.com/DreamSunny</a></p>
-
-<p>简书：<a href="https://www.jianshu.com/u/70cccf742ec9">https://www.jianshu.com/u/70cccf742ec9</a></p>
-
-</div>
-
-<!-- English Version -->
-<div class="en post-container">
-    
-    <p>Hey, I’m Yaku. I have 8 years of experience in Android development. I’m currently working for Xiaomi. I’m mainly responsible for application performance and stability.</p>
-
-<p>Github：<a href="https://github.com/DreamSunny">https://github.com/DreamSunny</a></p>
-
-<p>JianShu：<a href="https://www.jianshu.com/u/70cccf742ec9">https://www.jianshu.com/u/70cccf742ec9</a></p>
-
-</div>
 
 
 
 
-    </div>
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<h1 id="1-systemui介绍">1. SystemUI介绍</h1>
+
+<p>SystemUI正如其名，即系统的显示界面。它是一个常驻进程，独立于system_server进程。</p>
+
+<p>SystemUI内部包含一系列组件，在其启动的时候会初始化这些组件。</p>
+
+<p>SystemUI通过IStatusBar接口收到系统侧的回调，又通过一系列私有APIs与系统通信。</p>
+
+<h1 id="2-systemui启动流程">2. SystemUI启动流程</h1>
+
+<p>SystemUIService 继承于 Service，在 SystemServer 中启动，方法调用顺序如下：</p>
+
+<ol>
+  <li>SystemServer.main(..)</li>
+  <li>SystemServer.run()</li>
+  <li>SystemServer.startOtherServices(..)</li>
+  <li>SystemServer.startSystemUi(..)</li>
+</ol>
+
+<pre><code class="language-Java">// SystemServer.java
+private static void startSystemUi(Context context, WindowManagerService windowManager) {
+    PackageManagerInternal pm = LocalServices.getService(PackageManagerInternal.class);
+    Intent intent = new Intent();
+    intent.setComponent(pm.getSystemUiServiceComponent());
+    intent.addFlags(Intent.FLAG_DEBUG_TRIAGED_MISSING);
+    context.startServiceAsUser(intent, UserHandle.SYSTEM);
+    windowManager.onSystemUiStarted();
+}
+
+// PackageManagerInternalBase.java
+public final ComponentName getSystemUiServiceComponent() {
+    return ComponentName.unflattenFromString(getContext().getResources().getString(
+            com.android.internal.R.string.config_systemUIServiceComponent));
+}
+
+// config.xml
+&lt;string name="config_systemUIServiceComponent" translatable="false"
+        &gt;com.android.systemui/com.android.systemui.SystemUIService&lt;/string&gt;
+</code></pre>
+
+<h1 id="3-systemui核心组件">3. SystemUI核心组件</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>组件</th>
+      <th>功能</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>NotificationChannels</td>
+      <td>创建SystemUI的通知Channel</td>
+    </tr>
+    <tr>
+      <td>KeyguardViewMediator</td>
+      <td>锁屏</td>
+    </tr>
+    <tr>
+      <td>Recents</td>
+      <td>最近任务</td>
+    </tr>
+    <tr>
+      <td>VolumeUI</td>
+      <td>音量面板</td>
+    </tr>
+    <tr>
+      <td>Divider</td>
+      <td>分屏</td>
+    </tr>
+    <tr>
+      <td>StatusBar</td>
+      <td>顶部状态栏+快捷开关+通知面板+底部导航键</td>
+    </tr>
+    <tr>
+      <td>StorageNotification</td>
+      <td>存储设备相关通知</td>
+    </tr>
+    <tr>
+      <td>PowerUI</td>
+      <td>低电量提醒</td>
+    </tr>
+    <tr>
+      <td>RingtonePlayer</td>
+      <td>播放铃声（包括通知铃声）</td>
+    </tr>
+    <tr>
+      <td>KeyboardUI</td>
+      <td>键盘</td>
+    </tr>
+    <tr>
+      <td>PipUI</td>
+      <td>画中画</td>
+    </tr>
+    <tr>
+      <td>ShortcutKeyDispatcher</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>GarbageMonitor$Service</td>
+      <td>定期检查SystemUI堆内存并报告</td>
+    </tr>
+    <tr>
+      <td>LatencyTester</td>
+      <td>在DEBUGGABLE版本运行，用于测试系统中的延迟</td>
+    </tr>
+    <tr>
+      <td>GlobalActionsComponent</td>
+      <td>关机菜单</td>
+    </tr>
+    <tr>
+      <td>ScreenDecorations</td>
+      <td>手机屏幕屏切圆角，模拟刘海屏</td>
+    </tr>
+    <tr>
+      <td>AuthController</td>
+      <td>显示生物识别UI（指纹认证，人脸认证）</td>
+    </tr>
+    <tr>
+      <td>SliceBroadcastRelayHandler</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>SizeCompatModeActivityController</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>InstantAppNotifier</td>
+      <td>显示Instant Apps（用户设备不需要安装的应用）的通知</td>
+    </tr>
+    <tr>
+      <td>ThemeOverlayController</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>WindowMagnification</td>
+      <td>管理窗口放大镜</td>
+    </tr>
+    <tr>
+      <td>SystemActions</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>ToastUI</td>
+      <td>在SystemUI进程显示其他应用的Toast</td>
+    </tr>
+  </tbody>
+</table>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2021/10/29/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/" data-toggle="tooltip" data-placement="top" title="微信Tinker热修复">
+                        Previous<br>
+                        <span>微信Tinker热修复</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2022/03/14/SystemUI-%E4%BD%BF%E7%94%A8GarbageMonitor/" data-toggle="tooltip" data-placement="top" title="SystemUI-使用GarbageMonitor">
+                        Next<br>
+                        <span>SystemUI-使用GarbageMonitor</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
     <!-- Sidebar Container -->
-    <div class="col-lg-3 col-lg-offset-0 col-md-3 col-md-offset-0 col-sm-12
-      col-xs-12 sidebar-container">
-      <!-- Featured Tags -->
-      
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
 
 
 <section>
+    
+        <hr class="hidden-sm hidden-xs">
     
     <h5><a href="/archive/">FEATURED TAGS</a></h5>
     <div class="tags">
@@ -325,37 +512,8 @@
 </section>
 
 
-      <!-- Short About -->
-      <section class="visible-md visible-lg">
-  <hr>
-  <h5><a href="/about/">ABOUT ME</a></h5>
-  <div class="short-about">
-    
-    <img src="/img/avatar-yaku.jpg" />
-    
-    
-    <p>假如生活欺骗了你</p>
-    
-    <!-- SNS Link -->
-    
-
-
-<ul class="list-inline">
-
-
-  
-  
-  
-  
-  
-  
-  
-</ul>
-  </div>
-</section>
-
-      <!-- Friends Blog -->
-      
+                <!-- Friends Blog -->
+                
 <hr>
 <h5>FRIENDS</h5>
 <ul class="list-inline">
@@ -370,21 +528,54 @@
   
 </ul>
 
-
-      <!-- Ads -->
-      <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
-<!-- first shot -->
-<ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-6487568398225121" data-ad-slot="4814308751"
-     data-ad-format="auto" data-full-width-responsive="true"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
+            </div>
+        </div>
     </div>
-    
-  </div>
-</div>
+</article>
 
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
 
 
 
@@ -516,7 +707,7 @@
     function generateCatalog(selector) {
 
         // interop with multilangual 
-        if ('true' == 'true') {
+        if ('' == 'true') {
             _containerSelector = 'div.post-container.active'
         } else {
             _containerSelector = 'div.post-container'
@@ -573,58 +764,6 @@
 
 
 <!-- Multi-Lingual -->
-
-<!-- Handle Language Change -->
-<script type="text/javascript">
-    // get nodes
-    var $zh = document.querySelector(".zh");
-    var $en = document.querySelector(".en");
-    var $select = document.querySelector("select");
-
-    // Changes at v1.8.1: include lang flag as a url query. This interop well with catalog hash anchors.
-    function getLang() { return new URLSearchParams(document.location.search).get("lang") }
-
-    function setLang(newLang) {
-        var params = new URLSearchParams(document.location.search)
-        params.set("lang", newLang)
-        document.location.search = params.toString()  // refresh.
-    }
-
-    // handle render
-    function _render() {
-        var lang = getLang()
-        // en
-        if (lang == "en") {
-            $select.selectedIndex = 1;
-            $en.style.display = "block";
-            $en.classList.add("active");
-            $zh.style.display = "none";
-            $zh.classList.remove("active");
-            // default to zh-cn
-        } else {
-            $select.selectedIndex = 0;
-            $zh.style.display = "block";
-            $zh.classList.add("active");
-            $en.style.display = "none";
-            $en.classList.remove("active");
-        }
-        // interop with catalog 
-        generateCatalog(".catalog-body");
-    }
-
-    // handle select change
-    function onLanChange(index) {
-        if (index == 0) {
-            lang = "zh"
-        } else {
-            lang = "en"
-        }
-        setLang(lang)
-    }
-
-    // init
-    _render();
-</script>
 
 
 <!-- Simple Jekyll Search -->
