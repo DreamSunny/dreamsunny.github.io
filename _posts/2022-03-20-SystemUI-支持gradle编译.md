@@ -96,17 +96,8 @@ SystemUI支持gradle编译要解决的另一大难题是资源冲突。
 
 这种方案就是成本会高一些，SettingsLib依赖简单，但子模块非常多。
 
-方案二：aapt overlay
 
-网上基本无法搜索到使用gradle实践的例子，学习成本较高。
-其中Link选项似乎可以解决我们遇到的问题：[AAPT2](https://developer.android.com/studio/command-line/aapt2)
-
-| 选项    | 说出                                                         |
-| ------- | ------------------------------------------------------------ |
-| -I      | 提供平台的 android.jar 或其他 APK（如 framework-res.apk）的路径，这在构建功能时可能很有用。如果您要在资源文件中使用带有 android 命名空间（例如 android:id）的属性，则必须使用此标志。 |
-| -R file | 传递要链接的单个 .flat 文件，使用 overlay 语义，而不使用 <add-resource> 标记。如果您提供与现有文件重叠（扩展或修改现有文件）的资源文件，则会使用最后提供的冲突资源。 |
-
-方案三：[资源合并](https://developer.android.com/studio/write/add-resources.html#resource_merging)
+方案二：[资源合并](https://developer.android.com/studio/write/add-resources.html#resource_merging)
 
 如果存在同一资源的两个或多个匹配版本，则只有一个版本会包含在最终 APK 中。构建工具会根据以下优先级顺序（左侧的优先级最高）选择要保留的版本：
 
@@ -126,9 +117,3 @@ sourceSets {
   }
 }
 ```
-
-
-
-**解决方案：**
-
-方案二和方案三均需要将SettingsLib的资源拷贝到SystemUI，后续有资源相关改动会很繁琐。而方案一在支持gradle编译后，后续有资源相关改动只需要重新编译aar，最终采用方案一实现。

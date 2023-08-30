@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Android学习笔记">
+    <meta name="keywords" content="Android, 博客, 互联网">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Open Graph -->
+    <meta property="og:title"
+        content="Android资源加载流程 - Android学习笔记 | Yaku Blog">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="官方文档：
+应用资源概览
+AAPT2
+">
+    
+    <meta property="article:published_time" content=" 2023-04-17T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Android">
+    
+    <meta property="article:tag" content="ResourceLoader">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
+    <meta property="og:url" content="http://localhost:4000/2023/04/17/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
+    <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
+
+    <title>Android资源加载流程 - Android学习笔记 | Yaku Blog</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/2023/04/17/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href=" /css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href=" /css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet"
+        type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+
+    <!-- Google AdSense -->
+    <script data-ad-client="ca-pub-6487568398225121" async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">Android学习笔记</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/img/post-bg-2015.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+
+
+
+<header class="intro-header" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
+                        
+                        <a class="tag" href="/archive/?tag=ResourceLoader" title="ResourceLoader">ResourceLoader</a>
+                        
+                    </div>
+                    <h1>Android资源加载流程</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on April 17, 2023</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<p>官方文档：<br />
+<a href="https://developer.android.com/guide/topics/resources/providing-resources?hl=zh-cn">应用资源概览</a><br />
+<a href="https://developer.android.com/studio/command-line/aapt2?hl=zh-cn">AAPT2</a></p>
+
+<h1 id="1资源文件类型">1.资源文件类型</h1>
+
+<p>Android应用程序资源可以分为两大类，分别是assets和res：</p>
+
+<ul>
+  <li>assets</li>
+</ul>
+
+<p>assets类资源放在工程根目录的assets子目录下，它里面保存的是一些原始的文件，可以以任何方式来进行组织。这些文件最终会被原装不动地打包在apk文件中。如果我们要在程序中访问这些文件，那么就需要指定文件名来访问。</p>
+
+<ul>
+  <li>res</li>
+</ul>
+
+<p>res类资源放在工程根目录的res子目录下，它里面保存的文件大多数都会被编译，并且都会被赋予资源ID。这样我们就可以在程序中通过R类来访问res类的资源。res类资源按照不同的用途可以进一步划分为以下子类型：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>目录</th>
+      <th>资源类型</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>animator/</td>
+      <td>用于定义属性动画的 XML 文件。</td>
+    </tr>
+    <tr>
+      <td>anim/</td>
+      <td>用于定义补间动画的 XML 文件。属性动画也可保存在此目录中，但为了区分这两种类型，属性动画首选 animator/ 目录。</td>
+    </tr>
+    <tr>
+      <td>color/</td>
+      <td>定义颜色状态列表的 XML 文件。</td>
+    </tr>
+    <tr>
+      <td>drawable/</td>
+      <td>位图文件（PNG、.9.png、JPG 或 GIF）或编译为以下可绘制资源子类型的 XML 文件：位图文件九宫图（可调整大小的位图）状态列表形状动画可绘制对象其他可绘制对象</td>
+    </tr>
+    <tr>
+      <td>mipmap/</td>
+      <td>适用于不同启动器图标密度的可绘制对象文件。</td>
+    </tr>
+    <tr>
+      <td>layout/</td>
+      <td>用于定义界面布局的 XML 文件。</td>
+    </tr>
+    <tr>
+      <td>menu/</td>
+      <td>用于定义应用菜单（例如选项菜单、上下文菜单或子菜单）的 XML 文件</td>
+    </tr>
+    <tr>
+      <td>raw/</td>
+      <td>需以原始形式保存的任意文件。如要使用原始 InputStream 打开这些资源，请使用资源 ID（即 R.raw.filename）调用 Resources.openRawResource()。但是，如需访问原始文件名和文件层次结构，请考虑将资源保存在 assets/ 目录（而非 res/raw/）下。assets/ 中的文件没有资源 ID，因此您只能使用 AssetManager 读取这些文件。</td>
+    </tr>
+    <tr>
+      <td>values/</td>
+      <td>包含字符串、整数和颜色等简单值的 XML 文件。其他 <code class="language-plaintext highlighter-rouge">res/</code> 子目录中的 XML 资源文件会根据 XML 文件名定义单个资源，而 <code class="language-plaintext highlighter-rouge">values/</code> 目录中的文件可描述多个资源。对于此目录中的文件，<code class="language-plaintext highlighter-rouge">&lt;resources&gt;</code> 元素的每个子元素均会定义一个资源。例如，<code class="language-plaintext highlighter-rouge">&lt;string&gt;</code> 元素会创建 <code class="language-plaintext highlighter-rouge">R.string</code> 资源，<code class="language-plaintext highlighter-rouge">&lt;color&gt;</code> 元素会创建 <code class="language-plaintext highlighter-rouge">R.color</code> 资源。由于每个资源均使用自己的 XML 元素进行定义，因此您可以随意命名文件，并在某个文件中放入不同的资源类型。但是，您可能需要将独特的资源类型放在不同的文件中，使其一目了然。例如，对于可在此目录中创建的资源，下面给出了相应的文件名约定：arrays.xml 用于资源数组（类型化数组）colors.xml 用于颜色值dimens.xml 用于维度值strings.xml 用于字符串值styles.xml 用于样式</td>
+    </tr>
+    <tr>
+      <td>xml/</td>
+      <td>可在运行时通过调用 Resources.getXML() 读取的任意 XML 文件。各种 XML 配置文件（例如搜索配置）都必须保存在此处。</td>
+    </tr>
+    <tr>
+      <td>font/</td>
+      <td>带有扩展名的字体文件（例如 TTF、OTF 或 TTC），或包含 <font-family> 元素的 XML 文件。</font-family></td>
+    </tr>
+  </tbody>
+</table>
+
+<p>上述资源文件，除了raw类型资源和drawable类型资源的Bitmap文件之外，其它的资源文件均为文本格式的XML文件，它们在打包的过程中，会被编译成二进制格式的XML文件。这些二进制格式的XML文件分别有一个字符串资源池，用来保存文件中引用到的每一个字符串，包括XML元素标签、属性名称、属性值，以及其它的一切文本值所使用到的字符串。这样原来在文本格式的XML文件中的每一个放置字符串的地方在二进制格式的XML文件中都被替换成一个索引到字符串资源池的整数值。这样做有两个好处：</p>
+
+<ol>
+  <li>文件占用更小。例如，假设在原来的文本格式的XML文件中，有四个地方使用的都是同一个字符串，那么在最终编译出来的二进制格式的XML文件中，字符串资源池只有一份字符串值，而引用它的四个地方只占用一个整数值。</li>
+  <li>解析速度更快。由于在二进制格式的XML文件中，所有的XML元素标签和属性等值都是使用整数来描述的，因此，在解析的过程中，就不再需要进行字符串解析，这样就可以提高解析速度。</li>
+</ol>
+
+<p>Android资源打包工具aapt在编译和打包资源的过程中，会执行以下两个额外的操作：</p>
+
+<ol>
+  <li>赋予每一个非assets资源一个ID值，这些ID值以常量的形式定义在一个R.java文件中。</li>
+  <li>生成一个resources.arsc文件，用来描述那些具有ID值的资源的配置信息，它的内容就相当于是一个资源索引表。</li>
+</ol>
+
+<p>resources.arsc文件格式定义在 <a href="https://android.googlesource.com/platform/frameworks/base/+/56a2301/include/androidfw/ResourceTypes.h">ResourceTypes.h</a> ，资源ID是一个4字节的无符号整数 0xPPTTEEEE 的形式，其中 PP 是 PackageId，TT 是 TypeIndex，EEEE 是EntryIndex。Package ID中7f是应用包资源，01是系统资源。</p>
+
+<h1 id="2资源管理器">2.资源管理器</h1>
+
+<p>上文提到Android应用程序资源可以分为assets和res两大类，在代码中访问这两大类资源分别使用的AssetManager和Resources，可以通过Context获取到实例，实现类是ContextImpl：</p>
+
+<pre><code class="language-Java">// ContextImpl.java
+public AssetManager getAssets() {
+    return getResources().getAssets();
+}
+
+@Override
+public Resources getResources() {
+    return mResources;
+}
+</code></pre>
+
+<p><img src="/img/ResourceLoader/resource1.png" alt="img" /></p>
+
+<p>应用启动流程中，在创建Application实例前会先创建ContextImpl实例：</p>
+
+<pre><code class="language-Java">// LoadedApk.java
+private Application makeApplicationInner(boolean forceDefaultAppClass,
+        Instrumentation instrumentation, boolean allowDuplicateInstances) {
+    ...
+    try {
+        final java.lang.ClassLoader cl = getClassLoader();
+        ...
+        // 创建ContextImpl实例
+        ContextImpl appContext = ContextImpl.createAppContext(mActivityThread, this);
+        ...
+        app = mActivityThread.mInstrumentation.newApplication(
+                cl, appClass, appContext);
+        appContext.setOuterContext(app);
+    } catch (Exception e) {
+        ...
+    } 
+    ...
+    return app;
+}
+
+// ContextImpl.java
+static ContextImpl createAppContext(ActivityThread mainThread, LoadedApk packageInfo) {
+    return createAppContext(mainThread, packageInfo, null);
+}
+
+static ContextImpl createAppContext(ActivityThread mainThread, LoadedApk packageInfo,
+        String opPackageName) {
+    if (packageInfo == null) throw new IllegalArgumentException("packageInfo");
+    ContextImpl context = new ContextImpl(null, mainThread, packageInfo,
+        ContextParams.EMPTY, null, null, null, null, null, 0, null, opPackageName);
+    context.setResources(packageInfo.getResources());
+    context.mContextType = isSystemOrSystemUI(context) ? CONTEXT_TYPE_SYSTEM_OR_SYSTEM_UI
+            : CONTEXT_TYPE_NON_UI;
+    return context;
+}
+</code></pre>
+
+<p>创建完ContextImpl实例后会调用LoadedApk.getResources()方法初始化mResources成员变量：</p>
+
+<pre><code class="language-Java">// LoadedApk.java
+public Resources getResources() {
+    if (mResources == null) {
+        final String[] splitPaths = getSplitPaths(null);
+        ...
+        mResources = ResourcesManager.getInstance().getResources(null, mResDir,
+                splitPaths, mLegacyOverlayDirs, mOverlayPaths,
+                mApplicationInfo.sharedLibraryFiles, null, null, getCompatibilityInfo(),
+                getClassLoader(), null);
+    }
+    return mResources;
+}
+
+private void setApplicationInfo(ApplicationInfo aInfo) {
+    final int myUid = Process.myUid();
+    aInfo = adjustNativeLibraryPaths(aInfo);
+    mApplicationInfo = aInfo;
+    mAppDir = aInfo.sourceDir;
+    mResDir = aInfo.uid == myUid ? aInfo.sourceDir : aInfo.publicSourceDir;
+    ...
+}
+</code></pre>
+
+<p>这里的mResDir与mAppDir都是aInfo.sourceDir，也就是/data/app/xx/xx/base.apk。</p>
+
+<p>继续查看创建Resources的逻辑，这里传入的activityToken为null：</p>
+
+<pre><code class="language-Java">// ResourcesManager.java
+public Resources getResources(
+        @Nullable IBinder activityToken,
+        @Nullable String resDir,
+        @Nullable String[] splitResDirs,
+        @Nullable String[] legacyOverlayDirs,
+        @Nullable String[] overlayPaths,
+        @Nullable String[] libDirs,
+        @Nullable Integer overrideDisplayId,
+        @Nullable Configuration overrideConfig,
+        @NonNull CompatibilityInfo compatInfo,
+        @Nullable ClassLoader classLoader,
+        @Nullable List&lt;ResourcesLoader&gt; loaders) {
+    try {
+        Trace.traceBegin(Trace.TRACE_TAG_RESOURCES, "ResourcesManager#getResources");
+        final ResourcesKey key = new ResourcesKey(
+                resDir,
+                splitResDirs,
+                combinedOverlayPaths(legacyOverlayDirs, overlayPaths),
+                libDirs,
+                overrideDisplayId != null ? overrideDisplayId : INVALID_DISPLAY,
+                overrideConfig,
+                compatInfo,
+                loaders == null ? null : loaders.toArray(new ResourcesLoader[0]));
+        classLoader = classLoader != null ? classLoader : ClassLoader.getSystemClassLoader();
+
+        final ApkAssetsSupplier assetsSupplier = createApkAssetsSupplierNotLocked(key);
+        ...
+        Resources resources;
+        // 每个Activity会创建一个对应的Resources
+        if (activityToken != null) {
+            Configuration initialOverrideConfig = new Configuration(key.mOverrideConfiguration);
+            rebaseKeyForActivity(activityToken, key, overrideDisplayId != null);
+            resources = createResourcesForActivity(activityToken, key, initialOverrideConfig,
+                    overrideDisplayId, classLoader, assetsSupplier);
+        } else {
+            resources = createResources(key, classLoader, assetsSupplier);
+        }
+        return resources;
+    } finally {
+    }
+}
+
+private Resources createResources(@NonNull ResourcesKey key, @NonNull ClassLoader classLoader,
+        @Nullable ApkAssetsSupplier apkSupplier) {
+    synchronized (mLock) {
+        ResourcesImpl resourcesImpl = findOrCreateResourcesImplForKeyLocked(key, apkSupplier);
+        ...
+        return createResourcesLocked(classLoader, resourcesImpl, key.mCompatInfo);
+    }
+}
+
+private @NonNull Resources createResourcesLocked(@NonNull ClassLoader classLoader,
+        @NonNull ResourcesImpl impl, @NonNull CompatibilityInfo compatInfo) {
+    cleanupReferences(mResourceReferences, mResourcesReferencesQueue);
+
+    Resources resources = compatInfo.needsCompatResources() ? new CompatResources(classLoader)
+            : new Resources(classLoader);
+    resources.setImpl(impl);
+    resources.setCallbacks(mUpdateCallbacks);
+    mResourceReferences.add(new WeakReference&lt;&gt;(resources, mResourcesReferencesQueue));
+    return resources;
+}
+</code></pre>
+
+<p>创建ResourcesImpl的实例，可以看到ResourcesImpl的实例会被弱引用缓存到mResourceImpls中：</p>
+
+<pre><code class="language-Java">// ResourcesManager.java
+private @Nullable ResourcesImpl findOrCreateResourcesImplForKeyLocked(
+        @NonNull ResourcesKey key, @Nullable ApkAssetsSupplier apkSupplier) {
+    ResourcesImpl impl = findResourcesImplForKeyLocked(key);
+    if (impl == null) {
+        impl = createResourcesImpl(key, apkSupplier);
+        if (impl != null) {
+            mResourceImpls.put(key, new WeakReference&lt;&gt;(impl));
+        }
+    }
+    return impl;
+}
+
+private @Nullable ResourcesImpl createResourcesImpl(@NonNull ResourcesKey key,
+        @Nullable ApkAssetsSupplier apkSupplier) {
+    final AssetManager assets = createAssetManager(key, apkSupplier);
+    ...
+    final ResourcesImpl impl = new ResourcesImpl(assets, displayMetrics, config, daj);
+    return impl;
+}
+</code></pre>
+
+<p>创建AssetManager的实例，关键操作是addApkAssets方法，参数是ApkAssets对象：</p>
+
+<pre><code class="language-Java">// ResourcesManager.java
+protected @Nullable AssetManager createAssetManager(@NonNull final ResourcesKey key) {
+    return createAssetManager(key, /* apkSupplier */ null);
+}
+
+private @Nullable AssetManager createAssetManager(@NonNull final ResourcesKey key,
+        @Nullable ApkAssetsSupplier apkSupplier) {
+    final AssetManager.Builder builder = new AssetManager.Builder();
+
+    final ArrayList&lt;ApkKey&gt; apkKeys = extractApkKeys(key);
+    for (int i = 0, n = apkKeys.size(); i &lt; n; i++) {
+        final ApkKey apkKey = apkKeys.get(i);
+        try {
+            // 添加到mUserApkAssets
+            builder.addApkAssets(
+                    (apkSupplier != null) ? apkSupplier.load(apkKey) : loadApkAssets(apkKey));
+        } catch (IOException e) {
+        }
+    }
+
+    if (key.mLoaders != null) {
+        for (final ResourcesLoader loader : key.mLoaders) {
+            // 添加到mLoaders
+            builder.addLoader(loader);
+        }
+    }
+
+    return builder.build();
+}
+
+private static @NonNull ArrayList&lt;ApkKey&gt; extractApkKeys(@NonNull final ResourcesKey key) {
+    final ArrayList&lt;ApkKey&gt; apkKeys = new ArrayList&lt;&gt;();
+
+    if (key.mResDir != null) {
+        apkKeys.add(new ApkKey(key.mResDir, false /*sharedLib*/, false /*overlay*/));
+    }
+    if (key.mSplitResDirs != null) { ... }
+    if (key.mLibDirs != null) { ... }
+    if (key.mOverlayPaths != null)  { ... }
+
+    return apkKeys;
+}
+
+// AssetManager.java
+public AssetManager build() {
+    final ApkAssets[] systemApkAssets = getSystem().getApkAssets();
+    ...
+    final int totalApkAssetCount = systemApkAssets.length + mUserApkAssets.size()
+            + loaderApkAssets.size();
+    final ApkAssets[] apkAssets = new ApkAssets[totalApkAssetCount];
+    // 简化为apkAssets = systemApkAssets + mUserApkAssets + mLoaders去重
+    ...
+
+    final AssetManager assetManager = new AssetManager(false /*sentinel*/);
+    assetManager.mApkAssets = apkAssets;
+    AssetManager.nativeSetApkAssets(assetManager.mObject, apkAssets,
+            false /*invalidateCaches*/);
+    assetManager.mLoaders = mLoaders.isEmpty() ? null
+            : mLoaders.toArray(new ResourcesLoader[0]);
+
+    return assetManager;
+}
+
+// 创建加载系统资源的ApkAssets
+public static AssetManager getSystem() {
+    synchronized (sSync) {
+        createSystemAssetsInZygoteLocked(false, FRAMEWORK_APK_PATH);
+        return sSystem;
+    }
+}
+
+public static void createSystemAssetsInZygoteLocked(boolean reinitialize,
+        String frameworkPath) {
+    try {
+        final ArrayList&lt;ApkAssets&gt; apkAssets = new ArrayList&lt;&gt;();
+        // "/system/framework/framework-res.apk"
+        apkAssets.add(ApkAssets.loadFromPath(frameworkPath, ApkAssets.PROPERTY_SYSTEM));
+
+        final String[] systemIdmapPaths =
+                OverlayConfig.getZygoteInstance().createImmutableFrameworkIdmapsInZygote();
+        for (String idmapPath : systemIdmapPaths) {
+            // Android系统资源覆盖机制
+            apkAssets.add(ApkAssets.loadOverlayFromPath(idmapPath, ApkAssets.PROPERTY_SYSTEM));
+        }
+        sSystemApkAssetsSet = new ArraySet&lt;&gt;(apkAssets);
+        sSystemApkAssets = apkAssets.toArray(new ApkAssets[apkAssets.size()]);
+        if (sSystem == null) {
+            sSystem = new AssetManager(true /*sentinel*/);
+        }
+        sSystem.setApkAssets(sSystemApkAssets, false /*invalidateCaches*/);
+    } catch (IOException e) {
+    }
+}
+
+private AssetManager(boolean sentinel) {
+    mObject = nativeCreate();
+}
+</code></pre>
+
+<p>Android资源覆盖机制参考官方文档：<a href="https://source.android.com/docs/core/runtime/rros">Change the value of an app’s resources at runtime</a></p>
+
+<p>接下来创建ApkAssets的实例，在构造方法中调用native方法：</p>
+
+<pre><code class="language-Java">// ResourcesManager.java
+ApkAssets load(final ApkKey apkKey) throws IOException {
+    ApkAssets apkAssets = mLocalCache.get(apkKey);
+    if (apkAssets == null) {
+        apkAssets = loadApkAssets(apkKey);
+        mLocalCache.put(apkKey, apkAssets);
+    }
+    return apkAssets;
+}
+
+private @NonNull ApkAssets loadApkAssets(@NonNull final ApkKey key) throws IOException {
+    ApkAssets apkAssets;
+    ...
+    if (key.overlay) {
+        apkAssets = ApkAssets.loadOverlayFromPath(overlayPathToIdmapPath(key.path), flags);
+    } else {
+        apkAssets = ApkAssets.loadFromPath(key.path, flags);
+    }
+
+    synchronized (mLock) {
+        mCachedApkAssets.put(key, new WeakReference&lt;&gt;(apkAssets));
+    }
+
+    return apkAssets;
+}
+
+// ApkAssets.java
+public static @NonNull ApkAssets loadFromPath(@NonNull String path, @PropertyFlags int flags)
+        throws IOException {
+    return new ApkAssets(FORMAT_APK, path, flags, null /* assets */);
+}
+
+private ApkAssets(@FormatType int format, @NonNull String path, @PropertyFlags int flags,
+        @Nullable AssetsProvider assets) throws IOException {
+    Objects.requireNonNull(path, "path");
+    mFlags = flags;
+    mNativePtr = nativeLoad(format, path, flags, assets);
+    mStringBlock = new StringBlock(nativeGetStringBlock(mNativePtr), true /*useSparse*/);
+    mAssets = assets;
+}
+</code></pre>
+
+<p>kResourcesArsc是常量”resources.arsc”，加载资源文件，创建native侧ApkAssets。</p>
+
+<pre><code class="language-C++">// android_content_res_ApkAssets.cpp
+static jlong NativeLoad(JNIEnv* env, jclass /*clazz*/, const format_type_t format,
+                        jstring java_path, const jint property_flags, jobject assets_provider) {
+  ScopedUtfChars path(env, java_path);
+
+  auto loader_assets = LoaderAssetsProvider::Create(env, assets_provider);
+  std::unique_ptr&lt;ApkAssets&gt; apk_assets;
+  switch (format) {
+    case FORMAT_APK: {
+        auto assets = MultiAssetsProvider::Create(std::move(loader_assets),
+                                                  ZipAssetsProvider::Create(path.c_str(),
+                                                                            property_flags));
+        apk_assets = ApkAssets::Load(std::move(assets), property_flags);
+        break;
+    }
+    ...
+  }
+
+  return CreateGuardedApkAssets(std::move(apk_assets));
+}
+
+// Asset.cpp
+std::unique_ptr&lt;ApkAssets&gt; ApkAssets::Load(std::unique_ptr&lt;AssetsProvider&gt; assets,
+                                           package_property_t flags) {
+  return LoadImpl(std::move(assets), flags, nullptr /* idmap_asset */, nullptr /* loaded_idmap */);
+}
+
+std::unique_ptr&lt;ApkAssets&gt; ApkAssets::LoadImpl(std::unique_ptr&lt;AssetsProvider&gt; assets,
+                                               package_property_t property_flags,
+                                               std::unique_ptr&lt;Asset&gt; idmap_asset,
+                                               std::unique_ptr&lt;LoadedIdmap&gt; loaded_idmap) {
+  // Open the resource table via mmap unless it is compressed. This logic is taken care of by Open.
+  bool resources_asset_exists = false;
+  auto resources_asset = assets-&gt;Open(kResourcesArsc, Asset::AccessMode::ACCESS_BUFFER,
+                                      &amp;resources_asset_exists);
+  return LoadImpl(std::move(resources_asset), std::move(assets), property_flags,
+                  std::move(idmap_asset), std::move(loaded_idmap));
+}
+
+std::unique_ptr&lt;ApkAssets&gt; ApkAssets::LoadImpl(std::unique_ptr&lt;Asset&gt; resources_asset,
+                                               std::unique_ptr&lt;AssetsProvider&gt; assets,
+                                               package_property_t property_flags,
+                                               std::unique_ptr&lt;Asset&gt; idmap_asset,
+                                               std::unique_ptr&lt;LoadedIdmap&gt; loaded_idmap) {
+  std::unique_ptr&lt;LoadedArsc&gt; loaded_arsc;
+  if (resources_asset != nullptr) {
+    const auto data = resources_asset-&gt;getIncFsBuffer(true /* aligned */);
+    const size_t length = resources_asset-&gt;getLength();
+    if (!data || length == 0) {
+      return {};
+    }
+    loaded_arsc = LoadedArsc::Load(data, length, loaded_idmap.get(), property_flags);
+  } else {
+    loaded_arsc = LoadedArsc::CreateEmpty();
+  }
+  return std::unique_ptr&lt;ApkAssets&gt;(new ApkAssets(std::move(resources_asset),
+                                                  std::move(loaded_arsc), std::move(assets),
+                                                  property_flags, std::move(idmap_asset),
+                                                  std::move(loaded_idmap)));
+}
+</code></pre>
+
+<p>整个过程主要是创建了AssetManager，ResourcesImpl，Resources这三个类的实例，三者之间的关系为：</p>
+
+<p><img src="/img/ResourceLoader/resource2.png" alt="img" /></p>
+
+<p>在ResourcesManager中会缓存创建的ResourcesImpl和Resources。</p>
+
+<pre><code class="language-SQL">/**
+ * A mapping of ResourceImpls and their configurations. These are heavy weight objects
+ * which should be reused as much as possible.
+ */
+@UnsupportedAppUsage
+private final ArrayMap&lt;ResourcesKey, WeakReference&lt;ResourcesImpl&gt;&gt; mResourceImpls =
+        new ArrayMap&lt;&gt;();
+
+/**
+ * A list of Resource references that can be reused.
+ */
+@UnsupportedAppUsage
+private final ArrayList&lt;WeakReference&lt;Resources&gt;&gt; mResourceReferences = new ArrayList&lt;&gt;();
+</code></pre>
+
+<p>应用想要动态添加资源，可以基于资源路径构造ApkAssets，调用AssetManager的setApkAssets接口添加。</p>
+
+<pre><code class="language-Java">// AssetManager.java
+public void setApkAssets(@NonNull ApkAssets[] apkAssets, boolean invalidateCaches) {
+}
+</code></pre>
+
+<h1 id="3资源文件加载">3.资源文件加载</h1>
+
+<p>Android资源文件在打包时，非assets资源会编译到resources.arsc文件，使用Resources根据资源ID加载；非assets文件会直接打包到apk，使用AssetManager根据文件名加载。事实上，Resources加载资源也是由AssetManager实现的，接下来以加载Activity布局文件为例，介绍下资源加载流程。</p>
+
+<h2 id="31-加载res资源文件">3.1 加载res资源文件</h2>
+
+<p>LayoutInflater类主要功能是从xml实例化View视图，Resources通过资源ID加载布局xml文件，然后解析xml文件实例化View视图：</p>
+
+<pre><code class="language-Java">// LayoutInflater.java
+public View inflate(@LayoutRes int resource, @Nullable ViewGroup root, boolean attachToRoot) {
+    final Resources res = getContext().getResources();
+    XmlResourceParser parser = res.getLayout(resource);
+    try {
+        return inflate(parser, root, attachToRoot);
+    } finally {
+        parser.close();
+    }
+}
+
+// 解析xml文件实例化View视图
+public View inflate(XmlPullParser parser, @Nullable ViewGroup root, boolean attachToRoot) {
+    synchronized (mConstructorArgs) {
+        final Context inflaterContext = mContext;
+        final AttributeSet attrs = Xml.asAttributeSet(parser);
+        Context lastContext = (Context) mConstructorArgs[0];
+        mConstructorArgs[0] = inflaterContext;
+        View result = root;
+
+        try {
+            advanceToRootNode(parser);
+            final String name = parser.getName();
+            if (TAG_MERGE.equals(name)) { // "merge"
+                rInflate(parser, root, inflaterContext, attrs, false);
+            } else {
+                // Temp is the root view that was found in the xml
+                final View temp = createViewFromTag(root, name, inflaterContext, attrs);
+
+                ViewGroup.LayoutParams params = null;
+                if (root != null) {
+                    params = root.generateLayoutParams(attrs);
+                    if (!attachToRoot) {
+                        temp.setLayoutParams(params);
+                    }
+                }
+
+                // Inflate all children under temp against its context.
+                rInflateChildren(parser, temp, attrs, true);
+
+                if (root != null &amp;&amp; attachToRoot) {
+                    root.addView(temp, params);
+                }
+
+                if (root == null || !attachToRoot) {
+                    result = temp;
+                }
+            }
+        } catch (XmlPullParserException e) {
+        } catch (Exception e) {
+        } finally {
+        }
+
+        return result;
+    }
+}
+</code></pre>
+
+<p>Resources通过ResourcesImpl查找对应的布局文件，如果没有找到会抛出NotFoundException：</p>
+
+<pre><code class="language-Java">// Resources.java
+public XmlResourceParser getLayout(@LayoutRes int id) throws NotFoundException {
+    return loadXmlResourceParser(id, "layout");
+}
+
+XmlResourceParser loadXmlResourceParser(@AnyRes int id, @NonNull String type)
+        throws NotFoundException {
+    final TypedValue value = obtainTempTypedValue();
+    try {
+        final ResourcesImpl impl = mResourcesImpl;
+        impl.getValue(id, value, true);
+        if (value.type == TypedValue.TYPE_STRING) {
+            return loadXmlResourceParser(value.string.toString(), id,
+                    value.assetCookie, type);
+        }
+        throw new NotFoundException("Resource ID #0x" + Integer.toHexString(id)
+                + " type #0x" + Integer.toHexString(value.type) + " is not valid");
+    } finally {
+        releaseTempTypedValue(value);
+    }
+}
+
+XmlResourceParser loadXmlResourceParser(String file, int id, int assetCookie,
+                                        String type) throws NotFoundException {
+    return mResourcesImpl.loadXmlResourceParser(file, id, assetCookie, type);
+}
+</code></pre>
+
+<p>ResourcesImpl通过AssetManager的native方法查找资源：</p>
+
+<pre><code class="language-Java">// ResourcesImpl.java
+void getValue(@AnyRes int id, TypedValue outValue, boolean resolveRefs)
+        throws NotFoundException {
+    boolean found = mAssets.getResourceValue(id, 0, outValue, resolveRefs);
+    if (found) {
+        return;
+    }
+    throw new NotFoundException("Resource ID #0x" + Integer.toHexString(id));
+}
+
+boolean getResourceValue(@AnyRes int resId, int densityDpi, @NonNull TypedValue outValue,
+        boolean resolveRefs) {
+    Objects.requireNonNull(outValue, "outValue");
+    synchronized (this) {
+        ensureValidLocked();
+        final int cookie = nativeGetResourceValue(
+                mObject, resId, (short) densityDpi, outValue, resolveRefs);
+        if (cookie &lt;= 0) {
+            return false;
+        }
+        ...
+        return true;
+    }
+}
+</code></pre>
+
+<p>创建AssetManager2实例，调用其GetResource方法：</p>
+
+<pre><code class="language-C++">// android_util_AssetManager.cpp
+static jint NativeGetResourceValue(JNIEnv* env, jclass /*clazz*/, jlong ptr, jint resid,
+                                   jshort density, jobject typed_value,
+                                   jboolean resolve_references) {
+  ScopedLock&lt;AssetManager2&gt; assetmanager(AssetManagerFromLong(ptr));
+  auto value = assetmanager-&gt;GetResource(static_cast&lt;uint32_t&gt;(resid), false /*may_be_bag*/,
+                                         static_cast&lt;uint16_t&gt;(density));
+  if (!value.has_value()) {
+    return ApkAssetsCookieToJavaCookie(kInvalidCookie);
+  }
+
+  if (resolve_references) {
+    auto result = assetmanager-&gt;ResolveReference(value.value());
+    if (!result.has_value()) {
+      return ApkAssetsCookieToJavaCookie(kInvalidCookie);
+    }
+  }
+  return CopyValue(env, *value, typed_value);
+}
+</code></pre>
+
+<p>AssetManager2查找资源的核心逻辑，</p>
+
+<pre><code class="language-C++">// AssetManager2.cpp 
+base::expected&lt;AssetManager2::SelectedValue, NullOrIOError&gt; AssetManager2::GetResource(
+      uint32_t resid, bool may_be_bag, uint16_t density_override) const {
+  auto result = FindEntry(resid, density_override, false /* stop_at_first_match */,
+                          false /* ignore_configuration */);
+  auto result_map_entry = std::get_if&lt;incfs::verified_map_ptr&lt;ResTable_map_entry&gt;&gt;(&amp;result-&gt;entry);
+  if (result_map_entry != nullptr) {
+      if (!may_be_bag) {
+        LOG(ERROR) &lt;&lt; base::StringPrintf("Resource %08x is a complex map type.", resid);
+        return base::unexpected(std::nullopt);
+      }
+
+      // Create a reference since we can't represent this complex type as a Res_value.
+      return SelectedValue(Res_value::TYPE_REFERENCE, resid, result-&gt;cookie, result-&gt;type_flags,
+                           resid, result-&gt;config);
+  }
+
+  // Convert the package ID to the runtime assigned package ID.
+  Res_value value = std::get&lt;Res_value&gt;(result-&gt;entry);
+  result-&gt;dynamic_ref_table-&gt;lookupResourceValue(&amp;value);
+
+  return SelectedValue(value.dataType, value.data, result-&gt;cookie, result-&gt;type_flags,
+                       resid, result-&gt;config);
+}
+
+base::expected&lt;FindEntryResult, NullOrIOError&gt; AssetManager2::FindEntry(
+    uint32_t resid, uint16_t density_override, bool stop_at_first_match,
+    bool ignore_configuration) const {
+  // Might use this if density_override != 0.
+  ResTable_config density_override_config;
+
+  // Select our configuration or generate a density override configuration.
+  const ResTable_config* desired_config = &amp;configuration_;
+  if (density_override != 0 &amp;&amp; density_override != configuration_.density) {
+    density_override_config = configuration_;
+    density_override_config.density = density_override;
+    desired_config = &amp;density_override_config;
+  }
+
+  // 这里对应上文资源ID生成规则
+  const uint32_t package_id = get_package_id(resid);
+  const uint8_t type_idx = get_type_id(resid) - 1;
+  const uint16_t entry_idx = get_entry_id(resid);
+  uint8_t package_idx = package_ids_[package_id];
+  if (UNLIKELY(package_idx == 0xff)) {
+    ANDROID_LOG(ERROR) &lt;&lt; base::StringPrintf("No package ID %02x found for ID 0x%08x.",
+                                             package_id, resid);
+    return base::unexpected(std::nullopt);
+  }
+
+  // 主要用来处理Runtime Resources Overlay
+  const PackageGroup&amp; package_group = package_groups_[package_idx];
+  auto result = FindEntryInternal(package_group, type_idx, entry_idx, *desired_config,
+                                  stop_at_first_match, ignore_configuration);
+  if (UNLIKELY(!result.has_value())) {
+    return base::unexpected(result.error());
+  }
+
+  bool overlaid = false;
+  if (!stop_at_first_match &amp;&amp; !ignore_configuration &amp;&amp; !apk_assets_[result-&gt;cookie]-&gt;IsLoader()) {
+    // 查找资源覆盖的逻辑
+  }
+
+  return result;
+}
+
+// 核心逻辑是根据资源id，找到package_group，遍历package_group根据资源类型找到最佳匹配
+base::expected&lt;FindEntryResult, NullOrIOError&gt; AssetManager2::FindEntryInternal(
+    const PackageGroup&amp; package_group, uint8_t type_idx, uint16_t entry_idx,
+    const ResTable_config&amp; desired_config, bool stop_at_first_match,
+    bool ignore_configuration) const {
+  ApkAssetsCookie best_cookie = kInvalidCookie;
+  const LoadedPackage* best_package = nullptr;
+  incfs::verified_map_ptr&lt;ResTable_type&gt; best_type;
+  const ResTable_config* best_config = nullptr;
+  uint32_t best_offset = 0U;
+  uint32_t type_flags = 0U;
+
+  const bool use_filtered = !ignore_configuration &amp;&amp; &amp;desired_config == &amp;configuration_;
+
+  // RRO机制可能存在多个package
+  const size_t package_count = package_group.packages_.size();
+  for (size_t pi = 0; pi &lt; package_count; pi++) {
+    const ConfiguredPackage&amp; loaded_package_impl = package_group.packages_[pi];
+    const LoadedPackage* loaded_package = loaded_package_impl.loaded_package_;
+    const ApkAssetsCookie cookie = package_group.cookies_[pi];
+
+    const TypeSpec* type_spec = loaded_package-&gt;GetTypeSpecByTypeIndex(type_idx);
+    const bool package_is_loader = loaded_package-&gt;IsCustomLoader();
+
+    auto entry_flags = type_spec-&gt;GetFlagsForEntryIndex(entry_idx);
+    type_flags |= entry_flags.value();
+
+    // 根据设备的当前配置信息，去选择最合适的资源项
+    const FilteredConfigGroup&amp; filtered_group = loaded_package_impl.filtered_configs_[type_idx];
+    const size_t type_entry_count = (use_filtered) ? filtered_group.type_entries.size()
+                                                   : type_spec-&gt;type_entries.size();
+    // 遍历资源类型查找最佳匹配
+    for (size_t i = 0; i &lt; type_entry_count; i++) {
+      const TypeSpec::TypeEntry* type_entry = (use_filtered) ? filtered_group.type_entries[i]
+                                                             : &amp;type_spec-&gt;type_entries[i];
+
+      const ResTable_config&amp; this_config = type_entry-&gt;config;
+      if (!(use_filtered || ignore_configuration || this_config.match(desired_config))) {
+        continue;
+      }
+      
+      // 查找最佳匹配
+      Resolution::Step::Type resolution_type;
+      if (best_config == nullptr) {
+        resolution_type = Resolution::Step::Type::INITIAL;
+      } else if (this_config.isBetterThan(*best_config, &amp;desired_config)) {
+        resolution_type = Resolution::Step::Type::BETTER_MATCH;
+      } else if (package_is_loader &amp;&amp; this_config.compare(*best_config) == 0) {
+        resolution_type = Resolution::Step::Type::OVERLAID;
+      } else {
+        continue;
+      }
+
+      const auto&amp; type = type_entry-&gt;type;
+      const auto offset = LoadedPackage::GetEntryOffset(type, entry_idx);
+      if (!offset.has_value()) {
+        continue;
+      }
+
+      best_cookie = cookie;
+      best_package = loaded_package;
+      best_type = type;
+      best_config = &amp;this_config;
+      best_offset = offset.value();
+
+      if (stop_at_first_match) {
+        break;
+      }
+    }
+  }
+
+  auto best_entry_result = LoadedPackage::GetEntryFromOffset(best_type, best_offset);
+  const incfs::map_ptr&lt;ResTable_entry&gt; best_entry = *best_entry_result;
+  const auto entry = GetEntryValue(best_entry.verified());
+
+  return FindEntryResult{
+    .cookie = best_cookie,
+    .entry = *entry,
+    .config = *best_config,
+    .type_flags = type_flags,
+    .package_name = &amp;best_package-&gt;GetPackageName(),
+    .type_string_ref = StringPoolRef(best_package-&gt;GetTypeStringPool(), best_type-&gt;id - 1),
+    .entry_string_ref = StringPoolRef(best_package-&gt;GetKeyStringPool(),
+                                      best_entry-&gt;key.index),
+    .dynamic_ref_table = package_group.dynamic_ref_table.get(),
+  };
+}
+</code></pre>
+
+<h2 id="32-加载assets资源">3.2 加载assets资源</h2>
+
+<p>通过Context获取到AssetManager实例，调用其open方法传入文件名：</p>
+
+<pre><code class="language-Java">// AssetManager.java
+public @NonNull InputStream open(@NonNull String fileName) throws IOException {
+    return open(fileName, ACCESS_STREAMING);
+}
+
+public @NonNull InputStream open(@NonNull String fileName, int accessMode) throws IOException {
+    Objects.requireNonNull(fileName, "fileName");
+    synchronized (this) {
+        ensureOpenLocked();
+        final long asset = nativeOpenAsset(mObject, fileName, accessMode);
+        if (asset == 0) {
+            throw new FileNotFoundException("Asset file: " + fileName);
+        }
+        final AssetInputStream assetInputStream = new AssetInputStream(asset);
+        incRefsLocked(assetInputStream.hashCode());
+        return assetInputStream;
+    }
+}
+</code></pre>
+
+<p>在native侧同样创建AssetManager2，调用其Open方法：</p>
+
+<pre><code class="language-C++">// android_util_AssetManager.cpp
+static jlong NativeOpenAsset(JNIEnv* env, jclass /*clazz*/, jlong ptr, jstring asset_path,
+                             jint access_mode) {
+  ScopedUtfChars asset_path_utf8(env, asset_path);
+  ...
+  ScopedLock&lt;AssetManager2&gt; assetmanager(AssetManagerFromLong(ptr));
+  std::unique_ptr&lt;Asset&gt; asset =
+      assetmanager-&gt;Open(asset_path_utf8.c_str(), static_cast&lt;Asset::AccessMode&gt;(access_mode));
+  if (!asset) {
+    jniThrowException(env, "java/io/FileNotFoundException", asset_path_utf8.c_str());
+    return 0;
+  }
+  return reinterpret_cast&lt;jlong&gt;(asset.release());
+}
+</code></pre>
+
+<p>apk_assets_存储的是已经加载的所有apk包，遍历apk_assets_通过AssetsProvider查找文件：</p>
+
+<pre><code class="language-C++">// AssetManager2.cpp 
+std::unique_ptr&lt;Asset&gt; AssetManager2::Open(const std::string&amp; filename,
+                                           Asset::AccessMode mode) const {
+  const std::string new_path = "assets/" + filename;
+  return OpenNonAsset(new_path, mode);
+}
+
+std::unique_ptr&lt;Asset&gt; AssetManager2::OpenNonAsset(const std::string&amp; filename,
+                                                   Asset::AccessMode mode,
+                                                   ApkAssetsCookie* out_cookie) const {
+  for (int32_t i = apk_assets_.size() - 1; i &gt;= 0; i--) {
+    // 通过文件名加载文件时忽略RRO
+    if (apk_assets_[i]-&gt;IsOverlay()) {
+      continue;
+    }
+
+    std::unique_ptr&lt;Asset&gt; asset = apk_assets_[i]-&gt;GetAssetsProvider()-&gt;Open(filename, mode);
+    if (asset) {
+      if (out_cookie != nullptr) {
+        *out_cookie = i;
+      }
+      return asset;
+    }
+  }
+
+  if (out_cookie != nullptr) {
+    *out_cookie = kInvalidCookie;
+  }
+  return {};
+}
+</code></pre>
+
+<p>AssetsProvider是在上文创建ApkAssets时创建的，读取文件分为文件压缩/文件未压缩两种：</p>
+
+<pre><code class="language-C++">// AssetsProvider.cpp
+std::unique_ptr&lt;Asset&gt; AssetsProvider::Open(const std::string&amp; path, Asset::AccessMode mode,
+                                            bool* file_exists) const {
+  return OpenInternal(path, mode, file_exists);
+}
+
+std::unique_ptr&lt;Asset&gt; ZipAssetsProvider::OpenInternal(const std::string&amp; path,
+                                                       Asset::AccessMode mode,
+                                                       bool* file_exists) const {
+    if (file_exists != nullptr) {
+      *file_exists = false; // 初始化为false
+    }
+
+    ZipEntry entry;
+    // zip_archive.cc 
+    if (FindEntry(zip_handle_.get(), path, &amp;entry) != 0) {
+      return {};
+    }
+
+    if (file_exists != nullptr) {
+      *file_exists = true; // 找到文件，设置为true
+    }
+
+    const int fd = GetFileDescriptor(zip_handle_.get());
+    const off64_t fd_offset = GetFileDescriptorOffset(zip_handle_.get());
+    const bool incremental_hardening = (flags_ &amp; PROPERTY_DISABLE_INCREMENTAL_HARDENING) == 0U;
+    incfs::IncFsFileMap asset_map;
+    if (entry.method == kCompressDeflated) { // 是否是压缩文件
+      if (!asset_map.Create(fd, entry.offset + fd_offset, entry.compressed_length,
+                            name_.GetDebugName().c_str(), incremental_hardening)) {
+        LOG(ERROR) &lt;&lt; "Failed to mmap file '" &lt;&lt; path &lt;&lt; "' in APK '" &lt;&lt; name_.GetDebugName()
+                   &lt;&lt; "'";
+        return {};
+      }
+
+      std::unique_ptr&lt;Asset&gt; asset =
+          Asset::createFromCompressedMap(std::move(asset_map), entry.uncompressed_length, mode);
+      return asset;
+    }
+
+    if (!asset_map.Create(fd, entry.offset + fd_offset, entry.uncompressed_length,
+                          name_.GetDebugName().c_str(), incremental_hardening)) {
+      LOG(ERROR) &lt;&lt; "Failed to mmap file '" &lt;&lt; path &lt;&lt; "' in APK '" &lt;&lt; name_.GetDebugName() &lt;&lt; "'";
+      return {};
+    }
+    ...
+    auto asset = Asset::createFromUncompressedMap(std::move(asset_map), mode, std::move(ufd));
+    return asset;
+}
+
+std::unique_ptr&lt;Asset&gt; Asset::createFromUncompressedMap(incfs::IncFsFileMap&amp;&amp; dataMap,
+                                                                   AccessMode mode,
+                                                                   base::unique_fd fd)
+{
+    auto pAsset = util::make_unique&lt;_FileAsset&gt;();
+    status_t result = pAsset-&gt;openChunk(std::move(dataMap), std::move(fd));
+    pAsset-&gt;mAccessMode = mode;
+    return std::move(pAsset);
+}
+
+status_t _FileAsset::openChunk(incfs::IncFsFileMap&amp;&amp; dataMap, base::unique_fd fd)
+{
+    assert(mFp == NULL);    // no reopen
+    assert(!mMap.has_value());
+    assert(dataMap != NULL);
+
+    mMap = std::move(dataMap);
+    mStart = -1;            // not used
+    mLength = mMap-&gt;length();
+    mFd = std::move(fd);
+    assert(mOffset == 0);
+
+    return NO_ERROR;
+}
+</code></pre>
+
+<h1 id="参考文档">参考文档：</h1>
+
+<p><a href="https://blog.csdn.net/luoshengyang/article/details/8738877">Android资源管理框架（Asset Manager）简要介绍和学习计划</a><br />
+<a href="https://blog.csdn.net/luoshengyang/article/details/8744683">Android应用程序资源的编译和打包过程分析</a><br />
+<a href="https://blog.csdn.net/luoshengyang/article/details/8791064">Android应用程序资源管理器（Asset Manager）的创建过程分析</a><br />
+<a href="https://blog.csdn.net/luoshengyang/article/details/8806798">Android应用程序资源的查找过程分析</a></p>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2023/03/24/Android%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/" data-toggle="tooltip" data-placement="top" title="Android类加载流程">
+                        Previous<br>
+                        <span>Android类加载流程</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2023/05/29/%E6%8A%96%E9%9F%B3Android%E5%9F%BA%E7%A1%80%E6%8A%80%E6%9C%AF%E5%A4%A7%E6%8F%AD%E7%A7%98/" data-toggle="tooltip" data-placement="top" title="抖音Android基础技术大揭秘">
+                        Next<br>
+                        <span>抖音Android基础技术大揭秘</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0000" 
+                    href="/archive/?tag=Android"
+                    title="Android"
+                    rel="18">Android</a>
+        
+                <a data-sort="0011" 
+                    href="/archive/?tag=SystemUI"
+                    title="SystemUI"
+                    rel="7">SystemUI</a>
+        
+                <a data-sort="0016" 
+                    href="/archive/?tag=ANR"
+                    title="ANR"
+                    rel="2">ANR</a>
+        
+                <a data-sort="0016" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="2">Activity</a>
+        
+                <a data-sort="0016" 
+                    href="/archive/?tag=HotFix"
+                    title="HotFix"
+                    rel="2">HotFix</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+  <li><a href="https://weishu.me/">weishu</a></li>
+  
+  <li><a href="https://androidperformance.com/">Gracker</a></li>
+  
+  <li><a href="http://gityuan.com/">Gityuan</a></li>
+  
+  <li><a href="https://juejin.cn/user/149189312913511/posts">芦半山</a></li>
+  
+</ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; Android学习笔记 2023
+                    <br>
+                    Powered by <a href="http://huangxuan.me">Hux Blog</a> |
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0" width="100px"
+                        height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=huxpro&repo=huxpro.github.io&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/js/snackbar.js "></script>
+<script src="/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4aa6afabf05ffd2ce6f459088368d4a3';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function () {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?" + _baId;
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2><h3 class="post-subtitle">{subtitle}</h3><hr></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false,
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        templateMiddleware: function (prop, value, template) {
+            if (prop === 'subtitle' || prop === 'title') {
+                if (value.indexOf("code")) {
+                    return htmlDecode(value);
+                } else {
+                    return value;
+                }
+            }
+        }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+<!-- Image to hack wechat -->
+<img src="/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

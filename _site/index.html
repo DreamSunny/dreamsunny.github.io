@@ -285,6 +285,44 @@ B站：抖音Android基础技...
 <hr>
 
 <div class="post-preview">
+    <a href="/2023/04/17/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
+        <h2 class="post-title">
+            Android资源加载流程
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                官方文档：
+应用资源概览
+AAPT2
+
+1.资源文件类型
+
+Android应用程序资源可以分为两大类，分别是assets和res：
+
+
+  assets
+
+
+assets类资源放在工程根目录的assets子目录下，它里面保存的是一些原始的文件，可以以任何方式来进行组织。这些文件最终会被原装不动地打包在apk文件中。如果我们要在程序中访问这些文件，那么就需要指定文件名来访问。
+
+
+  res
+...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on April 17, 2023
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/2023/03/24/Android%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
         <h2 class="post-title">
             Android类加载流程
@@ -425,6 +463,67 @@ sta...
 <hr>
 
 <div class="post-preview">
+    <a href="/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/">
+        <h2 class="post-title">
+            ANR治理-主线程耗时消息统计
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                今日头条 ANR 优化实践系列 - 监控工具与分析思路
+西瓜卡顿 &amp; ANR 优化治理及监控体系建设
+
+从这两篇文章中可以大致猜出这三者之间的关系：
+
+Npth用来监控ANR，Sliver用来抓取线程堆栈，Raster用来做消息聚合。
+
+监控ANR的主流方案是微信的 监听signal+判断主线程卡顿，Sliver抓取堆栈是Native层实现，
+
+接下来主要分析消息聚合的实现。
+
+消息...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on August 30, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/08/20/ANR%E6%B2%BB%E7%90%86-Binder%E8%B0%83%E7%94%A8%E7%BB%9F%E8%AE%A1/">
+        <h2 class="post-title">
+            ANR治理-Binder调用统计
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.基于adb命令统计binder请求
+
+可以通过adb shell am trace-ipc可以检测binder的调用次数。
+
+比如想知道下拉通知栏有哪些binder调用，先运行adb shell am trace-ipc start，下拉通知栏，在执行
+
+adb shell am trace-ipc stop –dump-file /data/local/tmp/systemui.tra...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on August 20, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/2022/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
         <h2 class="post-title">
             Recovery机制介绍
@@ -478,97 +577,6 @@ Soong是为Android编译...
 </div>
 <hr>
 
-<div class="post-preview">
-    <a href="/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/">
-        <h2 class="post-title">
-            SystemUI-通知显示流程
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                官方文档：
-
-通知概览
-创建通知
-
-1.应用发送通知
-
-应用侧发通知代码：
-
-// 构建Notification
-NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-        .setSmallIcon(R.drawable.notification_icon)
-  ...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on April 17, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/03/28/SystemUI-%E5%AD%97%E8%8A%82%E7%A0%81%E6%8F%92%E6%A1%A9/">
-        <h2 class="post-title">
-            SystemUI-字节码插桩
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1.java_genrule介绍
-
-在阅读系统源码时，发现了一个有意思的工具lockedregioncodeinjection，从命名来看是对锁处理的地方做代码插桩，其使用的代码如下：
-
-java_genrule {
-    name: "services.core.priorityboosted",
-    srcs: [":services.core.unboosted"],
-    t...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on March 28, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/">
-        <h2 class="post-title">
-            SystemUI-支持gradle编译
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1. 导入framework.jar
-
-在源码根目录下执行：make framework
-
-在R以下拷贝 out/target/common/obj/JAVA_LIBRARIES/framework-full_intermediates/classes.jar 重命名为 framework.jar。
-
-在R及以上拷贝 out/target/common/obj/JAVA_LIBRARIES/...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on March 20, 2022
-    </p>
-</div>
-<hr>
-
 
 <!-- Pager -->
 
@@ -603,19 +611,24 @@ java_genrule {
                 <a data-sort="0000" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="14">Android</a>
+                    rel="18">Android</a>
         
-                <a data-sort="0008" 
+                <a data-sort="0011" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
-                    rel="6">SystemUI</a>
+                    rel="7">SystemUI</a>
         
-                <a data-sort="0012" 
+                <a data-sort="0016" 
+                    href="/archive/?tag=ANR"
+                    title="ANR"
+                    rel="2">ANR</a>
+        
+                <a data-sort="0016" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0012" 
+                <a data-sort="0016" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="2">HotFix</a>

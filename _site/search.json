@@ -9,6 +9,14 @@
     } ,
   
     {
+      "title"    : "Android资源加载流程",
+      "subtitle" : "",
+      "tags"     : "Android, ResourceLoader",
+      "url"      : "/2023/04/17/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/",
+      "date"     : "2023-04-17 20:00:00 +0800"
+    } ,
+  
+    {
       "title"    : "Android类加载流程",
       "subtitle" : "",
       "tags"     : "Android, ClassLoader",
@@ -41,6 +49,22 @@
     } ,
   
     {
+      "title"    : "ANR治理-主线程耗时消息统计",
+      "subtitle" : "",
+      "tags"     : "Android, ANR",
+      "url"      : "/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/",
+      "date"     : "2022-08-30 20:00:00 +0800"
+    } ,
+  
+    {
+      "title"    : "ANR治理-Binder调用统计",
+      "subtitle" : "",
+      "tags"     : "Android, ANR, Binder",
+      "url"      : "/2022/08/20/ANR%E6%B2%BB%E7%90%86-Binder%E8%B0%83%E7%94%A8%E7%BB%9F%E8%AE%A1/",
+      "date"     : "2022-08-20 20:00:00 +0800"
+    } ,
+  
+    {
       "title"    : "Recovery机制介绍",
       "subtitle" : "",
       "tags"     : "Android, SystemUI, Recovery",
@@ -57,11 +81,27 @@
     } ,
   
     {
+      "title"    : "SystemUI-插件机制",
+      "subtitle" : "",
+      "tags"     : "Android, SystemUI, Plugin",
+      "url"      : "/2022/04/30/SystemUI-%E6%8F%92%E4%BB%B6%E6%9C%BA%E5%88%B6/",
+      "date"     : "2022-04-30 20:00:00 +0800"
+    } ,
+  
+    {
       "title"    : "SystemUI-通知显示流程",
       "subtitle" : "",
       "tags"     : "Android, SystemUI, Notification",
       "url"      : "/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/",
       "date"     : "2022-04-17 20:00:00 +0800"
+    } ,
+  
+    {
+      "title"    : "SystemUI-使用GarbageMonitor",
+      "subtitle" : "",
+      "tags"     : "Android, SystemUI",
+      "url"      : "/2022/04/07/SystemUI-%E4%BD%BF%E7%94%A8GarbageMonitor/",
+      "date"     : "2022-04-07 20:00:00 +0800"
     } ,
   
     {
@@ -78,14 +118,6 @@
       "tags"     : "Android, SystemUI",
       "url"      : "/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/",
       "date"     : "2022-03-20 20:00:00 +0800"
-    } ,
-  
-    {
-      "title"    : "SystemUI-使用GarbageMonitor",
-      "subtitle" : "",
-      "tags"     : "Android, SystemUI",
-      "url"      : "/2022/03/14/SystemUI-%E4%BD%BF%E7%94%A8GarbageMonitor/",
-      "date"     : "2022-03-14 20:00:00 +0800"
     } ,
   
     {

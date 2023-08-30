@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Mon, 28 Aug 2023 23:23:10 +0800</pubDate>
-    <lastBuildDate>Mon, 28 Aug 2023 23:23:10 +0800</lastBuildDate>
+    <pubDate>Wed, 30 Aug 2023 21:54:40 +0800</pubDate>
+    <lastBuildDate>Wed, 30 Aug 2023 21:54:40 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -47,6 +47,988 @@ B站：&lt;a href=&quot;https://www.bilibili.com/video/BV1Fh4y1X71b&quot;&gt;抖
         <category>Performance</category>
         
         <category>Stability</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Android资源加载流程</title>
+        <description>&lt;p&gt;官方文档：&lt;br /&gt;
+&lt;a href=&quot;https://developer.android.com/guide/topics/resources/providing-resources?hl=zh-cn&quot;&gt;应用资源概览&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://developer.android.com/studio/command-line/aapt2?hl=zh-cn&quot;&gt;AAPT2&lt;/a&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;1资源文件类型&quot;&gt;1.资源文件类型&lt;/h1&gt;
+
+&lt;p&gt;Android应用程序资源可以分为两大类，分别是assets和res：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;assets&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;assets类资源放在工程根目录的assets子目录下，它里面保存的是一些原始的文件，可以以任何方式来进行组织。这些文件最终会被原装不动地打包在apk文件中。如果我们要在程序中访问这些文件，那么就需要指定文件名来访问。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;res&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;res类资源放在工程根目录的res子目录下，它里面保存的文件大多数都会被编译，并且都会被赋予资源ID。这样我们就可以在程序中通过R类来访问res类的资源。res类资源按照不同的用途可以进一步划分为以下子类型：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;目录&lt;/th&gt;
+      &lt;th&gt;资源类型&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;animator/&lt;/td&gt;
+      &lt;td&gt;用于定义属性动画的 XML 文件。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;anim/&lt;/td&gt;
+      &lt;td&gt;用于定义补间动画的 XML 文件。属性动画也可保存在此目录中，但为了区分这两种类型，属性动画首选 animator/ 目录。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;color/&lt;/td&gt;
+      &lt;td&gt;定义颜色状态列表的 XML 文件。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;drawable/&lt;/td&gt;
+      &lt;td&gt;位图文件（PNG、.9.png、JPG 或 GIF）或编译为以下可绘制资源子类型的 XML 文件：位图文件九宫图（可调整大小的位图）状态列表形状动画可绘制对象其他可绘制对象&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;mipmap/&lt;/td&gt;
+      &lt;td&gt;适用于不同启动器图标密度的可绘制对象文件。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;layout/&lt;/td&gt;
+      &lt;td&gt;用于定义界面布局的 XML 文件。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;menu/&lt;/td&gt;
+      &lt;td&gt;用于定义应用菜单（例如选项菜单、上下文菜单或子菜单）的 XML 文件&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;raw/&lt;/td&gt;
+      &lt;td&gt;需以原始形式保存的任意文件。如要使用原始 InputStream 打开这些资源，请使用资源 ID（即 R.raw.filename）调用 Resources.openRawResource()。但是，如需访问原始文件名和文件层次结构，请考虑将资源保存在 assets/ 目录（而非 res/raw/）下。assets/ 中的文件没有资源 ID，因此您只能使用 AssetManager 读取这些文件。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;values/&lt;/td&gt;
+      &lt;td&gt;包含字符串、整数和颜色等简单值的 XML 文件。其他 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;res/&lt;/code&gt; 子目录中的 XML 资源文件会根据 XML 文件名定义单个资源，而 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;values/&lt;/code&gt; 目录中的文件可描述多个资源。对于此目录中的文件，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;resources&amp;gt;&lt;/code&gt; 元素的每个子元素均会定义一个资源。例如，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;string&amp;gt;&lt;/code&gt; 元素会创建 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;R.string&lt;/code&gt; 资源，&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;&amp;lt;color&amp;gt;&lt;/code&gt; 元素会创建 &lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;R.color&lt;/code&gt; 资源。由于每个资源均使用自己的 XML 元素进行定义，因此您可以随意命名文件，并在某个文件中放入不同的资源类型。但是，您可能需要将独特的资源类型放在不同的文件中，使其一目了然。例如，对于可在此目录中创建的资源，下面给出了相应的文件名约定：arrays.xml 用于资源数组（类型化数组）colors.xml 用于颜色值dimens.xml 用于维度值strings.xml 用于字符串值styles.xml 用于样式&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;xml/&lt;/td&gt;
+      &lt;td&gt;可在运行时通过调用 Resources.getXML() 读取的任意 XML 文件。各种 XML 配置文件（例如搜索配置）都必须保存在此处。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;font/&lt;/td&gt;
+      &lt;td&gt;带有扩展名的字体文件（例如 TTF、OTF 或 TTC），或包含 &lt;font-family&gt; 元素的 XML 文件。&lt;/font-family&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;上述资源文件，除了raw类型资源和drawable类型资源的Bitmap文件之外，其它的资源文件均为文本格式的XML文件，它们在打包的过程中，会被编译成二进制格式的XML文件。这些二进制格式的XML文件分别有一个字符串资源池，用来保存文件中引用到的每一个字符串，包括XML元素标签、属性名称、属性值，以及其它的一切文本值所使用到的字符串。这样原来在文本格式的XML文件中的每一个放置字符串的地方在二进制格式的XML文件中都被替换成一个索引到字符串资源池的整数值。这样做有两个好处：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;文件占用更小。例如，假设在原来的文本格式的XML文件中，有四个地方使用的都是同一个字符串，那么在最终编译出来的二进制格式的XML文件中，字符串资源池只有一份字符串值，而引用它的四个地方只占用一个整数值。&lt;/li&gt;
+  &lt;li&gt;解析速度更快。由于在二进制格式的XML文件中，所有的XML元素标签和属性等值都是使用整数来描述的，因此，在解析的过程中，就不再需要进行字符串解析，这样就可以提高解析速度。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Android资源打包工具aapt在编译和打包资源的过程中，会执行以下两个额外的操作：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;赋予每一个非assets资源一个ID值，这些ID值以常量的形式定义在一个R.java文件中。&lt;/li&gt;
+  &lt;li&gt;生成一个resources.arsc文件，用来描述那些具有ID值的资源的配置信息，它的内容就相当于是一个资源索引表。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;resources.arsc文件格式定义在 &lt;a href=&quot;https://android.googlesource.com/platform/frameworks/base/+/56a2301/include/androidfw/ResourceTypes.h&quot;&gt;ResourceTypes.h&lt;/a&gt; ，资源ID是一个4字节的无符号整数 0xPPTTEEEE 的形式，其中 PP 是 PackageId，TT 是 TypeIndex，EEEE 是EntryIndex。Package ID中7f是应用包资源，01是系统资源。&lt;/p&gt;
+
+&lt;h1 id=&quot;2资源管理器&quot;&gt;2.资源管理器&lt;/h1&gt;
+
+&lt;p&gt;上文提到Android应用程序资源可以分为assets和res两大类，在代码中访问这两大类资源分别使用的AssetManager和Resources，可以通过Context获取到实例，实现类是ContextImpl：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ContextImpl.java
+public AssetManager getAssets() {
+    return getResources().getAssets();
+}
+
+@Override
+public Resources getResources() {
+    return mResources;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/ResourceLoader/resource1.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;应用启动流程中，在创建Application实例前会先创建ContextImpl实例：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// LoadedApk.java
+private Application makeApplicationInner(boolean forceDefaultAppClass,
+        Instrumentation instrumentation, boolean allowDuplicateInstances) {
+    ...
+    try {
+        final java.lang.ClassLoader cl = getClassLoader();
+        ...
+        // 创建ContextImpl实例
+        ContextImpl appContext = ContextImpl.createAppContext(mActivityThread, this);
+        ...
+        app = mActivityThread.mInstrumentation.newApplication(
+                cl, appClass, appContext);
+        appContext.setOuterContext(app);
+    } catch (Exception e) {
+        ...
+    } 
+    ...
+    return app;
+}
+
+// ContextImpl.java
+static ContextImpl createAppContext(ActivityThread mainThread, LoadedApk packageInfo) {
+    return createAppContext(mainThread, packageInfo, null);
+}
+
+static ContextImpl createAppContext(ActivityThread mainThread, LoadedApk packageInfo,
+        String opPackageName) {
+    if (packageInfo == null) throw new IllegalArgumentException(&quot;packageInfo&quot;);
+    ContextImpl context = new ContextImpl(null, mainThread, packageInfo,
+        ContextParams.EMPTY, null, null, null, null, null, 0, null, opPackageName);
+    context.setResources(packageInfo.getResources());
+    context.mContextType = isSystemOrSystemUI(context) ? CONTEXT_TYPE_SYSTEM_OR_SYSTEM_UI
+            : CONTEXT_TYPE_NON_UI;
+    return context;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;创建完ContextImpl实例后会调用LoadedApk.getResources()方法初始化mResources成员变量：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// LoadedApk.java
+public Resources getResources() {
+    if (mResources == null) {
+        final String[] splitPaths = getSplitPaths(null);
+        ...
+        mResources = ResourcesManager.getInstance().getResources(null, mResDir,
+                splitPaths, mLegacyOverlayDirs, mOverlayPaths,
+                mApplicationInfo.sharedLibraryFiles, null, null, getCompatibilityInfo(),
+                getClassLoader(), null);
+    }
+    return mResources;
+}
+
+private void setApplicationInfo(ApplicationInfo aInfo) {
+    final int myUid = Process.myUid();
+    aInfo = adjustNativeLibraryPaths(aInfo);
+    mApplicationInfo = aInfo;
+    mAppDir = aInfo.sourceDir;
+    mResDir = aInfo.uid == myUid ? aInfo.sourceDir : aInfo.publicSourceDir;
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里的mResDir与mAppDir都是aInfo.sourceDir，也就是/data/app/xx/xx/base.apk。&lt;/p&gt;
+
+&lt;p&gt;继续查看创建Resources的逻辑，这里传入的activityToken为null：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ResourcesManager.java
+public Resources getResources(
+        @Nullable IBinder activityToken,
+        @Nullable String resDir,
+        @Nullable String[] splitResDirs,
+        @Nullable String[] legacyOverlayDirs,
+        @Nullable String[] overlayPaths,
+        @Nullable String[] libDirs,
+        @Nullable Integer overrideDisplayId,
+        @Nullable Configuration overrideConfig,
+        @NonNull CompatibilityInfo compatInfo,
+        @Nullable ClassLoader classLoader,
+        @Nullable List&amp;lt;ResourcesLoader&amp;gt; loaders) {
+    try {
+        Trace.traceBegin(Trace.TRACE_TAG_RESOURCES, &quot;ResourcesManager#getResources&quot;);
+        final ResourcesKey key = new ResourcesKey(
+                resDir,
+                splitResDirs,
+                combinedOverlayPaths(legacyOverlayDirs, overlayPaths),
+                libDirs,
+                overrideDisplayId != null ? overrideDisplayId : INVALID_DISPLAY,
+                overrideConfig,
+                compatInfo,
+                loaders == null ? null : loaders.toArray(new ResourcesLoader[0]));
+        classLoader = classLoader != null ? classLoader : ClassLoader.getSystemClassLoader();
+
+        final ApkAssetsSupplier assetsSupplier = createApkAssetsSupplierNotLocked(key);
+        ...
+        Resources resources;
+        // 每个Activity会创建一个对应的Resources
+        if (activityToken != null) {
+            Configuration initialOverrideConfig = new Configuration(key.mOverrideConfiguration);
+            rebaseKeyForActivity(activityToken, key, overrideDisplayId != null);
+            resources = createResourcesForActivity(activityToken, key, initialOverrideConfig,
+                    overrideDisplayId, classLoader, assetsSupplier);
+        } else {
+            resources = createResources(key, classLoader, assetsSupplier);
+        }
+        return resources;
+    } finally {
+    }
+}
+
+private Resources createResources(@NonNull ResourcesKey key, @NonNull ClassLoader classLoader,
+        @Nullable ApkAssetsSupplier apkSupplier) {
+    synchronized (mLock) {
+        ResourcesImpl resourcesImpl = findOrCreateResourcesImplForKeyLocked(key, apkSupplier);
+        ...
+        return createResourcesLocked(classLoader, resourcesImpl, key.mCompatInfo);
+    }
+}
+
+private @NonNull Resources createResourcesLocked(@NonNull ClassLoader classLoader,
+        @NonNull ResourcesImpl impl, @NonNull CompatibilityInfo compatInfo) {
+    cleanupReferences(mResourceReferences, mResourcesReferencesQueue);
+
+    Resources resources = compatInfo.needsCompatResources() ? new CompatResources(classLoader)
+            : new Resources(classLoader);
+    resources.setImpl(impl);
+    resources.setCallbacks(mUpdateCallbacks);
+    mResourceReferences.add(new WeakReference&amp;lt;&amp;gt;(resources, mResourcesReferencesQueue));
+    return resources;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;创建ResourcesImpl的实例，可以看到ResourcesImpl的实例会被弱引用缓存到mResourceImpls中：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ResourcesManager.java
+private @Nullable ResourcesImpl findOrCreateResourcesImplForKeyLocked(
+        @NonNull ResourcesKey key, @Nullable ApkAssetsSupplier apkSupplier) {
+    ResourcesImpl impl = findResourcesImplForKeyLocked(key);
+    if (impl == null) {
+        impl = createResourcesImpl(key, apkSupplier);
+        if (impl != null) {
+            mResourceImpls.put(key, new WeakReference&amp;lt;&amp;gt;(impl));
+        }
+    }
+    return impl;
+}
+
+private @Nullable ResourcesImpl createResourcesImpl(@NonNull ResourcesKey key,
+        @Nullable ApkAssetsSupplier apkSupplier) {
+    final AssetManager assets = createAssetManager(key, apkSupplier);
+    ...
+    final ResourcesImpl impl = new ResourcesImpl(assets, displayMetrics, config, daj);
+    return impl;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;创建AssetManager的实例，关键操作是addApkAssets方法，参数是ApkAssets对象：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ResourcesManager.java
+protected @Nullable AssetManager createAssetManager(@NonNull final ResourcesKey key) {
+    return createAssetManager(key, /* apkSupplier */ null);
+}
+
+private @Nullable AssetManager createAssetManager(@NonNull final ResourcesKey key,
+        @Nullable ApkAssetsSupplier apkSupplier) {
+    final AssetManager.Builder builder = new AssetManager.Builder();
+
+    final ArrayList&amp;lt;ApkKey&amp;gt; apkKeys = extractApkKeys(key);
+    for (int i = 0, n = apkKeys.size(); i &amp;lt; n; i++) {
+        final ApkKey apkKey = apkKeys.get(i);
+        try {
+            // 添加到mUserApkAssets
+            builder.addApkAssets(
+                    (apkSupplier != null) ? apkSupplier.load(apkKey) : loadApkAssets(apkKey));
+        } catch (IOException e) {
+        }
+    }
+
+    if (key.mLoaders != null) {
+        for (final ResourcesLoader loader : key.mLoaders) {
+            // 添加到mLoaders
+            builder.addLoader(loader);
+        }
+    }
+
+    return builder.build();
+}
+
+private static @NonNull ArrayList&amp;lt;ApkKey&amp;gt; extractApkKeys(@NonNull final ResourcesKey key) {
+    final ArrayList&amp;lt;ApkKey&amp;gt; apkKeys = new ArrayList&amp;lt;&amp;gt;();
+
+    if (key.mResDir != null) {
+        apkKeys.add(new ApkKey(key.mResDir, false /*sharedLib*/, false /*overlay*/));
+    }
+    if (key.mSplitResDirs != null) { ... }
+    if (key.mLibDirs != null) { ... }
+    if (key.mOverlayPaths != null)  { ... }
+
+    return apkKeys;
+}
+
+// AssetManager.java
+public AssetManager build() {
+    final ApkAssets[] systemApkAssets = getSystem().getApkAssets();
+    ...
+    final int totalApkAssetCount = systemApkAssets.length + mUserApkAssets.size()
+            + loaderApkAssets.size();
+    final ApkAssets[] apkAssets = new ApkAssets[totalApkAssetCount];
+    // 简化为apkAssets = systemApkAssets + mUserApkAssets + mLoaders去重
+    ...
+
+    final AssetManager assetManager = new AssetManager(false /*sentinel*/);
+    assetManager.mApkAssets = apkAssets;
+    AssetManager.nativeSetApkAssets(assetManager.mObject, apkAssets,
+            false /*invalidateCaches*/);
+    assetManager.mLoaders = mLoaders.isEmpty() ? null
+            : mLoaders.toArray(new ResourcesLoader[0]);
+
+    return assetManager;
+}
+
+// 创建加载系统资源的ApkAssets
+public static AssetManager getSystem() {
+    synchronized (sSync) {
+        createSystemAssetsInZygoteLocked(false, FRAMEWORK_APK_PATH);
+        return sSystem;
+    }
+}
+
+public static void createSystemAssetsInZygoteLocked(boolean reinitialize,
+        String frameworkPath) {
+    try {
+        final ArrayList&amp;lt;ApkAssets&amp;gt; apkAssets = new ArrayList&amp;lt;&amp;gt;();
+        // &quot;/system/framework/framework-res.apk&quot;
+        apkAssets.add(ApkAssets.loadFromPath(frameworkPath, ApkAssets.PROPERTY_SYSTEM));
+
+        final String[] systemIdmapPaths =
+                OverlayConfig.getZygoteInstance().createImmutableFrameworkIdmapsInZygote();
+        for (String idmapPath : systemIdmapPaths) {
+            // Android系统资源覆盖机制
+            apkAssets.add(ApkAssets.loadOverlayFromPath(idmapPath, ApkAssets.PROPERTY_SYSTEM));
+        }
+        sSystemApkAssetsSet = new ArraySet&amp;lt;&amp;gt;(apkAssets);
+        sSystemApkAssets = apkAssets.toArray(new ApkAssets[apkAssets.size()]);
+        if (sSystem == null) {
+            sSystem = new AssetManager(true /*sentinel*/);
+        }
+        sSystem.setApkAssets(sSystemApkAssets, false /*invalidateCaches*/);
+    } catch (IOException e) {
+    }
+}
+
+private AssetManager(boolean sentinel) {
+    mObject = nativeCreate();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Android资源覆盖机制参考官方文档：&lt;a href=&quot;https://source.android.com/docs/core/runtime/rros&quot;&gt;Change the value of an app’s resources at runtime&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;接下来创建ApkAssets的实例，在构造方法中调用native方法：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ResourcesManager.java
+ApkAssets load(final ApkKey apkKey) throws IOException {
+    ApkAssets apkAssets = mLocalCache.get(apkKey);
+    if (apkAssets == null) {
+        apkAssets = loadApkAssets(apkKey);
+        mLocalCache.put(apkKey, apkAssets);
+    }
+    return apkAssets;
+}
+
+private @NonNull ApkAssets loadApkAssets(@NonNull final ApkKey key) throws IOException {
+    ApkAssets apkAssets;
+    ...
+    if (key.overlay) {
+        apkAssets = ApkAssets.loadOverlayFromPath(overlayPathToIdmapPath(key.path), flags);
+    } else {
+        apkAssets = ApkAssets.loadFromPath(key.path, flags);
+    }
+
+    synchronized (mLock) {
+        mCachedApkAssets.put(key, new WeakReference&amp;lt;&amp;gt;(apkAssets));
+    }
+
+    return apkAssets;
+}
+
+// ApkAssets.java
+public static @NonNull ApkAssets loadFromPath(@NonNull String path, @PropertyFlags int flags)
+        throws IOException {
+    return new ApkAssets(FORMAT_APK, path, flags, null /* assets */);
+}
+
+private ApkAssets(@FormatType int format, @NonNull String path, @PropertyFlags int flags,
+        @Nullable AssetsProvider assets) throws IOException {
+    Objects.requireNonNull(path, &quot;path&quot;);
+    mFlags = flags;
+    mNativePtr = nativeLoad(format, path, flags, assets);
+    mStringBlock = new StringBlock(nativeGetStringBlock(mNativePtr), true /*useSparse*/);
+    mAssets = assets;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;kResourcesArsc是常量”resources.arsc”，加载资源文件，创建native侧ApkAssets。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;// android_content_res_ApkAssets.cpp
+static jlong NativeLoad(JNIEnv* env, jclass /*clazz*/, const format_type_t format,
+                        jstring java_path, const jint property_flags, jobject assets_provider) {
+  ScopedUtfChars path(env, java_path);
+
+  auto loader_assets = LoaderAssetsProvider::Create(env, assets_provider);
+  std::unique_ptr&amp;lt;ApkAssets&amp;gt; apk_assets;
+  switch (format) {
+    case FORMAT_APK: {
+        auto assets = MultiAssetsProvider::Create(std::move(loader_assets),
+                                                  ZipAssetsProvider::Create(path.c_str(),
+                                                                            property_flags));
+        apk_assets = ApkAssets::Load(std::move(assets), property_flags);
+        break;
+    }
+    ...
+  }
+
+  return CreateGuardedApkAssets(std::move(apk_assets));
+}
+
+// Asset.cpp
+std::unique_ptr&amp;lt;ApkAssets&amp;gt; ApkAssets::Load(std::unique_ptr&amp;lt;AssetsProvider&amp;gt; assets,
+                                           package_property_t flags) {
+  return LoadImpl(std::move(assets), flags, nullptr /* idmap_asset */, nullptr /* loaded_idmap */);
+}
+
+std::unique_ptr&amp;lt;ApkAssets&amp;gt; ApkAssets::LoadImpl(std::unique_ptr&amp;lt;AssetsProvider&amp;gt; assets,
+                                               package_property_t property_flags,
+                                               std::unique_ptr&amp;lt;Asset&amp;gt; idmap_asset,
+                                               std::unique_ptr&amp;lt;LoadedIdmap&amp;gt; loaded_idmap) {
+  // Open the resource table via mmap unless it is compressed. This logic is taken care of by Open.
+  bool resources_asset_exists = false;
+  auto resources_asset = assets-&amp;gt;Open(kResourcesArsc, Asset::AccessMode::ACCESS_BUFFER,
+                                      &amp;amp;resources_asset_exists);
+  return LoadImpl(std::move(resources_asset), std::move(assets), property_flags,
+                  std::move(idmap_asset), std::move(loaded_idmap));
+}
+
+std::unique_ptr&amp;lt;ApkAssets&amp;gt; ApkAssets::LoadImpl(std::unique_ptr&amp;lt;Asset&amp;gt; resources_asset,
+                                               std::unique_ptr&amp;lt;AssetsProvider&amp;gt; assets,
+                                               package_property_t property_flags,
+                                               std::unique_ptr&amp;lt;Asset&amp;gt; idmap_asset,
+                                               std::unique_ptr&amp;lt;LoadedIdmap&amp;gt; loaded_idmap) {
+  std::unique_ptr&amp;lt;LoadedArsc&amp;gt; loaded_arsc;
+  if (resources_asset != nullptr) {
+    const auto data = resources_asset-&amp;gt;getIncFsBuffer(true /* aligned */);
+    const size_t length = resources_asset-&amp;gt;getLength();
+    if (!data || length == 0) {
+      return {};
+    }
+    loaded_arsc = LoadedArsc::Load(data, length, loaded_idmap.get(), property_flags);
+  } else {
+    loaded_arsc = LoadedArsc::CreateEmpty();
+  }
+  return std::unique_ptr&amp;lt;ApkAssets&amp;gt;(new ApkAssets(std::move(resources_asset),
+                                                  std::move(loaded_arsc), std::move(assets),
+                                                  property_flags, std::move(idmap_asset),
+                                                  std::move(loaded_idmap)));
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;整个过程主要是创建了AssetManager，ResourcesImpl，Resources这三个类的实例，三者之间的关系为：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/ResourceLoader/resource2.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在ResourcesManager中会缓存创建的ResourcesImpl和Resources。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-SQL&quot;&gt;/**
+ * A mapping of ResourceImpls and their configurations. These are heavy weight objects
+ * which should be reused as much as possible.
+ */
+@UnsupportedAppUsage
+private final ArrayMap&amp;lt;ResourcesKey, WeakReference&amp;lt;ResourcesImpl&amp;gt;&amp;gt; mResourceImpls =
+        new ArrayMap&amp;lt;&amp;gt;();
+
+/**
+ * A list of Resource references that can be reused.
+ */
+@UnsupportedAppUsage
+private final ArrayList&amp;lt;WeakReference&amp;lt;Resources&amp;gt;&amp;gt; mResourceReferences = new ArrayList&amp;lt;&amp;gt;();
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;应用想要动态添加资源，可以基于资源路径构造ApkAssets，调用AssetManager的setApkAssets接口添加。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// AssetManager.java
+public void setApkAssets(@NonNull ApkAssets[] apkAssets, boolean invalidateCaches) {
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;3资源文件加载&quot;&gt;3.资源文件加载&lt;/h1&gt;
+
+&lt;p&gt;Android资源文件在打包时，非assets资源会编译到resources.arsc文件，使用Resources根据资源ID加载；非assets文件会直接打包到apk，使用AssetManager根据文件名加载。事实上，Resources加载资源也是由AssetManager实现的，接下来以加载Activity布局文件为例，介绍下资源加载流程。&lt;/p&gt;
+
+&lt;h2 id=&quot;31-加载res资源文件&quot;&gt;3.1 加载res资源文件&lt;/h2&gt;
+
+&lt;p&gt;LayoutInflater类主要功能是从xml实例化View视图，Resources通过资源ID加载布局xml文件，然后解析xml文件实例化View视图：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// LayoutInflater.java
+public View inflate(@LayoutRes int resource, @Nullable ViewGroup root, boolean attachToRoot) {
+    final Resources res = getContext().getResources();
+    XmlResourceParser parser = res.getLayout(resource);
+    try {
+        return inflate(parser, root, attachToRoot);
+    } finally {
+        parser.close();
+    }
+}
+
+// 解析xml文件实例化View视图
+public View inflate(XmlPullParser parser, @Nullable ViewGroup root, boolean attachToRoot) {
+    synchronized (mConstructorArgs) {
+        final Context inflaterContext = mContext;
+        final AttributeSet attrs = Xml.asAttributeSet(parser);
+        Context lastContext = (Context) mConstructorArgs[0];
+        mConstructorArgs[0] = inflaterContext;
+        View result = root;
+
+        try {
+            advanceToRootNode(parser);
+            final String name = parser.getName();
+            if (TAG_MERGE.equals(name)) { // &quot;merge&quot;
+                rInflate(parser, root, inflaterContext, attrs, false);
+            } else {
+                // Temp is the root view that was found in the xml
+                final View temp = createViewFromTag(root, name, inflaterContext, attrs);
+
+                ViewGroup.LayoutParams params = null;
+                if (root != null) {
+                    params = root.generateLayoutParams(attrs);
+                    if (!attachToRoot) {
+                        temp.setLayoutParams(params);
+                    }
+                }
+
+                // Inflate all children under temp against its context.
+                rInflateChildren(parser, temp, attrs, true);
+
+                if (root != null &amp;amp;&amp;amp; attachToRoot) {
+                    root.addView(temp, params);
+                }
+
+                if (root == null || !attachToRoot) {
+                    result = temp;
+                }
+            }
+        } catch (XmlPullParserException e) {
+        } catch (Exception e) {
+        } finally {
+        }
+
+        return result;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Resources通过ResourcesImpl查找对应的布局文件，如果没有找到会抛出NotFoundException：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Resources.java
+public XmlResourceParser getLayout(@LayoutRes int id) throws NotFoundException {
+    return loadXmlResourceParser(id, &quot;layout&quot;);
+}
+
+XmlResourceParser loadXmlResourceParser(@AnyRes int id, @NonNull String type)
+        throws NotFoundException {
+    final TypedValue value = obtainTempTypedValue();
+    try {
+        final ResourcesImpl impl = mResourcesImpl;
+        impl.getValue(id, value, true);
+        if (value.type == TypedValue.TYPE_STRING) {
+            return loadXmlResourceParser(value.string.toString(), id,
+                    value.assetCookie, type);
+        }
+        throw new NotFoundException(&quot;Resource ID #0x&quot; + Integer.toHexString(id)
+                + &quot; type #0x&quot; + Integer.toHexString(value.type) + &quot; is not valid&quot;);
+    } finally {
+        releaseTempTypedValue(value);
+    }
+}
+
+XmlResourceParser loadXmlResourceParser(String file, int id, int assetCookie,
+                                        String type) throws NotFoundException {
+    return mResourcesImpl.loadXmlResourceParser(file, id, assetCookie, type);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;ResourcesImpl通过AssetManager的native方法查找资源：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ResourcesImpl.java
+void getValue(@AnyRes int id, TypedValue outValue, boolean resolveRefs)
+        throws NotFoundException {
+    boolean found = mAssets.getResourceValue(id, 0, outValue, resolveRefs);
+    if (found) {
+        return;
+    }
+    throw new NotFoundException(&quot;Resource ID #0x&quot; + Integer.toHexString(id));
+}
+
+boolean getResourceValue(@AnyRes int resId, int densityDpi, @NonNull TypedValue outValue,
+        boolean resolveRefs) {
+    Objects.requireNonNull(outValue, &quot;outValue&quot;);
+    synchronized (this) {
+        ensureValidLocked();
+        final int cookie = nativeGetResourceValue(
+                mObject, resId, (short) densityDpi, outValue, resolveRefs);
+        if (cookie &amp;lt;= 0) {
+            return false;
+        }
+        ...
+        return true;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;创建AssetManager2实例，调用其GetResource方法：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;// android_util_AssetManager.cpp
+static jint NativeGetResourceValue(JNIEnv* env, jclass /*clazz*/, jlong ptr, jint resid,
+                                   jshort density, jobject typed_value,
+                                   jboolean resolve_references) {
+  ScopedLock&amp;lt;AssetManager2&amp;gt; assetmanager(AssetManagerFromLong(ptr));
+  auto value = assetmanager-&amp;gt;GetResource(static_cast&amp;lt;uint32_t&amp;gt;(resid), false /*may_be_bag*/,
+                                         static_cast&amp;lt;uint16_t&amp;gt;(density));
+  if (!value.has_value()) {
+    return ApkAssetsCookieToJavaCookie(kInvalidCookie);
+  }
+
+  if (resolve_references) {
+    auto result = assetmanager-&amp;gt;ResolveReference(value.value());
+    if (!result.has_value()) {
+      return ApkAssetsCookieToJavaCookie(kInvalidCookie);
+    }
+  }
+  return CopyValue(env, *value, typed_value);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;AssetManager2查找资源的核心逻辑，&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;// AssetManager2.cpp 
+base::expected&amp;lt;AssetManager2::SelectedValue, NullOrIOError&amp;gt; AssetManager2::GetResource(
+      uint32_t resid, bool may_be_bag, uint16_t density_override) const {
+  auto result = FindEntry(resid, density_override, false /* stop_at_first_match */,
+                          false /* ignore_configuration */);
+  auto result_map_entry = std::get_if&amp;lt;incfs::verified_map_ptr&amp;lt;ResTable_map_entry&amp;gt;&amp;gt;(&amp;amp;result-&amp;gt;entry);
+  if (result_map_entry != nullptr) {
+      if (!may_be_bag) {
+        LOG(ERROR) &amp;lt;&amp;lt; base::StringPrintf(&quot;Resource %08x is a complex map type.&quot;, resid);
+        return base::unexpected(std::nullopt);
+      }
+
+      // Create a reference since we can&apos;t represent this complex type as a Res_value.
+      return SelectedValue(Res_value::TYPE_REFERENCE, resid, result-&amp;gt;cookie, result-&amp;gt;type_flags,
+                           resid, result-&amp;gt;config);
+  }
+
+  // Convert the package ID to the runtime assigned package ID.
+  Res_value value = std::get&amp;lt;Res_value&amp;gt;(result-&amp;gt;entry);
+  result-&amp;gt;dynamic_ref_table-&amp;gt;lookupResourceValue(&amp;amp;value);
+
+  return SelectedValue(value.dataType, value.data, result-&amp;gt;cookie, result-&amp;gt;type_flags,
+                       resid, result-&amp;gt;config);
+}
+
+base::expected&amp;lt;FindEntryResult, NullOrIOError&amp;gt; AssetManager2::FindEntry(
+    uint32_t resid, uint16_t density_override, bool stop_at_first_match,
+    bool ignore_configuration) const {
+  // Might use this if density_override != 0.
+  ResTable_config density_override_config;
+
+  // Select our configuration or generate a density override configuration.
+  const ResTable_config* desired_config = &amp;amp;configuration_;
+  if (density_override != 0 &amp;amp;&amp;amp; density_override != configuration_.density) {
+    density_override_config = configuration_;
+    density_override_config.density = density_override;
+    desired_config = &amp;amp;density_override_config;
+  }
+
+  // 这里对应上文资源ID生成规则
+  const uint32_t package_id = get_package_id(resid);
+  const uint8_t type_idx = get_type_id(resid) - 1;
+  const uint16_t entry_idx = get_entry_id(resid);
+  uint8_t package_idx = package_ids_[package_id];
+  if (UNLIKELY(package_idx == 0xff)) {
+    ANDROID_LOG(ERROR) &amp;lt;&amp;lt; base::StringPrintf(&quot;No package ID %02x found for ID 0x%08x.&quot;,
+                                             package_id, resid);
+    return base::unexpected(std::nullopt);
+  }
+
+  // 主要用来处理Runtime Resources Overlay
+  const PackageGroup&amp;amp; package_group = package_groups_[package_idx];
+  auto result = FindEntryInternal(package_group, type_idx, entry_idx, *desired_config,
+                                  stop_at_first_match, ignore_configuration);
+  if (UNLIKELY(!result.has_value())) {
+    return base::unexpected(result.error());
+  }
+
+  bool overlaid = false;
+  if (!stop_at_first_match &amp;amp;&amp;amp; !ignore_configuration &amp;amp;&amp;amp; !apk_assets_[result-&amp;gt;cookie]-&amp;gt;IsLoader()) {
+    // 查找资源覆盖的逻辑
+  }
+
+  return result;
+}
+
+// 核心逻辑是根据资源id，找到package_group，遍历package_group根据资源类型找到最佳匹配
+base::expected&amp;lt;FindEntryResult, NullOrIOError&amp;gt; AssetManager2::FindEntryInternal(
+    const PackageGroup&amp;amp; package_group, uint8_t type_idx, uint16_t entry_idx,
+    const ResTable_config&amp;amp; desired_config, bool stop_at_first_match,
+    bool ignore_configuration) const {
+  ApkAssetsCookie best_cookie = kInvalidCookie;
+  const LoadedPackage* best_package = nullptr;
+  incfs::verified_map_ptr&amp;lt;ResTable_type&amp;gt; best_type;
+  const ResTable_config* best_config = nullptr;
+  uint32_t best_offset = 0U;
+  uint32_t type_flags = 0U;
+
+  const bool use_filtered = !ignore_configuration &amp;amp;&amp;amp; &amp;amp;desired_config == &amp;amp;configuration_;
+
+  // RRO机制可能存在多个package
+  const size_t package_count = package_group.packages_.size();
+  for (size_t pi = 0; pi &amp;lt; package_count; pi++) {
+    const ConfiguredPackage&amp;amp; loaded_package_impl = package_group.packages_[pi];
+    const LoadedPackage* loaded_package = loaded_package_impl.loaded_package_;
+    const ApkAssetsCookie cookie = package_group.cookies_[pi];
+
+    const TypeSpec* type_spec = loaded_package-&amp;gt;GetTypeSpecByTypeIndex(type_idx);
+    const bool package_is_loader = loaded_package-&amp;gt;IsCustomLoader();
+
+    auto entry_flags = type_spec-&amp;gt;GetFlagsForEntryIndex(entry_idx);
+    type_flags |= entry_flags.value();
+
+    // 根据设备的当前配置信息，去选择最合适的资源项
+    const FilteredConfigGroup&amp;amp; filtered_group = loaded_package_impl.filtered_configs_[type_idx];
+    const size_t type_entry_count = (use_filtered) ? filtered_group.type_entries.size()
+                                                   : type_spec-&amp;gt;type_entries.size();
+    // 遍历资源类型查找最佳匹配
+    for (size_t i = 0; i &amp;lt; type_entry_count; i++) {
+      const TypeSpec::TypeEntry* type_entry = (use_filtered) ? filtered_group.type_entries[i]
+                                                             : &amp;amp;type_spec-&amp;gt;type_entries[i];
+
+      const ResTable_config&amp;amp; this_config = type_entry-&amp;gt;config;
+      if (!(use_filtered || ignore_configuration || this_config.match(desired_config))) {
+        continue;
+      }
+      
+      // 查找最佳匹配
+      Resolution::Step::Type resolution_type;
+      if (best_config == nullptr) {
+        resolution_type = Resolution::Step::Type::INITIAL;
+      } else if (this_config.isBetterThan(*best_config, &amp;amp;desired_config)) {
+        resolution_type = Resolution::Step::Type::BETTER_MATCH;
+      } else if (package_is_loader &amp;amp;&amp;amp; this_config.compare(*best_config) == 0) {
+        resolution_type = Resolution::Step::Type::OVERLAID;
+      } else {
+        continue;
+      }
+
+      const auto&amp;amp; type = type_entry-&amp;gt;type;
+      const auto offset = LoadedPackage::GetEntryOffset(type, entry_idx);
+      if (!offset.has_value()) {
+        continue;
+      }
+
+      best_cookie = cookie;
+      best_package = loaded_package;
+      best_type = type;
+      best_config = &amp;amp;this_config;
+      best_offset = offset.value();
+
+      if (stop_at_first_match) {
+        break;
+      }
+    }
+  }
+
+  auto best_entry_result = LoadedPackage::GetEntryFromOffset(best_type, best_offset);
+  const incfs::map_ptr&amp;lt;ResTable_entry&amp;gt; best_entry = *best_entry_result;
+  const auto entry = GetEntryValue(best_entry.verified());
+
+  return FindEntryResult{
+    .cookie = best_cookie,
+    .entry = *entry,
+    .config = *best_config,
+    .type_flags = type_flags,
+    .package_name = &amp;amp;best_package-&amp;gt;GetPackageName(),
+    .type_string_ref = StringPoolRef(best_package-&amp;gt;GetTypeStringPool(), best_type-&amp;gt;id - 1),
+    .entry_string_ref = StringPoolRef(best_package-&amp;gt;GetKeyStringPool(),
+                                      best_entry-&amp;gt;key.index),
+    .dynamic_ref_table = package_group.dynamic_ref_table.get(),
+  };
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;32-加载assets资源&quot;&gt;3.2 加载assets资源&lt;/h2&gt;
+
+&lt;p&gt;通过Context获取到AssetManager实例，调用其open方法传入文件名：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// AssetManager.java
+public @NonNull InputStream open(@NonNull String fileName) throws IOException {
+    return open(fileName, ACCESS_STREAMING);
+}
+
+public @NonNull InputStream open(@NonNull String fileName, int accessMode) throws IOException {
+    Objects.requireNonNull(fileName, &quot;fileName&quot;);
+    synchronized (this) {
+        ensureOpenLocked();
+        final long asset = nativeOpenAsset(mObject, fileName, accessMode);
+        if (asset == 0) {
+            throw new FileNotFoundException(&quot;Asset file: &quot; + fileName);
+        }
+        final AssetInputStream assetInputStream = new AssetInputStream(asset);
+        incRefsLocked(assetInputStream.hashCode());
+        return assetInputStream;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在native侧同样创建AssetManager2，调用其Open方法：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;// android_util_AssetManager.cpp
+static jlong NativeOpenAsset(JNIEnv* env, jclass /*clazz*/, jlong ptr, jstring asset_path,
+                             jint access_mode) {
+  ScopedUtfChars asset_path_utf8(env, asset_path);
+  ...
+  ScopedLock&amp;lt;AssetManager2&amp;gt; assetmanager(AssetManagerFromLong(ptr));
+  std::unique_ptr&amp;lt;Asset&amp;gt; asset =
+      assetmanager-&amp;gt;Open(asset_path_utf8.c_str(), static_cast&amp;lt;Asset::AccessMode&amp;gt;(access_mode));
+  if (!asset) {
+    jniThrowException(env, &quot;java/io/FileNotFoundException&quot;, asset_path_utf8.c_str());
+    return 0;
+  }
+  return reinterpret_cast&amp;lt;jlong&amp;gt;(asset.release());
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;apk_assets_存储的是已经加载的所有apk包，遍历apk_assets_通过AssetsProvider查找文件：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;// AssetManager2.cpp 
+std::unique_ptr&amp;lt;Asset&amp;gt; AssetManager2::Open(const std::string&amp;amp; filename,
+                                           Asset::AccessMode mode) const {
+  const std::string new_path = &quot;assets/&quot; + filename;
+  return OpenNonAsset(new_path, mode);
+}
+
+std::unique_ptr&amp;lt;Asset&amp;gt; AssetManager2::OpenNonAsset(const std::string&amp;amp; filename,
+                                                   Asset::AccessMode mode,
+                                                   ApkAssetsCookie* out_cookie) const {
+  for (int32_t i = apk_assets_.size() - 1; i &amp;gt;= 0; i--) {
+    // 通过文件名加载文件时忽略RRO
+    if (apk_assets_[i]-&amp;gt;IsOverlay()) {
+      continue;
+    }
+
+    std::unique_ptr&amp;lt;Asset&amp;gt; asset = apk_assets_[i]-&amp;gt;GetAssetsProvider()-&amp;gt;Open(filename, mode);
+    if (asset) {
+      if (out_cookie != nullptr) {
+        *out_cookie = i;
+      }
+      return asset;
+    }
+  }
+
+  if (out_cookie != nullptr) {
+    *out_cookie = kInvalidCookie;
+  }
+  return {};
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;AssetsProvider是在上文创建ApkAssets时创建的，读取文件分为文件压缩/文件未压缩两种：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;// AssetsProvider.cpp
+std::unique_ptr&amp;lt;Asset&amp;gt; AssetsProvider::Open(const std::string&amp;amp; path, Asset::AccessMode mode,
+                                            bool* file_exists) const {
+  return OpenInternal(path, mode, file_exists);
+}
+
+std::unique_ptr&amp;lt;Asset&amp;gt; ZipAssetsProvider::OpenInternal(const std::string&amp;amp; path,
+                                                       Asset::AccessMode mode,
+                                                       bool* file_exists) const {
+    if (file_exists != nullptr) {
+      *file_exists = false; // 初始化为false
+    }
+
+    ZipEntry entry;
+    // zip_archive.cc 
+    if (FindEntry(zip_handle_.get(), path, &amp;amp;entry) != 0) {
+      return {};
+    }
+
+    if (file_exists != nullptr) {
+      *file_exists = true; // 找到文件，设置为true
+    }
+
+    const int fd = GetFileDescriptor(zip_handle_.get());
+    const off64_t fd_offset = GetFileDescriptorOffset(zip_handle_.get());
+    const bool incremental_hardening = (flags_ &amp;amp; PROPERTY_DISABLE_INCREMENTAL_HARDENING) == 0U;
+    incfs::IncFsFileMap asset_map;
+    if (entry.method == kCompressDeflated) { // 是否是压缩文件
+      if (!asset_map.Create(fd, entry.offset + fd_offset, entry.compressed_length,
+                            name_.GetDebugName().c_str(), incremental_hardening)) {
+        LOG(ERROR) &amp;lt;&amp;lt; &quot;Failed to mmap file &apos;&quot; &amp;lt;&amp;lt; path &amp;lt;&amp;lt; &quot;&apos; in APK &apos;&quot; &amp;lt;&amp;lt; name_.GetDebugName()
+                   &amp;lt;&amp;lt; &quot;&apos;&quot;;
+        return {};
+      }
+
+      std::unique_ptr&amp;lt;Asset&amp;gt; asset =
+          Asset::createFromCompressedMap(std::move(asset_map), entry.uncompressed_length, mode);
+      return asset;
+    }
+
+    if (!asset_map.Create(fd, entry.offset + fd_offset, entry.uncompressed_length,
+                          name_.GetDebugName().c_str(), incremental_hardening)) {
+      LOG(ERROR) &amp;lt;&amp;lt; &quot;Failed to mmap file &apos;&quot; &amp;lt;&amp;lt; path &amp;lt;&amp;lt; &quot;&apos; in APK &apos;&quot; &amp;lt;&amp;lt; name_.GetDebugName() &amp;lt;&amp;lt; &quot;&apos;&quot;;
+      return {};
+    }
+    ...
+    auto asset = Asset::createFromUncompressedMap(std::move(asset_map), mode, std::move(ufd));
+    return asset;
+}
+
+std::unique_ptr&amp;lt;Asset&amp;gt; Asset::createFromUncompressedMap(incfs::IncFsFileMap&amp;amp;&amp;amp; dataMap,
+                                                                   AccessMode mode,
+                                                                   base::unique_fd fd)
+{
+    auto pAsset = util::make_unique&amp;lt;_FileAsset&amp;gt;();
+    status_t result = pAsset-&amp;gt;openChunk(std::move(dataMap), std::move(fd));
+    pAsset-&amp;gt;mAccessMode = mode;
+    return std::move(pAsset);
+}
+
+status_t _FileAsset::openChunk(incfs::IncFsFileMap&amp;amp;&amp;amp; dataMap, base::unique_fd fd)
+{
+    assert(mFp == NULL);    // no reopen
+    assert(!mMap.has_value());
+    assert(dataMap != NULL);
+
+    mMap = std::move(dataMap);
+    mStart = -1;            // not used
+    mLength = mMap-&amp;gt;length();
+    mFd = std::move(fd);
+    assert(mOffset == 0);
+
+    return NO_ERROR;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;参考文档&quot;&gt;参考文档：&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://blog.csdn.net/luoshengyang/article/details/8738877&quot;&gt;Android资源管理框架（Asset Manager）简要介绍和学习计划&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://blog.csdn.net/luoshengyang/article/details/8744683&quot;&gt;Android应用程序资源的编译和打包过程分析&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://blog.csdn.net/luoshengyang/article/details/8791064&quot;&gt;Android应用程序资源管理器（Asset Manager）的创建过程分析&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://blog.csdn.net/luoshengyang/article/details/8806798&quot;&gt;Android应用程序资源的查找过程分析&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Mon, 17 Apr 2023 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2023/04/17/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/</link>
+        <guid isPermaLink="true">http://localhost:4000/2023/04/17/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/</guid>
+        
+        <category>Android</category>
+        
+        <category>ResourceLoader</category>
         
         
       </item>
@@ -562,7 +1544,7 @@ public Application newApplication(ClassLoader cl, String className, Context cont
 
 &lt;p&gt;这里的className默认是android.app.Application，cl是之前创建的PathClassLoader。&lt;/p&gt;
 
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// instantiateApplication.java
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// AppComponentFactory.java
 public @NonNull Application instantiateApplication(@NonNull ClassLoader cl,
         @NonNull String className)
         throws InstantiationException, IllegalAccessException, ClassNotFoundException {
@@ -2798,6 +3780,770 @@ ROOT
       </item>
     
       <item>
+        <title>ANR治理-主线程耗时消息统计</title>
+        <description>&lt;p&gt;&lt;a href=&quot;https://juejin.cn/post/6942665216781975582&quot;&gt;今日头条 ANR 优化实践系列 - 监控工具与分析思路&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://juejin.cn/post/6997227972973461512&quot;&gt;西瓜卡顿 &amp;amp; ANR 优化治理及监控体系建设&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;从这两篇文章中可以大致猜出这三者之间的关系：&lt;/p&gt;
+
+&lt;p&gt;Npth用来监控ANR，Sliver用来抓取线程堆栈，Raster用来做消息聚合。&lt;/p&gt;
+
+&lt;p&gt;监控ANR的主流方案是微信的 监听signal+判断主线程卡顿，Sliver抓取堆栈是Native层实现，&lt;/p&gt;
+
+&lt;p&gt;接下来主要分析消息聚合的实现。&lt;/p&gt;
+
+&lt;h1 id=&quot;消息类型&quot;&gt;消息类型&lt;/h1&gt;
+
+&lt;p&gt;定义在 ScheduleMsgItem.java 类：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-undefined&quot;&gt;public static final int SCHEDULE_TYPE_IDLE = 0;
+public static final int SCHEDULE_TYPE_LAST_LONG_MSG = 4;
+public static final int SCHEDULE_TYPE_LONG_IDLE = 1;
+public static final int SCHEDULE_TYPE_LONG_MSG = 8;
+public static final int SCHEDULE_TYPE_MSG = 2;
+public static final int SCHEDULE_TYPE_MSGS = 9;
+public static final int SCHEDULE_TYPE_MSGS_IDLE = 7;
+public static final int SCHEDULE_TYPE_MSGS_LONG_IDLE = 5;
+public static final int SCHEDULE_TYPE_MSG_IDLE = 3;
+public static final int SCHEDULE_TYPE_MSG_LONG_IDLE = 6;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Looper 中打印 Message 日志，可以将消息分为两个阶段：Dispatching 和 Finished。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private static boolean loopOnce(final Looper me,
+        final long ident, final int thresholdOverride) {
+    ...
+
+    final Printer logging = me.mLogging;
+    if (logging != null) {
+        logging.println(&quot;&amp;gt;&amp;gt;&amp;gt;&amp;gt;&amp;gt; Dispatching to &quot; + msg.target + &quot; &quot;
+                + msg.callback + &quot;: &quot; + msg.what);
+    }
+    ...
+
+    if (logging != null) {
+        logging.println(&quot;&amp;lt;&amp;lt;&amp;lt;&amp;lt;&amp;lt; Finished to &quot; + msg.target + &quot; &quot; + msg.callback);
+    }
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;创建 ScheduleMsgItem 实例的逻辑在 LooperMonitor.java 类，对应上述两个阶段：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public static void setMessageLogging() {
+    if (!ApmConfig.disableLooperMonitor() &amp;amp;&amp;amp; g.a() == null) {
+        LooperMessageManager.getInstance().start();
+        LooperMessageManager.getInstance().registerSyncStartPrinter(new Printer() { // from class: com.bytedance.crash.anr.LooperMonitor.2
+            @Override // android.util.Printer
+            public void println(String str) {
+                if (LooperMonitor.sMainLooperMonitor) {
+                    LooperMonitor.sCurrentStartMessage = str;
+                    if (!LooperMonitor.sStartAsyncAutoTick) {
+                        LooperMonitor.sStartAsyncAutoTick = true;
+                        LooperMonitor.sMainThreadId = Process.myTid();
+                        LooperMonitor.startAsyncAutoTick();
+                    }
+                    if (LooperMonitor.sLastUpdateTicks == -1) {
+                        LooperMonitor.sLastUpdateTicks = 0;
+                        LooperMonitor.sTempCurrentMessageStartTick = 0;
+                        return;
+                    }
+                    long j = LooperMonitor.sAsyncAutoTick;
+                    LooperMonitor.sTempCurrentMessageStartTick = j;
+                    long j2 = j - LooperMonitor.sLastUpdateTicks;
+                    if (j2 &amp;lt;= 0) {
+                        LooperMonitor.sCurMsgIndex++;
+                        return;
+                    }
+                    int i = j2 == 1 ? LooperMonitor.sCurMsgIndex &amp;gt; 1 ? 7 : LooperMonitor.sCurMsgIndex == 1 ? 3 : 0 : LooperMonitor.sCurMsgIndex &amp;gt; 1 ? 5 : LooperMonitor.sCurMsgIndex == 1 ? 6 : 1;
+                    long mainThreadTimeMills = LooperMonitor.mainThreadTimeMills();
+                    long uptimeMillis = SystemClock.uptimeMillis();
+                    if (!LooperMonitor.sDumpingMessage) {
+                        LooperMonitor.saveDataToItem(LooperMonitor.obtainItem(), mainThreadTimeMills - LooperMonitor.sCurThreadTime, uptimeMillis - LooperMonitor.sLastUpdateTime, j2, i, LooperMonitor.sCurMsgIndex, null);
+                    }
+                    LooperMonitor.sCurThreadTime = mainThreadTimeMills;
+                    LooperMonitor.sLastUpdateTime = uptimeMillis;
+                    LooperMonitor.sCurMsgIndex = 1;
+                    LooperMonitor.sLastUpdateTicks = j;
+                }
+            }
+        });
+        LooperMessageManager.getInstance().registerSyncEndPrinter(new Printer() { // from class: com.bytedance.crash.anr.LooperMonitor.3
+            @Override // android.util.Printer
+            public void println(String str) {
+                if (LooperMonitor.sMainLooperMonitor &amp;amp;&amp;amp; LooperMonitor.sLastUpdateTicks &amp;gt;= 0) {
+                    long j = LooperMonitor.sAsyncAutoTick;
+                    LooperMonitor.sCurrentStartMessage = &quot;no message running&quot;;
+                    long j2 = j - LooperMonitor.sLastUpdateTicks;
+                    if (j2 &amp;gt; 0) {
+                        long mainThreadTimeMills = LooperMonitor.mainThreadTimeMills();
+                        long uptimeMillis = SystemClock.uptimeMillis();
+                        int i = (j2 != 1 || LooperMonitor.sCurMsgIndex &amp;lt;= 1) ? (j2 == 1 &amp;amp;&amp;amp; LooperMonitor.sCurMsgIndex == 1) ? 2 : (j2 &amp;lt;= 1 || LooperMonitor.sCurMsgIndex &amp;lt;= 1) ? (j2 &amp;lt;= 1 || LooperMonitor.sCurMsgIndex != 1) ? 0 : 8 : 4 : 9;
+                        if (!LooperMonitor.sDumpingMessage) {
+                            LooperMonitor.saveDataToItem(LooperMonitor.obtainItem(), mainThreadTimeMills - LooperMonitor.sCurThreadTime, uptimeMillis - LooperMonitor.sLastUpdateTime, j2, i, LooperMonitor.sCurMsgIndex, str);
+                        }
+                        LooperMonitor.sCurThreadTime = mainThreadTimeMills;
+                        LooperMonitor.sLastUpdateTime = uptimeMillis;
+                        LooperMonitor.sCurMsgIndex = 0;
+                        LooperMonitor.sLastUpdateTicks = j;
+                    }
+                }
+            }
+        });
+        sCurThreadTime = mainThreadTimeMills();
+        sLastUpdateTime = SystemClock.uptimeMillis();
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;格式化第一处红色背景代码，在 Dispatching 阶段创建如下类型的 ScheduleMsgItem ：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;long j2 = LooperMonitor.sAsyncAutoTick - LooperMonitor.sLastUpdateTicks
+if (j2 &amp;lt;= 0) return;
+if (j2 == 1) {
+    if (LooperMonitor.sCurMsgIndex &amp;gt; 1) {
+        SCHEDULE_TYPE_MSGS_IDLE
+    } else {
+        if (LooperMonitor.sCurMsgIndex == 1) {
+            SCHEDULE_TYPE_MSG_IDLE
+        } else {
+            SCHEDULE_TYPE_IDLE
+        }
+    }
+} else {
+    if (LooperMonitor.sCurMsgIndex &amp;gt; 1) {
+        SCHEDULE_TYPE_MSGS_LONG_IDLE
+    } else {
+        if (LooperMonitor.sCurMsgIndex == 1) {
+            SCHEDULE_TYPE_MSG_LONG_IDLE
+        } else {
+            SCHEDULE_TYPE_LONG_IDLE
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;格式化第二处红色背景代码，在 Finished 阶段创建如下类型的 ScheduleMsgItem ：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;long j2 = LooperMonitor.sAsyncAutoTick - LooperMonitor.sLastUpdateTicks
+if (j2 &amp;lt;= 0) return;
+if (j2 != 1 || LooperMonitor.sCurMsgIndex &amp;lt;= 1) {
+    if (j2 == 1 &amp;amp;&amp;amp; LooperMonitor.sCurMsgIndex == 1) {
+        SCHEDULE_TYPE_MSG
+    } else {
+        if (j2 &amp;lt;= 1 || LooperMonitor.sCurMsgIndex &amp;lt;= 1) {
+            if (j2 &amp;lt;= 1 || LooperMonitor.sCurMsgIndex != 1) {
+                SCHEDULE_TYPE_IDLE
+            } else {
+                SCHEDULE_TYPE_LONG_MSG
+            }
+        } else {
+            SCHEDULE_TYPE_LAST_LONG_MSG
+        }
+    }
+} else {
+    SCHEDULE_TYPE_MSGS
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;重新整理下：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;long j2 = LooperMonitor.sAsyncAutoTick - LooperMonitor.sLastUpdateTicks
+if (j2 &amp;lt;= 0) return;
+if (j2 == 1) {
+    if (LooperMonitor.sCurMsgIndex &amp;gt; 1) {
+        SCHEDULE_TYPE_MSGS
+    } else {
+        if (LooperMonitor.sCurMsgIndex == 1) {
+            SCHEDULE_TYPE_MSG
+        } else {
+            SCHEDULE_TYPE_IDLE
+        }
+    }
+} else {
+    if (LooperMonitor.sCurMsgIndex &amp;gt; 1) {
+        SCHEDULE_TYPE_LAST_LONG_MSG
+    } else {
+        if (LooperMonitor.sCurMsgIndex == 1) {
+            SCHEDULE_TYPE_LONG_MSG
+        } else {
+            SCHEDULE_TYPE_IDLE
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;简单整理下 sCurMsgIndex 的逻辑：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;通常情况下在 Dispatching 阶段置为1，在 Finished 阶段置为0。&lt;/li&gt;
+  &lt;li&gt;在 Dispatching 阶段有个特殊的逻辑，如果在同一个 tick 周期内，sCurMsgIndex将会+1，即为消息聚合。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h1 id=&quot;autotick&quot;&gt;AutoTick&lt;/h1&gt;
+
+&lt;p&gt;sTickTimeOut 的默认值是100，可以在 startMainLooperMonitor(int, int) 方法中进行设置。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;static void startAsyncAutoTick() {
+    HandlerThread defaultHandlerThread = NpthHandlerThread.getDefaultHandlerThread();
+    sBaseElapsedTime = SystemClock.uptimeMillis();
+    new Handler(defaultHandlerThread.getLooper()).postDelayed(new Runnable() { // from class: com.bytedance.crash.anr.LooperMonitor.4
+        @Override // java.lang.Runnable
+        public void run() {
+            new Thread(&quot;npth-tick&quot;) { // from class: com.bytedance.crash.anr.LooperMonitor.4.1
+                @Override // java.lang.Thread, java.lang.Runnable
+                public void run() {
+                    long j;
+                    while (LooperMonitor.sMainLooperMonitor) {
+                        try {
+                            long uptimeMillis = SystemClock.uptimeMillis();
+                            if (!ANRStatus.noRun()) {
+                                LooperMonitor.sMainThreadCpuTime = LooperMonitor.mainThreadTimeMillsInner();
+                            }
+                            LooperMonitor.sAsyncAutoTick = (uptimeMillis - LooperMonitor.sBaseElapsedTime) / LooperMonitor.sTickTimeOut;
+                            long j2 = (uptimeMillis - LooperMonitor.sBaseElapsedTime) % LooperMonitor.sTickTimeOut;
+                            if (j2 &amp;gt;= 95) {
+                                LooperMonitor.sAsyncAutoTick--;
+                                j = LooperMonitor.sTickTimeOut &amp;lt;&amp;lt; 1;
+                            } else {
+                                j = LooperMonitor.sTickTimeOut;
+                            }
+                            SystemClock.sleep(j - j2);
+                        } catch (Throwable unused) {
+                        }
+                    }
+                    LooperMonitor.sStartAsyncAutoTick = false;
+                }
+            }.start();
+        }
+    }, sTickTimeOut);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;sAsyncAutoTick 可以理解成在第 N 个 Tick 周期内，周期间隔为 sTickTimeOut 。&lt;/p&gt;
+
+&lt;p&gt;简单整理下 sAsyncAutoTick 的逻辑：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;结合消息类型中的分析，其优点在于不需要计算每一条 Message 的耗时，即可找出耗时消息。&lt;/li&gt;
+  &lt;li&gt;SystemClock.uptimeMillis() 返回的是不包含手机深度睡眠的启动时间，tick线程的主要逻辑就是规避手机深度睡眠的场景。&lt;/li&gt;
+&lt;/ol&gt;
+</description>
+        <pubDate>Tue, 30 Aug 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/</guid>
+        
+        <category>Android</category>
+        
+        <category>ANR</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>ANR治理-Binder调用统计</title>
+        <description>&lt;h1 id=&quot;1基于adb命令统计binder请求&quot;&gt;1.基于adb命令统计binder请求&lt;/h1&gt;
+
+&lt;p&gt;可以通过adb shell am trace-ipc可以检测binder的调用次数。&lt;/p&gt;
+
+&lt;p&gt;比如想知道下拉通知栏有哪些binder调用，先运行adb shell am trace-ipc start，下拉通知栏，在执行&lt;/p&gt;
+
+&lt;p&gt;adb shell am trace-ipc stop –dump-file /data/local/tmp/systemui.trace，查看dump出来的文件：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Traces for process: com.android.systemui Count: 1 Trace: java.lang.Throwable at android.os.BinderProxy.transact(BinderProxy.java:486) at android.view.IWindowManager$Stub$Proxy.statusBarVisibilityChanged(IWindowManager.java:3795) at android.view.IWindowManagerCompat.statusBarVisibilityChanged(IWindowManagerCompat.java:50) at com.android.systemui.statusbar.phone.StatusBar.notifyUiVisibilityChanged(StatusBar.java:4867) at com.android.systemui.statusbar.phone.StatusBar.setSystemUiVisibility(StatusBar.java:4661) at com.android.systemui.statusbar.CommandQueue$H.handleMessage(CommandQueue.java:729) at android.os.Handler.dispatchMessage(Handler.java:107) at android.os.Looper.loop(Looper.java:221) at android.app.ActivityThread.main(ActivityThread.java:7520) at java.lang.reflect.Method.invoke(Native Method) at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:539) at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:950)&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;可以看到统计的所有进程的binder调用堆栈和次数，接下来从源码中看下是如何统计的。&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;处理”trace-ipc”命令&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityManagerShellCommand.java
+int runTraceIpc(PrintWriter pw) throws RemoteException {
+    String op = getNextArgRequired();
+    if (op.equals(&quot;start&quot;)) {
+        return runTraceIpcStart(pw);
+    } else if (op.equals(&quot;stop&quot;)) {
+        return runTraceIpcStop(pw);
+    } else {
+        getErrPrintWriter().println(&quot;Error: unknown trace ipc command &apos;&quot; + op + &quot;&apos;&quot;);
+        return -1;
+    }
+}
+
+int runTraceIpcStart(PrintWriter pw) throws RemoteException {
+    pw.println(&quot;Starting IPC tracing.&quot;);
+    pw.flush();
+    mInterface.startBinderTracking();
+    return 0;
+}
+
+int runTraceIpcStop(PrintWriter pw) throws RemoteException {
+    final PrintWriter err = getErrPrintWriter();
+    String opt;
+    String filename = null;
+    while ((opt=getNextOption()) != null) {
+        if (opt.equals(&quot;--dump-file&quot;)) {
+            filename = getNextArgRequired();
+        } else {
+            err.println(&quot;Error: Unknown option: &quot; + opt);
+            return -1;
+        }
+    }
+    if (filename == null) {
+        err.println(&quot;Error: Specify filename to dump logs to.&quot;);
+        return -1;
+    }
+
+    // Writes an error message to stderr on failure
+    ParcelFileDescriptor fd = openFileForSystem(filename, &quot;w&quot;);
+    if (fd == null) {
+        return -1;
+    }
+
+    if (!mInterface.stopBinderTrackingAndDump(fd)) {
+        err.println(&quot;STOP TRACE FAILED.&quot;);
+        return -1;
+    }
+
+    pw.println(&quot;Stopped IPC tracing. Dumping logs to: &quot; + filename);
+    return 0;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;从代码可以看出”trace-ipc”命令有两个参数，分别为”start”和”stop”，分别对应开始统计和结束统计写入到文件，这里的mInterface是ActivityManagerService。&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;AMS处理Binder统计&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityManagerService.java
+public boolean startBinderTracking() throws RemoteException {
+    ...
+    synchronized (mProcLock) {
+        mBinderTransactionTrackingEnabled = true;
+        mProcessList.forEachLruProcessesLOSP(true, process -&amp;gt; {
+            final IApplicationThread thread = process.getThread();
+            if (!processSanityChecksLPr(process, thread)) {
+                return;
+            }
+            try {
+                thread.startBinderTracking();
+            } catch (RemoteException e) {
+                Log.v(TAG, &quot;Process disappared&quot;);
+            }
+        });
+    }
+    return true;
+}
+
+public boolean stopBinderTrackingAndDump(final ParcelFileDescriptor fd) throws RemoteException {
+    ...
+    boolean closeFd = true;
+    try {
+        synchronized (mProcLock) {
+            if (fd == null) {
+                throw new IllegalArgumentException(&quot;null fd&quot;);
+            }
+            mBinderTransactionTrackingEnabled = false;
+
+            PrintWriter pw = new FastPrintWriter(new FileOutputStream(fd.getFileDescriptor()));
+            pw.println(&quot;Binder transaction traces for all processes.\n&quot;);
+            mProcessList.forEachLruProcessesLOSP(true, process -&amp;gt; {
+                final IApplicationThread thread = process.getThread();
+                if (!processSanityChecksLPr(process, thread)) {
+                    return;
+                }
+
+                pw.println(&quot;Traces for process: &quot; + process.processName);
+                pw.flush();
+                try {
+                    TransferPipe tp = new TransferPipe();
+                    try {
+                        thread.stopBinderTrackingAndDump(tp.getWriteFd());
+                        tp.go(fd.getFileDescriptor());
+                    } finally {
+                        tp.kill();
+                    }
+                } catch (IOException e) {
+                    pw.println(&quot;Failure while dumping IPC traces from &quot; + process +
+                            &quot;.  Exception: &quot; + e);
+                    pw.flush();
+                } catch (RemoteException e) {
+                    pw.println(&quot;Got a RemoteException while dumping IPC traces from &quot; +
+                            process + &quot;.  Exception: &quot; + e);
+                    pw.flush();
+                }
+            });
+            closeFd = false;
+            return true;
+        }
+    } finally {
+        ...
+    }
+}
+
+private boolean processSanityChecksLPr(ProcessRecord process, IApplicationThread thread) {
+    if (process == null || thread == null) {
+        return false;
+    }
+
+    return Build.IS_DEBUGGABLE || process.isDebuggable();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;AMS中会遍历存活的进程，通过IApplicationThread通知应用执行startBinderTracking/stopBinderTrackingAndDump。此外，这个功能只在root版本或者应用是Debug版本上生效。&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;应用处理binder统计&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityThread.java
+private void handleStartBinderTracking() {
+    Binder.enableStackTracking();
+}
+
+private void handleStopBinderTrackingAndDump(ParcelFileDescriptor fd) {
+    try {
+        Binder.disableStackTracking();
+        Binder.getTransactionTracker().writeTracesToFile(fd);
+    } finally {
+        IoUtils.closeQuietly(fd);
+        Binder.getTransactionTracker().clearTraces();
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;应用收到请求后会直接调用对应的Binder静态方法。&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Binder类中的逻辑&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Binder.java
+public static void enableStackTracking() {
+    sStackTrackingEnabled = true;
+}
+
+public static void disableStackTracking() {
+    sStackTrackingEnabled = false;
+}
+
+public synchronized static TransactionTracker getTransactionTracker() {
+    if (sTransactionTracker == null)
+        sTransactionTracker = new TransactionTracker();
+    return sTransactionTracker;
+}
+
+public static boolean isStackTrackingEnabled() {
+    return sStackTrackingEnabled;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;当应用向服务端发起binder通信时，会执行到BinderProxy的transact方法：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// BinderProxy.java
+public boolean transact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
+    Binder.checkParcel(this, code, data, &quot;Unreasonably large binder buffer&quot;);
+    ...
+    final boolean tracingEnabled = Binder.isStackTrackingEnabled();
+    if (tracingEnabled) {
+        final Throwable tr = new Throwable();
+        Binder.getTransactionTracker().addTrace(tr);
+        StackTraceElement stackTraceElement = tr.getStackTrace()[1];
+        Trace.traceBegin(Trace.TRACE_TAG_ALWAYS,
+                stackTraceElement.getClassName() + &quot;.&quot; + stackTraceElement.getMethodName());
+    }
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;当tracingEnabled为true时，会抓取堆栈并记录到TransactionTracker中：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// TransactionTracker.java
+private Map&amp;lt;String, Long&amp;gt; mTraces;
+
+private void resetTraces() {
+    synchronized (this) {
+        mTraces = new HashMap&amp;lt;String, Long&amp;gt;();
+    }
+}
+
+public void addTrace(Throwable tr) {
+    String trace = Log.getStackTraceString(tr);
+    synchronized (this) {
+        if (mTraces.containsKey(trace)) {
+            mTraces.put(trace, mTraces.get(trace) + 1);
+        } else {
+            mTraces.put(trace, Long.valueOf(1));
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;写入到文件&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt; // TransactionTracker.java
+ public void writeTracesToFile(ParcelFileDescriptor fd) {
+    if (mTraces.isEmpty()) {
+        return;
+    }
+
+    PrintWriter pw = new FastPrintWriter(new FileOutputStream(fd.getFileDescriptor()));
+    synchronized (this) {
+        for (String trace : mTraces.keySet()) {
+            pw.println(&quot;Count: &quot; + mTraces.get(trace));
+            pw.println(&quot;Trace: &quot; + trace);
+            pw.println();
+        }
+    }
+    pw.flush();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;2基于binder接口统计binder请求&quot;&gt;2.基于Binder接口统计binder请求&lt;/h1&gt;
+
+&lt;p&gt;在查看BinderProxy源码时，发现Binder提供了Binder.ProxyTransactListener接口，可以供应用侧统计binder调用信息：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public boolean transact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
+    Binder.checkParcel(this, code, data, &quot;Unreasonably large binder buffer&quot;);
+    ...
+    // Make sure the listener won&apos;t change while processing a transaction.
+    final Binder.ProxyTransactListener transactListener = sTransactListener;
+    Object session = null;
+
+    if (transactListener != null) {
+        final int origWorkSourceUid = Binder.getCallingWorkSourceUid();
+        session = transactListener.onTransactStarted(this, code, flags);
+
+        // Allow the listener to update the work source uid. We need to update the request
+        // header if the uid is updated.
+        final int updatedWorkSourceUid = Binder.getCallingWorkSourceUid();
+        if (origWorkSourceUid != updatedWorkSourceUid) {
+            data.replaceCallingWorkSourceUid(updatedWorkSourceUid);
+        }
+    }
+
+    final AppOpsManager.PausedNotedAppOpsCollection prevCollection =
+            AppOpsManager.pauseNotedAppOpsCollection();
+
+    if ((flags &amp;amp; FLAG_ONEWAY) == 0 &amp;amp;&amp;amp; AppOpsManager.isListeningForOpNoted()) {
+        flags |= FLAG_COLLECT_NOTED_APP_OPS;
+    }
+
+    try {
+        final boolean result = transactNative(code, data, reply, flags);
+
+        if (reply != null &amp;amp;&amp;amp; !warnOnBlocking) {
+            reply.addFlags(Parcel.FLAG_IS_REPLY_FROM_BLOCKING_ALLOWED_OBJECT);
+        }
+
+        return result;
+    } finally {
+        AppOpsManager.resumeNotedAppOpsCollection(prevCollection);
+
+        if (transactListener != null) {
+            transactListener.onTransactEnded(session);
+        }
+
+        if (tracingEnabled) {
+            Trace.traceEnd(Trace.TRACE_TAG_ALWAYS);
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;ProxyTransactListener接口提供了binder请求开始和结束的回调：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public interface ProxyTransactListener {
+    /**
+     * Called before onTransact.
+     *
+     * @return an object that will be passed back to {@link #onTransactEnded} (or null).,
+     *
+     * @hide
+     */
+    @Nullable
+    default Object onTransactStarted(@NonNull IBinder binder, int transactionCode, int flags) {
+        return onTransactStarted(binder, transactionCode);
+    }
+
+    /**
+     * Called before onTransact.
+     *
+     * @return an object that will be passed back to {@link #onTransactEnded} (or null).
+     */
+    @Nullable
+    Object onTransactStarted(@NonNull IBinder binder, int transactionCode);
+
+    /**
+     * Called after onTransact (even when an exception is thrown).
+     *
+     * @param session The object return by {@link #onTransactStarted}.
+     */
+    void onTransactEnded(@Nullable Object session);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;应用可以直接通过Binder的setProxyTransactListener方法来添加回调：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Binder.java
+public static void setProxyTransactListener(@Nullable ProxyTransactListener listener) {
+    BinderProxy.setTransactListener(listener);
+}
+
+// BinderProxy.java
+public static void setTransactListener(@Nullable Binder.ProxyTransactListener listener) {
+    sTransactListener = listener;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;3基于binder接口统计binder应答&quot;&gt;3.基于Binder接口统计binder应答&lt;/h1&gt;
+
+&lt;p&gt;以上两种方式统计的应用作为客户端向服务端发起的binder调用请求，如何统计应用作为服务端应答请求信息呢？&lt;/p&gt;
+
+&lt;p&gt;在Binder类中提供了一个接口：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Binder.java
+public static void setObserver(@Nullable BinderInternal.Observer observer) {
+    sObserver = observer;
+}
+
+// BinderInternal.java
+public interface Observer {
+    /**
+     * Called when a binder call starts.
+     *
+     * @return a CallSession to pass to the callEnded method.
+     */
+    CallSession callStarted(Binder binder, int code, int workSourceUid);
+
+    /**
+     * Called when a binder call stops.
+     *
+     * &amp;lt;li&amp;gt;This method will be called even when an exception is thrown by the binder stub
+     * implementation.
+     */
+    void callEnded(CallSession s, int parcelRequestSize, int parcelReplySize,
+            int workSourceUid);
+
+    /**
+     * Called if an exception is thrown while executing the binder transaction.
+     *
+     * &amp;lt;li&amp;gt;BinderCallsStats#callEnded will be called afterwards.
+     * &amp;lt;li&amp;gt;Do not throw an exception in this method, it will swallow the original exception
+     * thrown by the binder transaction.
+     */
+    public void callThrewException(CallSession s, Exception exception);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;当服务端处理Binder请求时会调用到Binder类的execTransact方法：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private boolean execTransact(int code, long dataObj, long replyObj,
+        int flags) {
+    final int callingUid = Binder.getCallingUid();
+    final long origWorkSource = ThreadLocalWorkSource.setUid(callingUid);
+    try {
+        return execTransactInternal(code, dataObj, replyObj, flags, callingUid);
+    } finally {
+        ThreadLocalWorkSource.restore(origWorkSource);
+    }
+}
+
+private boolean execTransactInternal(int code, long dataObj, long replyObj, int flags,
+        int callingUid) {
+    // Make sure the observer won&apos;t change while processing a transaction.
+    final BinderInternal.Observer observer = sObserver;
+    final CallSession callSession =
+            observer != null ? observer.callStarted(this, code, UNSET_WORKSOURCE) : null;
+    Parcel data = Parcel.obtain(dataObj);
+    Parcel reply = Parcel.obtain(replyObj);
+
+    boolean res;
+    final boolean tracingEnabled = Trace.isTagEnabled(Trace.TRACE_TAG_AIDL) &amp;amp;&amp;amp;
+            (Binder.isStackTrackingEnabled() || Binder.isTracingEnabled(callingUid));
+    try {
+        final BinderCallHeavyHitterWatcher heavyHitterWatcher = sHeavyHitterWatcher;
+        if (heavyHitterWatcher != null) {
+            // Notify the heavy hitter watcher, if it&apos;s enabled.
+            heavyHitterWatcher.onTransaction(callingUid, getClass(), code);
+        }
+        if (tracingEnabled) {
+            Trace.traceBegin(Trace.TRACE_TAG_AIDL, getTransactionTraceName(code));
+        }
+
+        if ((flags &amp;amp; FLAG_COLLECT_NOTED_APP_OPS) != 0) {
+            AppOpsManager.startNotedAppOpsCollection(callingUid);
+            try {
+                res = onTransact(code, data, reply, flags);
+            } finally {
+                AppOpsManager.finishNotedAppOpsCollection();
+            }
+        } else {
+            res = onTransact(code, data, reply, flags);
+        }
+    } catch (RemoteException|RuntimeException e) {
+        if (observer != null) {
+            observer.callThrewException(callSession, e);
+        }
+        if (LOG_RUNTIME_EXCEPTION) {
+            Log.w(TAG, &quot;Caught a RuntimeException from the binder stub implementation.&quot;, e);
+        }
+        if ((flags &amp;amp; FLAG_ONEWAY) != 0) {
+            if (e instanceof RemoteException) {
+                Log.w(TAG, &quot;Binder call failed.&quot;, e);
+            } else {
+                Log.w(TAG, &quot;Caught a RuntimeException from the binder stub implementation.&quot;, e);
+            }
+        } else {
+            // Clear the parcel before writing the exception.
+            reply.setDataSize(0);
+            reply.setDataPosition(0);
+            reply.writeException(e);
+        }
+        res = true;
+    } finally {
+        if (tracingEnabled) {
+            Trace.traceEnd(Trace.TRACE_TAG_AIDL);
+        }
+        if (observer != null) {
+            // The parcel RPC headers have been called during onTransact so we can now access
+            // the worksource UID from the parcel.
+            final int workSourceUid = sWorkSourceProvider.resolveWorkSourceUid(
+                    data.readCallingWorkSourceUid());
+            observer.callEnded(callSession, data.dataSize(), reply.dataSize(), workSourceUid);
+        }
+
+        checkParcel(this, code, reply, &quot;Unreasonably large binder reply buffer&quot;);
+        reply.recycle();
+        data.recycle();
+    }
+
+    StrictMode.clearGatheredViolations();
+    return res;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+</description>
+        <pubDate>Sat, 20 Aug 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/08/20/ANR%E6%B2%BB%E7%90%86-Binder%E8%B0%83%E7%94%A8%E7%BB%9F%E8%AE%A1/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/08/20/ANR%E6%B2%BB%E7%90%86-Binder%E8%B0%83%E7%94%A8%E7%BB%9F%E8%AE%A1/</guid>
+        
+        <category>Android</category>
+        
+        <category>ANR</category>
+        
+        <category>Binder</category>
+        
+        
+      </item>
+    
+      <item>
         <title>Recovery机制介绍</title>
         <description>&lt;p&gt;2020年三星手机发生了一场严重事故，中国三星手机用户在5月23日这一天凌晨突然无限重启，事故原因是因SystemUI发生异常重复Crash导致手机进入Recovery界面，用户只能选择恢复出厂设置导致用户数据永久丢失。&lt;/p&gt;
 
@@ -3217,1134 +4963,6 @@ func (c *config) PlatformSdkVersion() string {}
         <guid isPermaLink="true">http://localhost:4000/2022/05/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/</guid>
         
         <category>Android</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>SystemUI-通知显示流程</title>
-        <description>&lt;p&gt;官方文档：&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://developer.android.com/guide/topics/ui/notifiers/notifications?hl=zh-cn&quot;&gt;通知概览&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://developer.android.google.cn/training/notify-user/build-notification?hl=zh-cn&quot;&gt;创建通知&lt;/a&gt;&lt;/p&gt;
-
-&lt;h1 id=&quot;1应用发送通知&quot;&gt;1.应用发送通知&lt;/h1&gt;
-
-&lt;p&gt;应用侧发通知代码：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// 构建Notification
-NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-        .setSmallIcon(R.drawable.notification_icon)
-        .setContentTitle(textTitle)
-        .setContentText(textContent)
-        .setPriority(NotificationCompat.PRIORITY_DEFAULT);
-
-NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-// notificationId是通知的唯一标识
-notificationManager.notify(notificationId, builder.build());
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;向NMS发送请求：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationManager.java
-public void notify(int id, Notification notification) {
-    notify(null, id, notification);
-}
-
-public void notify(String tag, int id, Notification notification) {
-    notifyAsUser(tag, id, notification, mContext.getUser());
-}
-
-public void notifyAsUser(String tag, int id, Notification notification, UserHandle user) {
-    INotificationManager service = getService();
-    String pkg = mContext.getPackageName();
-
-    try {
-        if (localLOGV) Log.v(TAG, pkg + &quot;: notify(&quot; + id + &quot;, &quot; + notification + &quot;)&quot;);
-        service.enqueueNotificationWithTag(pkg, mContext.getOpPackageName(), tag, id,
-                fixNotification(notification), user.getIdentifier());
-    } catch (RemoteException e) {
-        throw e.rethrowFromSystemServer();
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;2nms处理通知&quot;&gt;2.NMS处理通知&lt;/h1&gt;
-
-&lt;p&gt;NMS处理显示通知请求：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationManagerService
-public void enqueueNotificationWithTag(String pkg, String opPkg, String tag, int id,
-        Notification notification, int userId) throws RemoteException {
-    enqueueNotificationInternal(pkg, opPkg, Binder.getCallingUid(),
-            Binder.getCallingPid(), tag, id, notification, userId, false);
-}
-
-void enqueueNotificationInternal(final String pkg, final String opPkg, final int callingUid,
-        final int callingPid, final String tag, final int id, final Notification notification,
-        int incomingUserId, boolean postSilently) {
-    ...
-    // 创建StatusBarNotification
-    final StatusBarNotification n = new StatusBarNotification(
-            pkg, opPkg, id, tag, notificationUid, callingPid, notification,
-            user, null, System.currentTimeMillis());
-
-    // Android O增加通知Channel
-    String channelId = notification.getChannelId();
-
-    ...
-    // 创建NotificationRecord
-    final NotificationRecord r = new NotificationRecord(getContext(), n, channel);
-
-    ...
-    mHandler.post(new EnqueueNotificationRunnable(userId, r, isAppForeground,
-            SystemClock.elapsedRealtime()));
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这里主要创建StatusBarNotification和NotificationRecord，其中pkg表示发通知的应用，opPkg表示通知显示的应用。举个例子，比如小米服务框架XMSF发送一条通知，opPkg设置为微信的包名，那么在通知栏中显示的通知包名为微信。&lt;/p&gt;
-
-&lt;p&gt;EnqueueNotificationRunnable核心逻辑：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public void run() {
-    synchronized (mNotificationLock) {
-        ...
-        mEnqueuedNotifications.add(r);
-        ...
-
-        // tell the assistant service about the notification
-        if (mAssistants.isEnabled()) {
-            mAssistants.onNotificationEnqueuedLocked(r);
-            mHandler.postDelayed(
-                    new PostNotificationRunnable(r.getKey(), r.getSbn().getPackageName(),
-                            r.getUid(), enqueueElapsedTimeMs),
-                    DELAY_FOR_ASSISTANT_TIME);
-        } else {
-            mHandler.post(new PostNotificationRunnable(r.getKey(),
-                    r.getSbn().getPackageName(), r.getUid(), enqueueElapsedTimeMs));
-        }
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;PostNotificationRunnable核心逻辑：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public void run() {
-    ...
-    synchronized (mNotificationLock) {
-        try {
-            ...
-            NotificationRecord old = mNotificationsByKey.get(key);
-            ...
-            int index = indexOfNotificationLocked(n.getKey());
-            if (index &amp;lt; 0) {
-                mNotificationList.add(r);
-                ...
-            } else {
-                old = mNotificationList.get(index);  // Potentially *changes* old
-                mNotificationList.set(index, r);
-                ...
-            }
-
-            mNotificationsByKey.put(n.getKey(), r);
-            ...
-            if (notification.getSmallIcon() != null) {
-                StatusBarNotification oldSbn = (old != null) ? old.getSbn() : null;
-                mListeners.notifyPostedLocked(r, old);
-                ...
-            } else {
-                ...
-            }
-            ...
-        } finally {
-            ...
-        }
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这里mListeners是NotificationListeners：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationListeners.java
-public void notifyPostedLocked(NotificationRecord r, NotificationRecord old) {
-    notifyPostedLocked(r, old, true);
-}
-
-void notifyPostedLocked(NotificationRecord r, NotificationRecord old,
-        boolean notifyAllListeners) {
-    ...
-    try {
-        StatusBarNotification sbn = r.getSbn();
-        StatusBarNotification oldSbn = (old != null) ? old.getSbn() : null;
-        TrimCache trimCache = new TrimCache(sbn);
-
-        for (final ManagedServiceInfo info : getServices()) {
-            ...
-            final StatusBarNotification sbnToPost = trimCache.ForListener(info);
-            mHandler.post(() -&amp;gt; notifyPosted(info, sbnToPost, update));
-        }
-    } catch (Exception e) {
-        Slog.e(TAG, &quot;Could not notify listeners for &quot; + r.getKey(), e);
-    }
-}
-
-private void notifyPosted(final ManagedServiceInfo info,
-        final StatusBarNotification sbn, NotificationRankingUpdate rankingUpdate) {
-    final INotificationListener listener = (INotificationListener) info.service;
-    StatusBarNotificationHolder sbnHolder = new StatusBarNotificationHolder(sbn);
-    try {
-        listener.onNotificationPosted(sbnHolder, rankingUpdate);
-    } catch (RemoteException ex) {
-        Slog.e(TAG, &quot;unable to notify listener (posted): &quot; + info, ex);
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;NotificationListenerService中封装了NMS与客户端通信：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationListenerService.java
-protected class NotificationListenerWrapper extends INotificationListener.Stub {
-    @Override
-    public void onNotificationPosted(IStatusBarNotificationHolder sbnHolder,
-            NotificationRankingUpdate update) {
-        ...
-        synchronized (mLock) {
-            applyUpdateLocked(update);
-            if (sbn != null) {
-                SomeArgs args = SomeArgs.obtain();
-                args.arg1 = sbn;
-                args.arg2 = mRankingMap;
-                mHandler.obtainMessage(MyHandler.MSG_ON_NOTIFICATION_POSTED,
-                        args).sendToTarget();
-            } else {
-                // still pass along the ranking map, it may contain other information
-                mHandler.obtainMessage(MyHandler.MSG_ON_NOTIFICATION_RANKING_UPDATE,
-                        mRankingMap).sendToTarget();
-            }
-        }
-    }
-
-    @Override
-    public void onNotificationRemoved(IStatusBarNotificationHolder sbnHolder,
-            NotificationRankingUpdate update, NotificationStats stats, int reason) {
-        ...
-        synchronized (mLock) {
-            applyUpdateLocked(update);
-            SomeArgs args = SomeArgs.obtain();
-            args.arg1 = sbn;
-            args.arg2 = mRankingMap;
-            args.arg3 = reason;
-            args.arg4 = stats;
-            mHandler.obtainMessage(MyHandler.MSG_ON_NOTIFICATION_REMOVED,
-                    args).sendToTarget();
-        }
-    }
-
-    ...
-}
-
-public IBinder onBind(Intent intent) {
-    if (mWrapper == null) {
-        mWrapper = new NotificationListenerWrapper();
-    }
-    return mWrapper;
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;应用开发者需要申请BIND_NOTIFICATION_LISTENER_SERVICE权限，并在AndroidManifest.xml声明服务。&lt;/p&gt;
-
-&lt;h1 id=&quot;3systemui显示通知&quot;&gt;3.SystemUI显示通知&lt;/h1&gt;
-
-&lt;p&gt;SystemUI收到新通知：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationListener.java
-public void onNotificationPosted(final StatusBarNotification sbn,
-        final RankingMap rankingMap) {
-    if (DEBUG) Log.d(TAG, &quot;onNotificationPosted: &quot; + sbn);
-    if (sbn != null &amp;amp;&amp;amp; !onPluginNotificationPosted(sbn, rankingMap)) {
-        mMainExecutor.execute(() -&amp;gt; {
-            processForRemoteInput(sbn.getNotification(), mContext);
-
-            for (NotificationHandler handler : mNotificationHandlers) {
-                handler.onNotificationPosted(sbn, rankingMap);
-            }
-        });
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;创建NotificationEntry，保存到mAllNotifications，&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationEntryManager.java
-private final NotificationHandler mNotifListener = new NotificationHandler() {
-    @Override
-    public void onNotificationPosted(StatusBarNotification sbn, RankingMap rankingMap) {
-        final boolean isUpdateToInflatedNotif = mActiveNotifications.containsKey(sbn.getKey());
-        if (isUpdateToInflatedNotif) {
-            updateNotification(sbn, rankingMap);
-        } else {
-            addNotification(sbn, rankingMap);
-        }
-    }
-};
-
-public void addNotification(StatusBarNotification notification, RankingMap ranking) {
-    try {
-        addNotificationInternal(notification, ranking);
-    } catch (InflationException e) {
-        handleInflationException(notification, e);
-    }
-}
-
-private void addNotificationInternal(
-        StatusBarNotification notification,
-        RankingMap rankingMap) throws InflationException {
-    Trace.beginSection(&quot;NotificationEntryManager.addNotificationInternal&quot;);
-    String key = notification.getKey();
-    if (DEBUG) {
-        Log.d(TAG, &quot;addNotification key=&quot; + key);
-    }
-
-    updateRankingAndSort(rankingMap, &quot;addNotificationInternal&quot;);
-
-    Ranking ranking = new Ranking();
-    rankingMap.getRanking(key, ranking);
-
-    NotificationEntry entry = mPendingNotifications.get(key);
-    if (entry != null) {
-        entry.setSbn(notification);
-        entry.setRanking(ranking);
-    } else {
-        entry = new NotificationEntry(
-                notification,
-                ranking,
-                SystemClock.uptimeMillis());
-        mAllNotifications.add(entry);
-        mLeakDetector.trackInstance(entry);
-
-        for (NotifCollectionListener listener : mNotifCollectionListeners) {
-            listener.onEntryInit(entry);
-        }
-    }
-
-    for (NotifCollectionListener listener : mNotifCollectionListeners) {
-        listener.onEntryBind(entry, notification);
-    }
-
-    // Construct the expanded view.
-    if (!mNotifPipelineFlags.isNewPipelineEnabled()) {
-        // 旧方案，直接inflateViews
-        mNotificationRowBinderLazy.get().inflateViews(entry, null, mInflationCallback);
-    }
-
-    mPendingNotifications.put(key, entry);
-    mLogger.logNotifAdded(entry.getKey());
-    for (NotificationEntryListener listener : mNotificationEntryListeners) {
-        listener.onPendingEntryAdded(entry);
-    }
-    for (NotifCollectionListener listener : mNotifCollectionListeners) {
-        listener.onEntryAdded(entry);
-    }
-    for (NotifCollectionListener listener : mNotifCollectionListeners) {
-        listener.onRankingApplied();
-    }
-    Trace.endSection();
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;通知布局inflate分为新旧两个方案，最终都会调用到 NotificationRowBinderImpl 的 inflateViews 方法：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NotificationRowBinderImpl.java
-public void inflateViews(
-        NotificationEntry entry,
-        NotifInflater.Params params,
-        NotificationRowContentBinder.InflationCallback callback)
-        throws InflationException {
-    if (params == null) {
-        // weak assert that the params should always be passed in the new pipeline
-        mNotifPipelineFlags.checkLegacyPipelineEnabled();
-    }
-    ViewGroup parent = mListContainer.getViewParentForNotification(entry);
-
-    if (entry.rowExists()) {
-        mIconManager.updateIcons(entry);
-        ExpandableNotificationRow row = entry.getRow();
-        row.reset();
-        updateRow(entry, row);
-        inflateContentViews(entry, params, row, callback);
-    } else {
-        mIconManager.createIcons(entry);
-        mRowInflaterTaskProvider.get().inflate(mContext, parent, entry,
-                row -&amp;gt; {
-                    // Setup the controller for the view.
-                    ExpandableNotificationRowComponent component =
-                            mExpandableNotificationRowComponentBuilder
-                                    .expandableNotificationRow(row)
-                                    .notificationEntry(entry)
-                                    .onExpandClickListener(mPresenter)
-                                    .listContainer(mListContainer)
-                                    .build();
-                    ExpandableNotificationRowController rowController =
-                            component.getExpandableNotificationRowController();
-                    rowController.init(entry);
-                    entry.setRowController(rowController);
-                    bindRow(entry, row);
-                    updateRow(entry, row);
-                    inflateContentViews(entry, params, row, callback);
-                });
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;调用RowInflaterTask的inflate方法：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// RowInflaterTask.java
-public void inflate(Context context, ViewGroup parent, NotificationEntry entry,
-        RowInflationFinishedListener listener) {
-    if (TRACE_ORIGIN) {
-        mInflateOrigin = new Throwable(&quot;inflate requested here&quot;);
-    }
-    mListener = listener;
-    AsyncLayoutInflater inflater = new AsyncLayoutInflater(context);
-    mEntry = entry;
-    entry.setInflationTask(this);
-    inflater.inflate(R.layout.status_bar_notification_row, parent, this);
-}
-
-public void onInflateFinished(View view, int resid, ViewGroup parent) {
-    if (!mCancelled) {
-        try {
-            mEntry.onInflationTaskFinished();
-            mListener.onInflationFinished((ExpandableNotificationRow) view);
-        } catch (Throwable t) {
-            if (mInflateOrigin != null) {
-                Log.e(TAG, &quot;Error in inflation finished listener: &quot; + t, mInflateOrigin);
-                t.addSuppressed(mInflateOrigin);
-            }
-            throw t;
-        }
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;在SystemUI中通知的根布局是status_bar_notification_row，根布局inflate完成后会继续执行inflateContentViews方法，这里涉及到通知布局3种形态：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private void inflateContentViews(
-        NotificationEntry entry,
-        NotifInflater.Params inflaterParams,
-        ExpandableNotificationRow row,
-        @Nullable NotificationRowContentBinder.InflationCallback inflationCallback) {
-    final boolean useIncreasedCollapsedHeight =
-            mMessagingUtil.isImportantMessaging(entry.getSbn(), entry.getImportance());
-    final boolean isLowPriority; // 1.显示成单行
-    if (inflaterParams != null) {
-        // NEW pipeline
-        isLowPriority = inflaterParams.isLowPriority();
-    } else {
-        // LEGACY pipeline
-        mNotifPipelineFlags.checkLegacyPipelineEnabled();
-        // If this is our first time inflating, we don&apos;t actually know the groupings for real
-        // yet, so we might actually inflate a low priority content view incorrectly here and
-        // have to correct it later in the pipeline. On subsequent inflations (i.e. updates),
-        // this should inflate the correct view.
-        isLowPriority = mLowPriorityInflationHelper.shouldUseLowPriorityView(entry);
-    }
-
-    RowContentBindParams params = mRowContentBindStage.getStageParams(entry);
-    params.setUseIncreasedCollapsedHeight(useIncreasedCollapsedHeight);
-    params.setUseLowPriority(isLowPriority);
-
-    if (mNotificationLockscreenUserManager.needsRedaction(entry)) {
-        params.requireContentViews(FLAG_CONTENT_VIEW_PUBLIC); // 2.隐藏通知内容
-    } else {
-        params.markContentViewsFreeable(FLAG_CONTENT_VIEW_PUBLIC); // 3.正常显示
-    }
-
-    params.rebindAllContentViews();
-    mRowContentBindStage.requestRebind(entry, en -&amp;gt; {
-        row.setUsesIncreasedCollapsedHeight(useIncreasedCollapsedHeight);
-        row.setIsLowPriority(isLowPriority);
-        if (inflationCallback != null) {
-            inflationCallback.onAsyncInflationFinished(en);
-        }
-    });
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;最终会调用到NotificationContentInflater的bindContent方法，通过创建AsyncInflationTask异步inflate布局：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public void bindContent(
-        NotificationEntry entry,
-        ExpandableNotificationRow row,
-        @InflationFlag int contentToBind,
-        BindParams bindParams,
-        boolean forceInflate,
-        @Nullable InflationCallback callback) {
-    if (row.isRemoved()) {
-        // We don&apos;t want to reinflate anything for removed notifications. Otherwise views might
-        // be readded to the stack, leading to leaks. This may happen with low-priority groups
-        // where the removal of already removed children can lead to a reinflation.
-        return;
-    }
-
-    StatusBarNotification sbn = entry.getSbn();
-
-    // To check if the notification has inline image and preload inline image if necessary.
-    row.getImageResolver().preloadImages(sbn.getNotification());
-
-    if (forceInflate) {
-        mRemoteViewCache.clearCache(entry);
-    }
-
-    // Cancel any pending frees on any view we&apos;re trying to bind since we should be bound after.
-    cancelContentViewFrees(row, contentToBind);
-
-    AsyncInflationTask task = new AsyncInflationTask(
-            mBgExecutor,
-            mInflateSynchronously,
-            contentToBind,
-            mRemoteViewCache,
-            entry,
-            mConversationProcessor,
-            row,
-            bindParams.isLowPriority,
-            bindParams.usesIncreasedHeight,
-            bindParams.usesIncreasedHeadsUpHeight,
-            callback,
-            mRemoteInputManager.getRemoteViewsOnClickHandler(),
-            mIsMediaInQS,
-            mSmartReplyStateInflater);
-    if (mInflateSynchronously) {
-        task.onPostExecute(task.doInBackground());
-    } else {
-        task.executeOnExecutor(mBgExecutor);
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;AsyncInflationTask是一个AsyncTask，在onPostExecute回调中调用apply方法：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private static CancellationSignal apply(
-        Executor bgExecutor,
-        boolean inflateSynchronously,
-        InflationProgress result,
-        @InflationFlag int reInflateFlags,
-        NotifRemoteViewCache remoteViewCache,
-        NotificationEntry entry,
-        ExpandableNotificationRow row,
-        RemoteViews.InteractionHandler remoteViewClickHandler,
-        @Nullable InflationCallback callback) {
-    NotificationContentView privateLayout = row.getPrivateLayout();
-    NotificationContentView publicLayout = row.getPublicLayout();
-    final HashMap&amp;lt;Integer, CancellationSignal&amp;gt; runningInflations = new HashMap&amp;lt;&amp;gt;();
-
-    int flag = FLAG_CONTENT_VIEW_CONTRACTED;
-    if ((reInflateFlags &amp;amp; flag) != 0) {
-        boolean isNewView =
-                !canReapplyRemoteView(result.newContentView,
-                        remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_CONTRACTED));
-        ApplyCallback applyCallback = new ApplyCallback() {
-            @Override
-            public void setResultView(View v) {
-                result.inflatedContentView = v;
-            }
-
-            @Override
-            public RemoteViews getRemoteView() {
-                return result.newContentView;
-            }
-        };
-        applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
-                remoteViewCache, entry, row, isNewView, remoteViewClickHandler, callback,
-                privateLayout,  privateLayout.getContractedChild(),
-                privateLayout.getVisibleWrapper(
-                        NotificationContentView.VISIBLE_TYPE_CONTRACTED),
-                runningInflations, applyCallback);
-    }
-
-    flag = FLAG_CONTENT_VIEW_EXPANDED;
-    if ((reInflateFlags &amp;amp; flag) != 0) {
-        if (result.newExpandedView != null) {
-            boolean isNewView =
-                    !canReapplyRemoteView(result.newExpandedView,
-                            remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_EXPANDED));
-            ApplyCallback applyCallback = new ApplyCallback() {
-                @Override
-                public void setResultView(View v) {
-                    result.inflatedExpandedView = v;
-                }
-
-                @Override
-                public RemoteViews getRemoteView() {
-                    return result.newExpandedView;
-                }
-            };
-            applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
-                    remoteViewCache, entry, row, isNewView, remoteViewClickHandler,
-                    callback, privateLayout, privateLayout.getExpandedChild(),
-                    privateLayout.getVisibleWrapper(
-                            NotificationContentView.VISIBLE_TYPE_EXPANDED), runningInflations,
-                    applyCallback);
-        }
-    }
-
-    flag = FLAG_CONTENT_VIEW_HEADS_UP;
-    if ((reInflateFlags &amp;amp; flag) != 0) {
-        if (result.newHeadsUpView != null) {
-            boolean isNewView =
-                    !canReapplyRemoteView(result.newHeadsUpView,
-                            remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_HEADS_UP));
-            ApplyCallback applyCallback = new ApplyCallback() {
-                @Override
-                public void setResultView(View v) {
-                    result.inflatedHeadsUpView = v;
-                }
-
-                @Override
-                public RemoteViews getRemoteView() {
-                    return result.newHeadsUpView;
-                }
-            };
-            applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
-                    remoteViewCache, entry, row, isNewView, remoteViewClickHandler,
-                    callback, privateLayout, privateLayout.getHeadsUpChild(),
-                    privateLayout.getVisibleWrapper(
-                            VISIBLE_TYPE_HEADSUP), runningInflations,
-                    applyCallback);
-        }
-    }
-
-    flag = FLAG_CONTENT_VIEW_PUBLIC;
-    if ((reInflateFlags &amp;amp; flag) != 0) {
-        boolean isNewView =
-                !canReapplyRemoteView(result.newPublicView,
-                        remoteViewCache.getCachedView(entry, FLAG_CONTENT_VIEW_PUBLIC));
-        ApplyCallback applyCallback = new ApplyCallback() {
-            @Override
-            public void setResultView(View v) {
-                result.inflatedPublicView = v;
-            }
-
-            @Override
-            public RemoteViews getRemoteView() {
-                return result.newPublicView;
-            }
-        };
-        applyRemoteView(bgExecutor, inflateSynchronously, result, reInflateFlags, flag,
-                remoteViewCache, entry, row, isNewView, remoteViewClickHandler, callback,
-                publicLayout, publicLayout.getContractedChild(),
-                publicLayout.getVisibleWrapper(NotificationContentView.VISIBLE_TYPE_CONTRACTED),
-                runningInflations, applyCallback);
-    }
-
-    // Let&apos;s try to finish, maybe nobody is even inflating anything
-    finishIfDone(result, reInflateFlags, remoteViewCache, runningInflations, callback, entry,
-            row);
-    CancellationSignal cancellationSignal = new CancellationSignal();
-    cancellationSignal.setOnCancelListener(
-            () -&amp;gt; runningInflations.values().forEach(CancellationSignal::cancel));
-
-    return cancellationSignal;
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这里根据条件会创建通知正常视图、大视图、悬浮通知视图、隐藏通知内容视图。这些视图全部inflate完成后才会调用到&lt;em&gt;finishIfDone方法。&lt;/em&gt;&lt;/p&gt;
-
-&lt;p&gt;至此通知相关的所有布局都inflate完成，最终会添加到&lt;em&gt;NotificationStackScrollLayout中显示出来。&lt;/em&gt;&lt;/p&gt;
-</description>
-        <pubDate>Sun, 17 Apr 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/</guid>
-        
-        <category>Android</category>
-        
-        <category>SystemUI</category>
-        
-        <category>Notification</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>SystemUI-字节码插桩</title>
-        <description>&lt;h1 id=&quot;1java_genrule介绍&quot;&gt;1.java_genrule介绍&lt;/h1&gt;
-
-&lt;p&gt;在阅读系统源码时，发现了一个有意思的工具lockedregioncodeinjection，从命名来看是对锁处理的地方做代码插桩，其使用的代码如下：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;java_genrule {
-    name: &quot;services.core.priorityboosted&quot;,
-    srcs: [&quot;:services.core.unboosted&quot;],
-    tools: [&quot;lockedregioncodeinjection&quot;],
-    cmd: &quot;$(location lockedregioncodeinjection) &quot; +
-        &quot;  --targets \&quot;Lcom/android/server/am/ActivityManagerService;,Lcom/android/server/wm/WindowManagerGlobalLock;\&quot; &quot; +
-        &quot;  --pre \&quot;com/android/server/am/ActivityManagerService.boostPriorityForLockedSection,com/android/server/wm/WindowManagerService.boostPriorityForLockedSection\&quot; &quot; +
-        &quot;  --post \&quot;com/android/server/am/ActivityManagerService.resetPriorityAfterLockedSection,com/android/server/wm/WindowManagerService.resetPriorityAfterLockedSection\&quot; &quot; +
-        &quot;  -o $(out) &quot; +
-        &quot;  -i $(in)&quot;,
-    out: [&quot;services.core.priorityboosted.jar&quot;],
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;从源码中查找 java_genrule 的定义：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;// genrule.go
-
-java_genrule is a genrule that can depend on other java_* objects.
-
-By default a java_genrule has a single variant that will run against the device variant of its dependencies and
-produce an output that can be used as an input to a device java rule.
-
-Specifying `host_supported: true` will produce two variants, one that uses device dependencies and one that uses
-host dependencies.  Each variant will run the command.
-
-Use a java_genrule instead of a genrule when it needs to depend on or be depended on by other java modules, unless
-the dependency is for a generated source file.
-
-Examples:
-
-Use a java_genrule to package generated java resources:
-
-    java_genrule {
-        name: &quot;generated_resources&quot;,
-        tools: [
-            &quot;generator&quot;,
-            &quot;soong_zip&quot;,
-        ],
-        srcs: [&quot;generator_inputs/**/*&quot;],
-        out: [&quot;generated_android_icu4j_resources.jar&quot;],
-        cmd: &quot;$(location generator) $(in) -o $(genDir) &quot; +
-            &quot;&amp;amp;&amp;amp; $(location soong_zip) -o $(out) -C $(genDir)/res -D $(genDir)/res&quot;,
-    }
-
-    java_library {
-        name: &quot;lib_with_generated_resources&quot;,
-        srcs: [&quot;src/**/*.java&quot;],
-        static_libs: [&quot;generated_resources&quot;],
-    }
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;大意是 java_genrule 是一个依赖其他 java_* 对象的生成规则，比如java_library。这里的cmd参数是要执行的命令，tools是命令中使用的工具，srcs是输入文件，out是输出文件。&lt;/p&gt;
-
-&lt;p&gt;接着查找lockedregioncodeinjection工具的位置：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-SQL&quot;&gt;java_binary_host {
-    name: &quot;lockedregioncodeinjection&quot;,
-    manifest: &quot;manifest.txt&quot;,
-    srcs: [&quot;src/**/*.java&quot;],
-    static_libs: [
-        &quot;asm-9.2&quot;,
-        &quot;asm-commons-9.2&quot;,
-        &quot;asm-tree-9.2&quot;,
-        &quot;asm-analysis-9.2&quot;,
-        &quot;guava-21.0&quot;,
-    ],
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;可以看到lockedregioncodeinjection是一个可运行的jar包，其入口定义在manifest.txt：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;Main-Class: lockedregioncodeinjection.Main
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;整个jar包入口在工程的Main类中：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public static void main(String[] args) throws IOException {
-    String inJar = null;
-    String outJar = null;
-
-    String legacyTargets = null;
-    String legacyPreMethods = null;
-    String legacyPostMethods = null;
-    for (int i = 0; i &amp;lt; args.length; i++) {
-        if (&quot;-i&quot;.equals(args[i].trim())) {
-            i++;
-            inJar = args[i].trim();
-        } else if (&quot;-o&quot;.equals(args[i].trim())) {
-            i++;
-            outJar = args[i].trim();
-        } else if (&quot;--targets&quot;.equals(args[i].trim())) {
-            i++;
-            legacyTargets = args[i].trim();
-        } else if (&quot;--pre&quot;.equals(args[i].trim())) {
-            i++;
-            legacyPreMethods = args[i].trim();
-        } else if (&quot;--post&quot;.equals(args[i].trim())) {
-            i++;
-            legacyPostMethods = args[i].trim();
-        }
-
-    }
-
-    // TODO(acleung): Better help message than asserts.
-    assert inJar != null;
-    assert outJar != null;
-    assert legacyTargets == null || (legacyPreMethods != null &amp;amp;&amp;amp; legacyPostMethods != null);
-
-    ZipFile zipSrc = new ZipFile(inJar);
-    ZipOutputStream zos = new ZipOutputStream(new FileOutputStream(outJar));
-    List&amp;lt;LockTarget&amp;gt; targets = null;
-    if (legacyTargets != null) {
-        targets = Utils.getTargetsFromLegacyJackConfig(legacyTargets, legacyPreMethods,
-                legacyPostMethods);
-    } else {
-        targets = Collections.emptyList();
-    }
-
-    Enumeration&amp;lt;? extends ZipEntry&amp;gt; srcEntries = zipSrc.entries();
-    while (srcEntries.hasMoreElements()) {
-        ZipEntry entry = srcEntries.nextElement();
-        ZipEntry newEntry = new ZipEntry(entry.getName());
-        newEntry.setTime(entry.getTime());
-        zos.putNextEntry(newEntry);
-        BufferedInputStream bis = new BufferedInputStream(zipSrc.getInputStream(entry));
-
-        if (entry.getName().endsWith(&quot;.class&quot;)) {
-            convert(bis, zos, targets);
-        } else {
-            while (bis.available() &amp;gt; 0) {
-                zos.write(bis.read());
-            }
-            zos.closeEntry();
-            bis.close();
-        }
-    }
-    zos.finish();
-    zos.close();
-    zipSrc.close();
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;核心逻辑为解析命令参数，对代码做插桩。&lt;/p&gt;
-
-&lt;p&gt;如何使用生成的 services.core.priorityboosted.jar 呢？可以看到 java_genrule 可以像其他 java_* 对象一样，直接作为编译依赖项。&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;java_library {
-    name: &quot;services.core&quot;,
-    static_libs: [&quot;services.core.priorityboosted&quot;],
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;2应用字节码插桩&quot;&gt;2.应用字节码插桩&lt;/h1&gt;
-
-&lt;p&gt;无论是Gradle编译还是bp编译，其核心流程都是一致的，在编译前都会生成基于拓扑排序的编译依赖关系。基于SystemUI的Android.bp文件，来分析下编译依赖关系：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;android_app {
-    name: &quot;SystemUI&quot;,
-    defaults: [
-
-    ],
-    static_libs: [
-        &quot;SystemUI-core&quot;,
-    ],
-    resource_dirs: [],
-
-    platform_apis: true,
-    system_ext_specific: true,
-    certificate: &quot;platform&quot;,
-    privileged: true,
-
-    libs: [
-        &quot;android.car&quot;,
-        &quot;ims-common&quot;,
-        &quot;extphonelib&quot;,
-    ],
-    enforce_uses_libs: false,
-
-    kotlincflags: [&quot;-Xjvm-default=enable&quot;],
-
-    dxflags: [&quot;--multi-dex&quot;],
-    required: [
-        &quot;privapp_whitelist_com.android.systemui&quot;,
-    ],
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;可以看到编译SystemUI.apk主要依赖SystemUI-core，&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;android_app {
-    name: &quot;SystemUI&quot;,
-    static_libs: [
-        &quot;SystemUI-core&quot;,
-    ],
-    resource_dirs: [],
-
-    platform_apis: true,
-    product_specific: true,
-    certificate: &quot;platform&quot;,
-    privileged: true,
-
-    optimize: {
-        proguard_flags_files: [&quot;proguard.flags&quot;],
-    },
-
-    libs: [
-        &quot;android.car&quot;,
-        &quot;android.car.userlib&quot;,
-        &quot;ims-common&quot;,
-        &quot;telephony-common&quot;,
-        &quot;telephony-ext&quot;,
-        &quot;miuisdk&quot;,
-    ],
-
-    kotlincflags: [&quot;-Xjvm-default=enable&quot;],
-
-    dxflags: [&quot;--multi-dex&quot;],
-    required: [&quot;privapp_whitelist_com.android.systemui&quot;],
-
-}
-
-android_library {
-    name: &quot;SystemUI-core&quot;,
-    srcs: [
-        &quot;src/**/*.kt&quot;,
-        &quot;src/**/*.java&quot;,
-        &quot;src/**/I*.aidl&quot;,
-    ],
-    resource_dirs: [
-        &quot;res-keyguard&quot;,
-        &quot;res&quot;,
-    ],
-    static_libs: [
-        &quot;SystemUIPluginLib&quot;,
-        &quot;SystemUISharedLib&quot;,
-        &quot;SettingsLib&quot;,
-        &quot;androidx.legacy_legacy-support-v4&quot;,
-        &quot;androidx.recyclerview_recyclerview&quot;,
-        &quot;androidx.preference_preference&quot;,
-        &quot;androidx.appcompat_appcompat&quot;,
-        &quot;androidx.mediarouter_mediarouter&quot;,
-        &quot;androidx.palette_palette&quot;,
-        &quot;androidx.legacy_legacy-preference-v14&quot;,
-        &quot;androidx.leanback_leanback&quot;,
-        &quot;androidx.slice_slice-core&quot;,
-        &quot;androidx.slice_slice-view&quot;,
-        &quot;androidx.slice_slice-builders&quot;,
-        &quot;androidx.arch.core_core-runtime&quot;,
-        &quot;androidx.lifecycle_lifecycle-extensions&quot;,
-        &quot;androidx.dynamicanimation_dynamicanimation&quot;,
-        &quot;androidx-constraintlayout_constraintlayout&quot;,
-        &quot;iconloader_base&quot;,
-        &quot;SystemUI-tags&quot;,
-        &quot;SystemUI-proto&quot;,
-        &quot;dagger2-2.19&quot;,
-        &quot;jsr330&quot;
-    ],
-    manifest: &quot;AndroidManifest.xml&quot;,
-
-    libs: [
-        &quot;android.car&quot;,
-        &quot;android.car.userlib&quot;,
-        &quot;telephony-common&quot;,
-        &quot;telephony-ext&quot;,
-        &quot;ims-common&quot;,
-        &quot;miuisdk&quot;,
-    ],
-
-    kotlincflags: [&quot;-Xjvm-default=enable&quot;],
-
-    plugins: [&quot;dagger2-compiler-2.19&quot;],
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;而SystemUI-core是一个jar包，可以在这二者之间插入java_genrule实现代码插桩，示例如下：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Plain&quot;&gt;genrule {
-    name: &quot;SystemUI-codeinjection&quot;,
-    srcs: [&quot;:SystemUI-core&quot;],
-    tools: [&quot;xx&quot;],
-    cmd: &quot;xx&quot;
-    out: [&quot;SystemUI-core-codeinjection.jar&quot;],
-}
-
-android_app {
-    name: &quot;SystemUI&quot;,
-    static_libs: [
-        &quot;SystemUI-codeinjection&quot;,
-    ],
-    ...
-}
-&lt;/code&gt;&lt;/pre&gt;
-</description>
-        <pubDate>Mon, 28 Mar 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/03/28/SystemUI-%E5%AD%97%E8%8A%82%E7%A0%81%E6%8F%92%E6%A1%A9/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/03/28/SystemUI-%E5%AD%97%E8%8A%82%E7%A0%81%E6%8F%92%E6%A1%A9/</guid>
-        
-        <category>Android</category>
-        
-        <category>SystemUI</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>SystemUI-支持gradle编译</title>
-        <description>&lt;h3 id=&quot;1-导入frameworkjar&quot;&gt;1. 导入framework.jar&lt;/h3&gt;
-
-&lt;p&gt;在源码根目录下执行：make framework&lt;/p&gt;
-
-&lt;p&gt;在R以下拷贝 out/target/common/obj/JAVA_LIBRARIES/framework-full_intermediates/classes.jar 重命名为 framework.jar。&lt;/p&gt;
-
-&lt;p&gt;在R及以上拷贝 out/target/common/obj/JAVA_LIBRARIES/framework_intermediates/classes.jar 重命名为 framework.jar。&lt;/p&gt;
-
-&lt;p&gt;在项目根目录下的 build.gradle 将 framework.jar 设置为核心类库：&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-6
-7
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;allprojects {
-  gradle.projectsEvaluated {
-    tasks.withType(JavaCompile) {
-      options.compilerArgs &amp;lt;&amp;lt; &apos;-Xbootclasspath/p:libs/framework.jar&apos;
-    }
-  }
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;扩展 BootStrap 级别类&lt;/th&gt;
-      &lt;th&gt;描述&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-Xbootclasspath:bootclasspath&lt;/td&gt;
-      &lt;td&gt;让jvm从指定的路径中加载bootclass，用来替换jdk的rt.jar。一般不会用到。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-Xbootclasspath/a:path&lt;/td&gt;
-      &lt;td&gt;被指定的文件追加到默认的bootstrap路径中。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-Xbootclasspath/p:path&lt;/td&gt;
-      &lt;td&gt;让jvm优先于默认的bootstrap去加载path中指定的class。&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;p&gt;在模块下的 build.gradle 中添加依赖：&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;dependencies {
-  compileOnly files(&apos;libs/framework.jar&apos;)
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;h3 id=&quot;2处理-internal-资源&quot;&gt;2.处理 internal 资源&lt;/h3&gt;
-
-&lt;p&gt;SystemUI项目中有两种使用系统 internal 资源的方式：&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;在java代码中通过 com.android.internal.R.xxx 来引用。&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;因为 R 文件是在 framework.jar 中的，所以采用 gradle 编译没有影响。&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;在资源文件xml中通过 @*android:xxx/xxx 引用。&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;aapt2 在编译资源文件时会对引用资源进行转换，分为两种：&lt;/p&gt;
-
-&lt;p&gt;1.转换为数值：match_parent 转换 -1，wrap_content 转换为 -2；dimen值转换为 dimension(value左移8位+1)&lt;/p&gt;
-
-&lt;p&gt;2.转换为引用：@ref/资源id&lt;/p&gt;
-
-&lt;p&gt;因为在编译期间无法关联到 internal 资源id，会将引用的 internal 资源作为新资源生成一个新id，而运行期间找不到这个新id的资源值，从而引发异常。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;解决方案：&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;将所有引用到 @&lt;em&gt;android:xxx/xxx 资源的资源文件拷贝到一个新的目录下，通过脚本将 @&lt;/em&gt;android:xxx/xxx 替换成具体的值。&lt;/p&gt;
-
-&lt;p&gt;在 build.gradle 中通过 flavorDimensions + productFlavors 方式将新目录下资源文件覆盖掉项目中引用到 internal 资源的文件。&lt;/p&gt;
-
-&lt;p&gt;如果布局文件引用了 @*android:id/ 资源且又在 Java 代码通过 findViewById() 方式查找，这种只能重新声明一个资源id来规避。&lt;/p&gt;
-
-&lt;h3 id=&quot;3处理资源冲突&quot;&gt;3.处理资源冲突&lt;/h3&gt;
-
-&lt;p&gt;SystemUI支持gradle编译要解决的另一大难题是资源冲突。&lt;/p&gt;
-
-&lt;p&gt;原生系统中 SystemUI 是依赖 SettingsLib 编译，其中 SystemUI 的代码中就有引用 SettingsLib 的资源。我们期望是通过 make SettingsLib 可以编译出一个包含res资源的aar包，但实际上aar包中是没有res资源的。其原因是 android_library 被设计为 android_app 模块提供依赖，编译产出为 .jar + package-res.apk。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;可选方案如下：&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;方案一：SettingsLib支持gradle编译，生成包含res的aar。&lt;/p&gt;
-
-&lt;p&gt;这种方案就是成本会高一些，SettingsLib依赖简单，但子模块非常多。&lt;/p&gt;
-
-&lt;p&gt;方案二：aapt overlay&lt;/p&gt;
-
-&lt;p&gt;网上基本无法搜索到使用gradle实践的例子，学习成本较高。
-其中Link选项似乎可以解决我们遇到的问题：&lt;a href=&quot;https://developer.android.com/studio/command-line/aapt2&quot;&gt;AAPT2&lt;/a&gt;&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;选项&lt;/th&gt;
-      &lt;th&gt;说出&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-I&lt;/td&gt;
-      &lt;td&gt;提供平台的 android.jar 或其他 APK（如 framework-res.apk）的路径，这在构建功能时可能很有用。如果您要在资源文件中使用带有 android 命名空间（例如 android:id）的属性，则必须使用此标志。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;-R file&lt;/td&gt;
-      &lt;td&gt;传递要链接的单个 .flat 文件，使用 overlay 语义，而不使用 &lt;add-resource&gt; 标记。如果您提供与现有文件重叠（扩展或修改现有文件）的资源文件，则会使用最后提供的冲突资源。&lt;/add-resource&gt;&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;p&gt;方案三：&lt;a href=&quot;https://developer.android.com/studio/write/add-resources.html#resource_merging&quot;&gt;资源合并&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;如果存在同一资源的两个或多个匹配版本，则只有一个版本会包含在最终 APK 中。构建工具会根据以下优先级顺序（左侧的优先级最高）选择要保留的版本：&lt;/p&gt;
-
-&lt;p&gt;构建变体 &amp;gt; build 类型 &amp;gt; 产品变种 &amp;gt; 主源代码集 &amp;gt; 库依赖项&lt;/p&gt;
-
-&lt;p&gt;将 SettingsLib 资源文件拷贝到 SystemUI，采用 flavorDimensions + productFlavors 实现优先引用资源：&lt;/p&gt;
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;flavorDimensions &quot;overlay&quot;
-productFlavors {
-  overlay {
-    dimension &quot;overlay&quot;
-  }
-}
-sourceSets {
-  overlay {
-    res.srcDirs = [&apos;res-overlay&apos;]
-  }
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;&lt;strong&gt;解决方案：&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;方案二和方案三均需要将SettingsLib的资源拷贝到SystemUI，后续有资源相关改动会很繁琐。而方案一在支持gradle编译后，后续有资源相关改动只需要重新编译aar，最终采用方案一实现。&lt;/p&gt;
-</description>
-        <pubDate>Sun, 20 Mar 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/</guid>
-        
-        <category>Android</category>
-        
-        <category>SystemUI</category>
         
         
       </item>
