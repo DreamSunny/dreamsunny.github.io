@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Wed, 30 Aug 2023 21:54:40 +0800</pubDate>
-    <lastBuildDate>Wed, 30 Aug 2023 21:54:40 +0800</lastBuildDate>
+    <pubDate>Sun, 03 Sep 2023 13:25:34 +0800</pubDate>
+    <lastBuildDate>Sun, 03 Sep 2023 13:25:34 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -3780,6 +3780,632 @@ ROOT
       </item>
     
       <item>
+        <title>内存泄漏-shark解析hprof文件</title>
+        <description>&lt;p&gt;解析hprof文件主要分为如下几个步骤，逐一来介绍。&lt;/p&gt;
+
+&lt;h1 id=&quot;1parsing_heap_dump&quot;&gt;1.PARSING_HEAP_DUMP&lt;/h1&gt;
+
+&lt;p&gt;这一步是解析hprof文件，包含两部分：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;解析Header部分&lt;/li&gt;
+  &lt;li&gt;解析Records部分&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/manual.html&lt;/p&gt;
+
+&lt;p&gt;重点在读取Records部分，读取逻辑在 StreamingHprofReader 这个类，处理逻辑在&lt;/p&gt;
+
+&lt;p&gt;HprofInMemoryIndex 这个类中，这里共读取了两遍：&lt;/p&gt;
+
+&lt;p&gt;第1遍，收集数据信息，包括 类/实例/object数组/原始类型数组 的数量、数据最大长度等等。&lt;/p&gt;
+
+&lt;p&gt;第2遍，生成 类/实例/object数组/原始类型数组 的信息，以支持随机读取。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt; &lt;/th&gt;
+      &lt;th&gt;支持随机读取所需信息，以Byte数组形式存储&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;类&lt;/td&gt;
+      &lt;td&gt;ID，文件中位置，父类ID，实例大小，数据长度，数组下标&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;实例&lt;/td&gt;
+      &lt;td&gt;ID，文件中位置，类ID，数据长度&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;object数组&lt;/td&gt;
+      &lt;td&gt;ID，文件中位置，类ID，数据长度&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;primitive数组&lt;/td&gt;
+      &lt;td&gt;ID，文件中位置，原始类型，数据长度&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;这里解释下为什么要读两遍：&lt;/p&gt;
+
+&lt;p&gt;主要是从节省内存的角度考虑，比如 文件中位置 这个数值，第一遍读取后我们可以获得文件的大小，从而可以确定存储 文件中位置 这个数值所需要的byte数量，从而避免直接使用int或long存储节省内存。&lt;/p&gt;
+
+&lt;p&gt;这里有两个知识点：&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;1.Shark 比 Haha 占用内存小的原因？&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;Shark并不会直接把所有的Records都读取到内存中。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2.gc root对象都有哪些？&lt;/strong&gt;&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;fun defaultIndexedGcRootTags(): EnumSet&amp;lt;HprofRecordTag&amp;gt; = EnumSet.of(
+  HprofRecordTag.ROOT_JNI_GLOBAL,
+  HprofRecordTag.ROOT_JAVA_FRAME,
+  HprofRecordTag.ROOT_JNI_LOCAL,
+  HprofRecordTag.ROOT_MONITOR_USED,
+  HprofRecordTag.ROOT_NATIVE_STACK,
+  HprofRecordTag.ROOT_STICKY_CLASS,
+  HprofRecordTag.ROOT_THREAD_BLOCK,
+  HprofRecordTag.ROOT_THREAD_OBJECT,
+  HprofRecordTag.ROOT_JNI_MONITOR
+)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;2extracting_metadata&quot;&gt;2.EXTRACTING_METADATA&lt;/h1&gt;
+
+&lt;p&gt;这一步是解析一些常量值，具体参考 AndroidMetadataExtractor 这个类。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;override fun extractMetadata(graph: HeapGraph): Map&amp;lt;String, String&amp;gt; {
+  val metadata = mutableMapOf&amp;lt;String, String&amp;gt;()
+
+  val build = AndroidBuildMirror.fromHeapGraph(graph)
+  metadata[&quot;Build.VERSION.SDK_INT&quot;] = build.sdkInt.toString()
+  metadata[&quot;Build.MANUFACTURER&quot;] = build.manufacturer
+  metadata[&quot;LeakCanary version&quot;] = readLeakCanaryVersion(graph)
+  metadata[&quot;App process name&quot;] = readProcessName(graph)
+  metadata[&quot;Class count&quot;] = graph.classCount.toString()
+  metadata[&quot;Instance count&quot;] = graph.instanceCount.toString()
+  metadata[&quot;Primitive array count&quot;] = graph.primitiveArrayCount.toString()
+  metadata[&quot;Object array count&quot;] = graph.objectArrayCount.toString()
+  metadata[&quot;Thread count&quot;] = readThreadCount(graph).toString()
+  metadata[&quot;Heap total bytes&quot;] = readHeapTotalBytes(graph).toString()
+  metadata.putBitmaps(graph)
+  metadata.putDbLabels(graph)
+
+  return metadata
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;3finding_retained_objects&quot;&gt;3.FINDING_RETAINED_OBJECTS&lt;/h1&gt;
+
+&lt;p&gt;这一步是找出泄漏对象。Android中常见的泄漏对象定义在 AndroidObjectInspectors 这个类中，&lt;/p&gt;
+
+&lt;p&gt;以 Activity 为例，当 Activity 实例中 mDestroyed == true 时，也就是 Activity 执行完 onDestroyed 回调，Activity 实例仍存在则判定为内存泄漏。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;override val leakingObjectFilter = { heapObject: HeapObject -&amp;gt;
+  heapObject is HeapInstance &amp;amp;&amp;amp;
+    heapObject instanceOf &quot;android.app.Activity&quot; &amp;amp;&amp;amp;
+    heapObject[&quot;android.app.Activity&quot;, &quot;mDestroyed&quot;]?.value?.asBoolean == true
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;4finding_paths_to_retained_objects&quot;&gt;4.FINDING_PATHS_TO_RETAINED_OBJECTS&lt;/h1&gt;
+
+&lt;p&gt;这一步是找出泄漏最短路径。核心逻辑在 PathFinder 类，首先遍历所有的 gc roots 对象，然后依次递归遍历其所引用的子对象，直至找出包含上一步找出的所有泄漏对象。因为在遍历过程中可以创建父子关系，所以从泄漏对象一直找parent，即为最短泄漏路径。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;private fun State.findPathsFromGcRoots(): PathFindingResults {
+  enqueueGcRoots()
+
+  val shortestPathsToLeakingObjects = mutableListOf&amp;lt;ReferencePathNode&amp;gt;()
+  visitingQueue@ while (queuesNotEmpty) {
+    val node = poll()
+    if (leakingObjectIds.contains(node.objectId)) {
+      shortestPathsToLeakingObjects.add(node)
+      // Found all refs, stop searching (unless computing retained size)
+      if (shortestPathsToLeakingObjects.size == leakingObjectIds.size()) {
+        if (computeRetainedHeapSize) {
+          listener.onAnalysisProgress(FINDING_DOMINATORS)
+        } else {
+          break@visitingQueue
+        }
+      }
+    }
+
+    val heapObject = graph.findObjectById(node.objectId)
+    objectReferenceReader.read(heapObject).forEach { reference -&amp;gt;
+      val newNode = ChildNode(
+        objectId = reference.valueObjectId,
+        parent = node,
+        lazyDetailsResolver = reference.lazyDetailsResolver
+      )
+      enqueue(newNode, isLowPriority = reference.isLowPriority)
+    }
+  }
+  return PathFindingResults(
+    shortestPathsToLeakingObjects,
+    if (visitTracker is Dominated) visitTracker.dominatorTree else null
+  )
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里还包含了关键一步，去重最短路径，逻辑在 HeapAnalyzer.deduplicateShortestPaths() ，也就是相同泄漏路径会被合并。举个例子，比如2个不同Activity都是注册了同一listener导致的泄漏，因此泄漏路径是一致的，会被自动合并。&lt;/p&gt;
+
+&lt;h1 id=&quot;5finding_dominators&quot;&gt;5.FINDING_DOMINATORS&lt;/h1&gt;
+
+&lt;p&gt;如果需要计算泄漏对象导致内存泄漏大小，会在上一步的基础上遍历所有对象。&lt;/p&gt;
+
+&lt;p&gt;备注：为了提升效率，我们去掉了这部分功能。&lt;/p&gt;
+
+&lt;h1 id=&quot;6inspecting_objects&quot;&gt;6.INSPECTING_OBJECTS&lt;/h1&gt;
+
+&lt;p&gt;这一步是描述对象是否有泄漏及泄漏原因，还是以 Activity 为例：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;override fun inspect(
+  reporter: ObjectReporter
+) {
+  reporter.whenInstanceOf(&quot;android.app.Activity&quot;) { instance -&amp;gt;
+    // Activity.mDestroyed was introduced in 17.
+    // https://android.googlesource.com/platform/frameworks/base/+
+    // /6d9dcbccec126d9b87ab6587e686e28b87e5a04d
+    val field = instance[&quot;android.app.Activity&quot;, &quot;mDestroyed&quot;]
+
+    if (field != null) {
+      if (field.value.asBoolean!!) {
+        leakingReasons += field describedWithValue &quot;true&quot;
+      } else {
+        notLeakingReasons += field describedWithValue &quot;false&quot;
+      }
+    }
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;7computing_native_retained_size&quot;&gt;7.COMPUTING_NATIVE_RETAINED_SIZE&lt;/h1&gt;
+
+&lt;p&gt;这一步是计算 Native 内存泄漏大小，主要逻辑在 AndroidNativeSizeMapper 类。&lt;/p&gt;
+
+&lt;h1 id=&quot;8computing_retained_size&quot;&gt;8.COMPUTING_RETAINED_SIZE&lt;/h1&gt;
+
+&lt;p&gt;这一步是计算泄漏对象导致内存泄漏大小，主要逻辑在 DominatorTree 类。&lt;/p&gt;
+
+&lt;h1 id=&quot;9building_leak_traces&quot;&gt;9.BUILDING_LEAK_TRACES&lt;/h1&gt;
+
+&lt;p&gt;这一步是生成泄漏堆栈，包括：ApplicationLeak，LibraryLeak。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;private fun FindLeakInput.buildLeakTraces(
+  shortestPaths: List&amp;lt;ShortestPath&amp;gt;,
+  inspectedObjectsByPath: List&amp;lt;List&amp;lt;InspectedObject&amp;gt;&amp;gt;,
+  retainedSizes: Map&amp;lt;Long, Pair&amp;lt;Int, Int&amp;gt;&amp;gt;?
+): Pair&amp;lt;List&amp;lt;ApplicationLeak&amp;gt;, List&amp;lt;LibraryLeak&amp;gt;&amp;gt; {
+  listener.onAnalysisProgress(BUILDING_LEAK_TRACES)
+
+  val applicationLeaksMap = mutableMapOf&amp;lt;String, MutableList&amp;lt;LeakTrace&amp;gt;&amp;gt;()
+  val libraryLeaksMap =
+    mutableMapOf&amp;lt;String, Pair&amp;lt;LibraryLeakReferenceMatcher, MutableList&amp;lt;LeakTrace&amp;gt;&amp;gt;&amp;gt;()
+
+  shortestPaths.forEachIndexed { pathIndex, shortestPath -&amp;gt;
+    val inspectedObjects = inspectedObjectsByPath[pathIndex]
+
+    val leakTraceObjects = buildLeakTraceObjects(inspectedObjects, retainedSizes)
+
+    val referencePath = buildReferencePath(shortestPath, leakTraceObjects)
+
+    val leakTrace = LeakTrace(
+      gcRootType = GcRootType.fromGcRoot(shortestPath.root.gcRoot),
+      referencePath = referencePath,
+      leakingObject = leakTraceObjects.last()
+    )
+
+    val firstLibraryLeakMatcher = shortestPath.firstLibraryLeakMatcher()
+    if (firstLibraryLeakMatcher != null) {
+      val signature: String = firstLibraryLeakMatcher.pattern.toString()
+        .createSHA1Hash()
+      libraryLeaksMap.getOrPut(signature) { firstLibraryLeakMatcher to mutableListOf() }
+        .second += leakTrace
+    } else {
+      applicationLeaksMap.getOrPut(leakTrace.signature) { mutableListOf() } += leakTrace
+    }
+  }
+  val applicationLeaks = applicationLeaksMap.map { (_, leakTraces) -&amp;gt;
+    ApplicationLeak(leakTraces)
+  }
+  val libraryLeaks = libraryLeaksMap.map { (_, pair) -&amp;gt;
+    val (matcher, leakTraces) = pair
+    LibraryLeak(leakTraces, matcher.pattern, matcher.description)
+  }
+  return applicationLeaks to libraryLeaks
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;10reporting_heap_analysis&quot;&gt;10.REPORTING_HEAP_ANALYSIS&lt;/h1&gt;
+
+&lt;p&gt;最后一步，报告分析结果，包括：HeapAnalysisSuccess，HeapAnalysisFailure。&lt;/p&gt;
+</description>
+        <pubDate>Wed, 30 Nov 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/11/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/11/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/</guid>
+        
+        <category>Android</category>
+        
+        <category>LeakCanary-shark</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>内存泄漏-LeakCanary库解析</title>
+        <description>&lt;h1 id=&quot;1认识-leakcanary&quot;&gt;1.认识 LeakCanary&lt;/h1&gt;
+
+&lt;h2 id=&quot;11-什么是内存泄漏&quot;&gt;1.1 什么是内存泄漏&lt;/h2&gt;
+
+&lt;p&gt;内存泄漏（Memory Leaks）指不再使用的对象或数据没有被回收，随着内存泄漏的堆积，应用性能会逐渐变差，甚至发生 OOM 奔溃。在 Android 应用中的内存泄漏可以分为 2 类：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;Java 内存泄露： 不再使用的对象被生命周期更长的 GC Root 引用，无法被判定为垃圾对象而导致内存泄漏（LeakCanary 只能监控 Java 内存泄漏）。&lt;/li&gt;
+  &lt;li&gt;Native 内存泄露： Native 内存没有垃圾回收机制，未手动回收导致内存泄漏。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;12-为什么要使用-leakcanary&quot;&gt;1.2 为什么要使用 LeakCanary?&lt;/h2&gt;
+
+&lt;p&gt;LeakCanray 是 Square 开源的 Java 内存泄漏分析工具，用于在实验室阶段检测 Android 应用中常见中的内存泄漏。&lt;/p&gt;
+
+&lt;p&gt;LeakCanary 的特点或优势在于提前预判出 Android 应用中最常见且影响较大的内存泄漏场景，并对此做针对性的监测手段。 这使得 LeakCanary 相比于其他排查内存泄漏的方案（如分析 OOM 异常时的堆栈日志、MAT 分析工具）更加高效。因为当内存泄漏堆积而内存不足时，应用可能从任何一次无关紧要的内存分配中抛出 OOM，堆栈日志只能体现最后一次内存分配的堆栈信息，而无法体现出导致发生 OOM 的主要原因。&lt;/p&gt;
+
+&lt;p&gt;目前，LeakCanary 支持以下五种 Android 场景中的内存泄漏监测：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;已销毁的 Activity 对象（进入 DESTROYED 状态）&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;已销毁的 Fragment 对象和 Fragment View 对象（进入 DESTROYED 状态）&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;已清除的的 ViewModel 对象（进入 CLEARED 状态）&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;已销毁的的 Service 对象（进入 DESTROYED 状态）&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;已从 WindowManager 中移除的 RootView 对象&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h1 id=&quot;2-leakcanary监控内存泄漏原理&quot;&gt;2. LeakCanary监控内存泄漏原理&lt;/h1&gt;
+
+&lt;h2 id=&quot;21-activitywatcher&quot;&gt;2.1 ActivityWatcher&lt;/h2&gt;
+
+&lt;p&gt;通过 Application.registerActivityLifecycleCallbacks(…) 接口监听 Activity.onDestroy() 事件，将当前 Activity 对象交给 ObjectWatcher 监控：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;private val lifecycleCallbacks =
+  object : Application.ActivityLifecycleCallbacks by noOpDelegate() {
+    override fun onActivityDestroyed(activity: Activity) {
+      reachabilityWatcher.expectWeaklyReachable(
+        activity, &quot;${activity::class.java.name} received Activity#onDestroy() callback&quot;
+      )
+    }
+  }
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;22-fragmentandviewmodelwatcher&quot;&gt;2.2 FragmentAndViewModelWatcher&lt;/h2&gt;
+
+&lt;p&gt;通过 Application.registerActivityLifecycleCallbacks(…) 接口监听 Activity.onCreate() 事件，再通过 FragmentManager.registerFragmentLifecycleCallbacks(…) 接口监听 Fragment 的生命周期：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;private val fragmentLifecycleCallbacks = object : FragmentManager.FragmentLifecycleCallbacks() {
+
+  override fun onFragmentCreated(
+    fm: FragmentManager,
+    fragment: Fragment,
+    savedInstanceState: Bundle?
+  ) {
+    ViewModelClearedWatcher.install(fragment, reachabilityWatcher)
+  }
+
+  override fun onFragmentViewDestroyed(
+    fm: FragmentManager,
+    fragment: Fragment
+  ) {
+    val view = fragment.view
+    if (view != null) {
+      reachabilityWatcher.expectWeaklyReachable(
+        view, &quot;${fragment::class.java.name} received Fragment#onDestroyView() callback &quot; +
+        &quot;(references to its views should be cleared to prevent leaks)&quot;
+      )
+    }
+  }
+
+  override fun onFragmentDestroyed(
+    fm: FragmentManager,
+    fragment: Fragment
+  ) {
+    reachabilityWatcher.expectWeaklyReachable(
+      fragment, &quot;${fragment::class.java.name} received Fragment#onDestroy() callback&quot;
+    )
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;由于 Android Framework 未提供设置 ViewModel.onClear() 全局监听的方法，所以 LeakCanary 是通过 Hook 的方式实现。即：在 Activity.onCreate() 和 Fragment.onCreate() 事件中实例化一个自定义ViewModel，在进入 ViewModel.onClear() 方法时，通过反射获取当前作用域中所有的 ViewModel 对象交给 ObjectWatcher 监控：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;override fun invoke(activity: Activity) {
+  if (activity is FragmentActivity) {
+    val supportFragmentManager = activity.supportFragmentManager
+    supportFragmentManager.registerFragmentLifecycleCallbacks(fragmentLifecycleCallbacks, true)
+    ViewModelClearedWatcher.install(activity, reachabilityWatcher)
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;23-rootviewwatcher&quot;&gt;2.3 RootViewWatcher&lt;/h2&gt;
+
+&lt;p&gt;由于 Android Framework 未提供设置全局监听 RootView 从 WindowManager 中移除的方法，所以 LeakCanary 是通过 Hook 的方式实现的，这一块是通过 squareup 另一个开源库 curtains 实现的。&lt;/p&gt;
+
+&lt;p&gt;RootView 监控这部分源码也比较复杂了，需要通过 2 步 Hook 来实现：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Hook WMS 服务内部的 WindowManagerGlobal.mViews RootView 列表，获取 RootView 新增和移除的时机&lt;/li&gt;
+  &lt;li&gt;检查 View 对应的 Window 类型，如果是 Dialog 或 DreamService 等类型，则在注册 View.addOnAttachStateChangeListener() 监听，在其中的 onViewDetachedFromWindow() 回调中将 View 对象交给 ObjectWatcher 监控&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;private val listener = OnRootViewAddedListener { rootView -&amp;gt;
+  val trackDetached = when(rootView.windowType) {
+    PHONE_WINDOW -&amp;gt; {
+      when (rootView.phoneWindow?.callback?.wrappedCallback) {
+        // Activities are already tracked by ActivityWatcher
+        is Activity -&amp;gt; false
+        is Dialog -&amp;gt; {
+          // Use app context resources to avoid NotFoundException
+          // https://github.com/square/leakcanary/issues/2137
+          val resources = rootView.context.applicationContext.resources
+          resources.getBoolean(R.bool.leak_canary_watcher_watch_dismissed_dialogs)
+        }
+        // Probably a DreamService
+        else -&amp;gt; true
+      }
+    }
+    // Android widgets keep detached popup window instances around.
+    POPUP_WINDOW -&amp;gt; false
+    TOOLTIP, TOAST, UNKNOWN -&amp;gt; true
+  }
+  if (trackDetached) {
+    rootView.addOnAttachStateChangeListener(object : OnAttachStateChangeListener {
+
+      val watchDetachedView = Runnable {
+        reachabilityWatcher.expectWeaklyReachable(
+          rootView, &quot;${rootView::class.java.name} received View#onDetachedFromWindow() callback&quot;
+        )
+      }
+
+      override fun onViewAttachedToWindow(v: View) {
+        mainHandler.removeCallbacks(watchDetachedView)
+      }
+
+      override fun onViewDetachedFromWindow(v: View) {
+        mainHandler.post(watchDetachedView)
+      }
+    })
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;24-servicewatcher&quot;&gt;2.4 ServiceWatcher&lt;/h2&gt;
+
+&lt;p&gt;由于 Android Framework 未提供设置 Service#onDestroy() 全局监听的方法，所以 LeakCanary 是通过 Hook 的方式实现的。&lt;/p&gt;
+
+&lt;p&gt;Service 监控这部分源码比较复杂了，需要通过 2 步 Hook 来实现：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Hook 主线程消息循环的 mH.mCallback 回调，监听其中的 STOP_SERVICE 消息，将即将 Destroy 的 Service 对象暂存起来（由于 ActivityThread.H 中没有 DESTROY_SERVICE 消息，所以不能直接监听到 onDestroy() 事件，需要第 2 步）&lt;/li&gt;
+  &lt;li&gt;使用动态代理 Hook AMS 与 App 通信的的 IActivityManager Binder 对象，代理其中的 serviceDoneExecuting() 方法，视为 Service.onDestroy() 的执行时机，拿到暂存的 Service 对象交给 ObjectWatcher 监控&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-TypeScript&quot;&gt;override fun install() {
+  checkMainThread()
+  check(uninstallActivityThreadHandlerCallback == null) {
+    &quot;ServiceWatcher already installed&quot;
+  }
+  check(uninstallActivityManager == null) {
+    &quot;ServiceWatcher already installed&quot;
+  }
+  try {
+    swapActivityThreadHandlerCallback { mCallback -&amp;gt;
+      uninstallActivityThreadHandlerCallback = {
+        swapActivityThreadHandlerCallback {
+          mCallback
+        }
+      }
+      Handler.Callback { msg -&amp;gt;
+        // https://github.com/square/leakcanary/issues/2114
+        // On some Motorola devices (Moto E5 and G6), the msg.obj returns an ActivityClientRecord
+        // instead of an IBinder. This crashes on a ClassCastException. Adding a type check
+        // here to prevent the crash.
+        if (msg.obj !is IBinder) {
+          return@Callback false
+        }
+
+        if (msg.what == STOP_SERVICE) {
+          val key = msg.obj as IBinder
+          activityThreadServices[key]?.let {
+            onServicePreDestroy(key, it)
+          }
+        }
+        mCallback?.handleMessage(msg) ?: false
+      }
+    }
+    swapActivityManager { activityManagerInterface, activityManagerInstance -&amp;gt;
+      uninstallActivityManager = {
+        swapActivityManager { _, _ -&amp;gt;
+          activityManagerInstance
+        }
+      }
+      Proxy.newProxyInstance(
+        activityManagerInterface.classLoader, arrayOf(activityManagerInterface)
+      ) { _, method, args -&amp;gt;
+        if (METHOD_SERVICE_DONE_EXECUTING == method.name) {
+          val token = args!![0] as IBinder
+          if (servicesToBeDestroyed.containsKey(token)) {
+            onServiceDestroyed(token)
+          }
+        }
+        try {
+          if (args == null) {
+            method.invoke(activityManagerInstance)
+          } else {
+            method.invoke(activityManagerInstance, *args)
+          }
+        } catch (invocationException: InvocationTargetException) {
+          throw invocationException.targetException
+        }
+      }
+    }
+  } catch (ignored: Throwable) {
+    SharkLog.d(ignored) { &quot;Could not watch destroyed services&quot; }
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+</description>
+        <pubDate>Thu, 24 Nov 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/11/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/11/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/</guid>
+        
+        <category>Android</category>
+        
+        <category>MemoryLeak</category>
+        
+        <category>LeakCanary</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>内存泄漏-KOOM库解析</title>
+        <description>&lt;h1 id=&quot;1koom介绍&quot;&gt;1.KOOM介绍&lt;/h1&gt;
+
+&lt;p&gt;主要包括如下三大功能：&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;1.Java Heap 泄漏监控&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;koom-java-leak 模块用于 Java Heap 泄漏监控：它利用 Copy-on-write 机制 fork 子进程 dump Java Heap，解决了 dump 过程中 app 长时间冻结的问题。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2.Native Heap 泄漏监控&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;koom-native-leak 模块用于 Native Heap 泄漏监控：它利用 Tracing garbage collection 机制分析整个 Native Heap，直接输出泄漏内存信息「大小、分配堆栈等』；极大的降低了业务同学分析、解决内存泄漏的成本。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;3.Thread 泄漏监控&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;koom-thread-leak 模块用于 Thread 泄漏监控：它会 hook 线程的生命周期函数，周期性的上报泄漏线程信息。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;4.FD泄漏监控&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;读取”/proc/self/fd”目录统计打开fd数量。&lt;/p&gt;
+
+&lt;h1 id=&quot;2fast-dump核心逻辑&quot;&gt;2.fast dump核心逻辑&lt;/h1&gt;
+
+&lt;p&gt;Fast dump的核心逻辑在 hprof_dump.cpp，是基于dlsym函数实现的，翻译过来代码如下：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C%2B%2B&quot;&gt;void ForkDumpHeap(const char* filename, int fd, bool direct_to_ddms) NO_THREAD_SAFETY_ANALYSIS {
+  CHECK(filename != nullptr);
+  Thread* self = Thread::Current();
+  std::optional&amp;lt;gc::ScopedGCCriticalSection&amp;gt; gcs(std::in_place, self, gc::kGcCauseHprof, gc::kCollectorTypeHprof);
+  std::optional&amp;lt;ScopedSuspendAll&amp;gt; ssa(std::in_place, __FUNCTION__, true /* long suspend */);
+  Locks::mutator_lock_-&amp;gt;ExclusiveUnlock(self);
+  gcs.reset();
+
+  pid_t pid = fork();
+  if (pid == 0) {
+    // Set timeout for child process
+    alarm(60);
+    prctl(PR_SET_NAME, &quot;forked-dump-process&quot;);
+    DumpHeap(filename, fd, direct_to_ddms);
+    _exit(0);
+  } else if (pid &amp;gt; 0) {
+    Locks::mutator_lock_-&amp;gt;ExclusiveLock(self);
+    ssa.reset();
+    int status;
+    if (waitpid(pid, &amp;amp;status, 0) != -1 || errno != EINTR) {
+      if (!WIFEXITED(status)) {
+        LOG(INFO) &amp;lt;&amp;lt; &quot;Child process &quot; &amp;lt;&amp;lt; pid
+                  &amp;lt;&amp;lt; &quot; exited with status &quot; &amp;lt;&amp;lt; WEXITSTATUS(status)
+                  &amp;lt;&amp;lt; &quot;, terminated by signal &quot; &amp;lt;&amp;lt; WTERMSIG(status);
+      }
+    }
+  }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里涉及了几个知识点，我们逐一介绍下。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;1.执行dumpHeap()发生了什么？&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;我们先来看原生art中的dumpHeap()逻辑：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C%2B%2B&quot;&gt;void DumpHeap(const char* filename, int fd, bool direct_to_ddms) {
+  CHECK(filename != nullptr);
+  Thread* self = Thread::Current();
+  // Need to take a heap dump while GC isn&apos;t running. See the comment in Heap::VisitObjects().
+  // Also we need the critical section to avoid visiting the same object twice. See b/34967844
+  gc::ScopedGCCriticalSection gcs(self,
+                                  gc::kGcCauseHprof,
+                                  gc::kCollectorTypeHprof);
+  ScopedSuspendAll ssa(__FUNCTION__, true /* long suspend */);
+  Hprof hprof(filename, fd, direct_to_ddms);
+  hprof.Dump();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;其中在ScopedGCCriticalSection类中执行了GC操作。&lt;/p&gt;
+
+&lt;p&gt;在ScopedSuspendAll中执行了停止所有线程操作，这也是导致“卡顿”原因。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;2.COW概述&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;来看下 https://en.wikipedia.org/wiki/Copy-on-write 的说明&lt;/p&gt;
+
+&lt;p&gt;Copy-on-write (COW), sometimes referred to as implicit sharing[1] or shadowing,[2] is a resource-management technique used in computer programming to efficiently implement a “duplicate” or “copy” operation on modifiable resources.[3] If a resource is duplicated but not modified, it is not necessary to create a new resource; the resource can be shared between the copy and the original. Modifications must still create a copy, hence the technique: the copy operation is deferred to the first write. By sharing resources in this way, it is possible to significantly reduce the resource consumption of unmodified copies, while adding a small overhead to resource-modifying operations.&lt;/p&gt;
+
+&lt;p&gt;写入时复制（COW），有时也称为隐式共享，是一种计算机管理中用来有效地对可修改资源执行“复制”操作的资源管理技术。&lt;/p&gt;
+
+&lt;p&gt;如果资源重复但未修改，则无需创建新资源，资源可以在副本和原始副本之间共享。&lt;/p&gt;
+
+&lt;p&gt;修改仍然必须创建一个副本，因此使用COW，可以将复制操作推迟到第一次写入。&lt;/p&gt;
+
+&lt;p&gt;通过以这种方式共享资源，可以显着减少未修改副本的资源消耗，当然了资源修改操作的时候也会增加少量开销。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;3.fork()函数&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;fork是类Unix操作系统上创建进程的主要方法，用于创建子进程。&lt;/p&gt;
+
+&lt;p&gt;新的进程要通过老的进程复制自身得到，Linux下init进程是所有进程的父 。 Linux的进程都通过init进程或init的子进程fork(vfork)出来的。&lt;/p&gt;
+
+&lt;p&gt;fork 函数会有两次返回 1) 将子进程的PID返回给父进程，2) 0返回给子进程。(如果小于0，则说明创建子进程失败)。&lt;/p&gt;
+
+&lt;p&gt;当前进程调用fork()，会创建一个跟当前进程完全相同的子进程(除了pid)，所以子进程同样是会执行fork()之后的代码。&lt;/p&gt;
+
+&lt;p&gt;fork()之后，kernel把父进程中所有的内存页的权限都设为read-only，然后子进程的地址空间指向父进程。当父子进程都只读内存时，相安无事。当其中某个进程写内存时，CPU硬件检测到内存页是read-only的，于是触发页异常中断（page-fault），陷入kernel的一个中断例程。中断例程中，kernel就会把触发的异常的页复制一份，于是父子进程各自持有独立的一份。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;4.子进程回收&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;alarm()函数：在seconds秒之后向调用alarm()的进程发送一个SIGALRM信号。&lt;/p&gt;
+
+&lt;p&gt;waitpid()函数：当指定等待的子进程已经停止运行或结束了，则waitpid()会立即返回；但是如果子进程还没有停止运行或结束，则调用waitpid()函数的父进程则会被阻塞，暂停运行。&lt;/p&gt;
+</description>
+        <pubDate>Fri, 11 Nov 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/</guid>
+        
+        <category>Android</category>
+        
+        <category>MemoryLeak</category>
+        
+        <category>KOOM</category>
+        
+        
+      </item>
+    
+      <item>
         <title>ANR治理-主线程耗时消息统计</title>
         <description>&lt;p&gt;&lt;a href=&quot;https://juejin.cn/post/6942665216781975582&quot;&gt;今日头条 ANR 优化实践系列 - 监控工具与分析思路&lt;/a&gt;&lt;br /&gt;
 &lt;a href=&quot;https://juejin.cn/post/6997227972973461512&quot;&gt;西瓜卡顿 &amp;amp; ANR 优化治理及监控体系建设&lt;/a&gt;&lt;/p&gt;
@@ -4036,933 +4662,6 @@ if (j2 == 1) {
         <category>Android</category>
         
         <category>ANR</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>ANR治理-Binder调用统计</title>
-        <description>&lt;h1 id=&quot;1基于adb命令统计binder请求&quot;&gt;1.基于adb命令统计binder请求&lt;/h1&gt;
-
-&lt;p&gt;可以通过adb shell am trace-ipc可以检测binder的调用次数。&lt;/p&gt;
-
-&lt;p&gt;比如想知道下拉通知栏有哪些binder调用，先运行adb shell am trace-ipc start，下拉通知栏，在执行&lt;/p&gt;
-
-&lt;p&gt;adb shell am trace-ipc stop –dump-file /data/local/tmp/systemui.trace，查看dump出来的文件：&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;Traces for process: com.android.systemui Count: 1 Trace: java.lang.Throwable at android.os.BinderProxy.transact(BinderProxy.java:486) at android.view.IWindowManager$Stub$Proxy.statusBarVisibilityChanged(IWindowManager.java:3795) at android.view.IWindowManagerCompat.statusBarVisibilityChanged(IWindowManagerCompat.java:50) at com.android.systemui.statusbar.phone.StatusBar.notifyUiVisibilityChanged(StatusBar.java:4867) at com.android.systemui.statusbar.phone.StatusBar.setSystemUiVisibility(StatusBar.java:4661) at com.android.systemui.statusbar.CommandQueue$H.handleMessage(CommandQueue.java:729) at android.os.Handler.dispatchMessage(Handler.java:107) at android.os.Looper.loop(Looper.java:221) at android.app.ActivityThread.main(ActivityThread.java:7520) at java.lang.reflect.Method.invoke(Native Method) at com.android.internal.os.RuntimeInit$MethodAndArgsCaller.run(RuntimeInit.java:539) at com.android.internal.os.ZygoteInit.main(ZygoteInit.java:950)&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;可以看到统计的所有进程的binder调用堆栈和次数，接下来从源码中看下是如何统计的。&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;处理”trace-ipc”命令&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityManagerShellCommand.java
-int runTraceIpc(PrintWriter pw) throws RemoteException {
-    String op = getNextArgRequired();
-    if (op.equals(&quot;start&quot;)) {
-        return runTraceIpcStart(pw);
-    } else if (op.equals(&quot;stop&quot;)) {
-        return runTraceIpcStop(pw);
-    } else {
-        getErrPrintWriter().println(&quot;Error: unknown trace ipc command &apos;&quot; + op + &quot;&apos;&quot;);
-        return -1;
-    }
-}
-
-int runTraceIpcStart(PrintWriter pw) throws RemoteException {
-    pw.println(&quot;Starting IPC tracing.&quot;);
-    pw.flush();
-    mInterface.startBinderTracking();
-    return 0;
-}
-
-int runTraceIpcStop(PrintWriter pw) throws RemoteException {
-    final PrintWriter err = getErrPrintWriter();
-    String opt;
-    String filename = null;
-    while ((opt=getNextOption()) != null) {
-        if (opt.equals(&quot;--dump-file&quot;)) {
-            filename = getNextArgRequired();
-        } else {
-            err.println(&quot;Error: Unknown option: &quot; + opt);
-            return -1;
-        }
-    }
-    if (filename == null) {
-        err.println(&quot;Error: Specify filename to dump logs to.&quot;);
-        return -1;
-    }
-
-    // Writes an error message to stderr on failure
-    ParcelFileDescriptor fd = openFileForSystem(filename, &quot;w&quot;);
-    if (fd == null) {
-        return -1;
-    }
-
-    if (!mInterface.stopBinderTrackingAndDump(fd)) {
-        err.println(&quot;STOP TRACE FAILED.&quot;);
-        return -1;
-    }
-
-    pw.println(&quot;Stopped IPC tracing. Dumping logs to: &quot; + filename);
-    return 0;
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;从代码可以看出”trace-ipc”命令有两个参数，分别为”start”和”stop”，分别对应开始统计和结束统计写入到文件，这里的mInterface是ActivityManagerService。&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;AMS处理Binder统计&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityManagerService.java
-public boolean startBinderTracking() throws RemoteException {
-    ...
-    synchronized (mProcLock) {
-        mBinderTransactionTrackingEnabled = true;
-        mProcessList.forEachLruProcessesLOSP(true, process -&amp;gt; {
-            final IApplicationThread thread = process.getThread();
-            if (!processSanityChecksLPr(process, thread)) {
-                return;
-            }
-            try {
-                thread.startBinderTracking();
-            } catch (RemoteException e) {
-                Log.v(TAG, &quot;Process disappared&quot;);
-            }
-        });
-    }
-    return true;
-}
-
-public boolean stopBinderTrackingAndDump(final ParcelFileDescriptor fd) throws RemoteException {
-    ...
-    boolean closeFd = true;
-    try {
-        synchronized (mProcLock) {
-            if (fd == null) {
-                throw new IllegalArgumentException(&quot;null fd&quot;);
-            }
-            mBinderTransactionTrackingEnabled = false;
-
-            PrintWriter pw = new FastPrintWriter(new FileOutputStream(fd.getFileDescriptor()));
-            pw.println(&quot;Binder transaction traces for all processes.\n&quot;);
-            mProcessList.forEachLruProcessesLOSP(true, process -&amp;gt; {
-                final IApplicationThread thread = process.getThread();
-                if (!processSanityChecksLPr(process, thread)) {
-                    return;
-                }
-
-                pw.println(&quot;Traces for process: &quot; + process.processName);
-                pw.flush();
-                try {
-                    TransferPipe tp = new TransferPipe();
-                    try {
-                        thread.stopBinderTrackingAndDump(tp.getWriteFd());
-                        tp.go(fd.getFileDescriptor());
-                    } finally {
-                        tp.kill();
-                    }
-                } catch (IOException e) {
-                    pw.println(&quot;Failure while dumping IPC traces from &quot; + process +
-                            &quot;.  Exception: &quot; + e);
-                    pw.flush();
-                } catch (RemoteException e) {
-                    pw.println(&quot;Got a RemoteException while dumping IPC traces from &quot; +
-                            process + &quot;.  Exception: &quot; + e);
-                    pw.flush();
-                }
-            });
-            closeFd = false;
-            return true;
-        }
-    } finally {
-        ...
-    }
-}
-
-private boolean processSanityChecksLPr(ProcessRecord process, IApplicationThread thread) {
-    if (process == null || thread == null) {
-        return false;
-    }
-
-    return Build.IS_DEBUGGABLE || process.isDebuggable();
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;AMS中会遍历存活的进程，通过IApplicationThread通知应用执行startBinderTracking/stopBinderTrackingAndDump。此外，这个功能只在root版本或者应用是Debug版本上生效。&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;应用处理binder统计&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityThread.java
-private void handleStartBinderTracking() {
-    Binder.enableStackTracking();
-}
-
-private void handleStopBinderTrackingAndDump(ParcelFileDescriptor fd) {
-    try {
-        Binder.disableStackTracking();
-        Binder.getTransactionTracker().writeTracesToFile(fd);
-    } finally {
-        IoUtils.closeQuietly(fd);
-        Binder.getTransactionTracker().clearTraces();
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;应用收到请求后会直接调用对应的Binder静态方法。&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;Binder类中的逻辑&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Binder.java
-public static void enableStackTracking() {
-    sStackTrackingEnabled = true;
-}
-
-public static void disableStackTracking() {
-    sStackTrackingEnabled = false;
-}
-
-public synchronized static TransactionTracker getTransactionTracker() {
-    if (sTransactionTracker == null)
-        sTransactionTracker = new TransactionTracker();
-    return sTransactionTracker;
-}
-
-public static boolean isStackTrackingEnabled() {
-    return sStackTrackingEnabled;
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;当应用向服务端发起binder通信时，会执行到BinderProxy的transact方法：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// BinderProxy.java
-public boolean transact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
-    Binder.checkParcel(this, code, data, &quot;Unreasonably large binder buffer&quot;);
-    ...
-    final boolean tracingEnabled = Binder.isStackTrackingEnabled();
-    if (tracingEnabled) {
-        final Throwable tr = new Throwable();
-        Binder.getTransactionTracker().addTrace(tr);
-        StackTraceElement stackTraceElement = tr.getStackTrace()[1];
-        Trace.traceBegin(Trace.TRACE_TAG_ALWAYS,
-                stackTraceElement.getClassName() + &quot;.&quot; + stackTraceElement.getMethodName());
-    }
-    ...
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;当tracingEnabled为true时，会抓取堆栈并记录到TransactionTracker中：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// TransactionTracker.java
-private Map&amp;lt;String, Long&amp;gt; mTraces;
-
-private void resetTraces() {
-    synchronized (this) {
-        mTraces = new HashMap&amp;lt;String, Long&amp;gt;();
-    }
-}
-
-public void addTrace(Throwable tr) {
-    String trace = Log.getStackTraceString(tr);
-    synchronized (this) {
-        if (mTraces.containsKey(trace)) {
-            mTraces.put(trace, mTraces.get(trace) + 1);
-        } else {
-            mTraces.put(trace, Long.valueOf(1));
-        }
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;写入到文件&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt; // TransactionTracker.java
- public void writeTracesToFile(ParcelFileDescriptor fd) {
-    if (mTraces.isEmpty()) {
-        return;
-    }
-
-    PrintWriter pw = new FastPrintWriter(new FileOutputStream(fd.getFileDescriptor()));
-    synchronized (this) {
-        for (String trace : mTraces.keySet()) {
-            pw.println(&quot;Count: &quot; + mTraces.get(trace));
-            pw.println(&quot;Trace: &quot; + trace);
-            pw.println();
-        }
-    }
-    pw.flush();
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;2基于binder接口统计binder请求&quot;&gt;2.基于Binder接口统计binder请求&lt;/h1&gt;
-
-&lt;p&gt;在查看BinderProxy源码时，发现Binder提供了Binder.ProxyTransactListener接口，可以供应用侧统计binder调用信息：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public boolean transact(int code, Parcel data, Parcel reply, int flags) throws RemoteException {
-    Binder.checkParcel(this, code, data, &quot;Unreasonably large binder buffer&quot;);
-    ...
-    // Make sure the listener won&apos;t change while processing a transaction.
-    final Binder.ProxyTransactListener transactListener = sTransactListener;
-    Object session = null;
-
-    if (transactListener != null) {
-        final int origWorkSourceUid = Binder.getCallingWorkSourceUid();
-        session = transactListener.onTransactStarted(this, code, flags);
-
-        // Allow the listener to update the work source uid. We need to update the request
-        // header if the uid is updated.
-        final int updatedWorkSourceUid = Binder.getCallingWorkSourceUid();
-        if (origWorkSourceUid != updatedWorkSourceUid) {
-            data.replaceCallingWorkSourceUid(updatedWorkSourceUid);
-        }
-    }
-
-    final AppOpsManager.PausedNotedAppOpsCollection prevCollection =
-            AppOpsManager.pauseNotedAppOpsCollection();
-
-    if ((flags &amp;amp; FLAG_ONEWAY) == 0 &amp;amp;&amp;amp; AppOpsManager.isListeningForOpNoted()) {
-        flags |= FLAG_COLLECT_NOTED_APP_OPS;
-    }
-
-    try {
-        final boolean result = transactNative(code, data, reply, flags);
-
-        if (reply != null &amp;amp;&amp;amp; !warnOnBlocking) {
-            reply.addFlags(Parcel.FLAG_IS_REPLY_FROM_BLOCKING_ALLOWED_OBJECT);
-        }
-
-        return result;
-    } finally {
-        AppOpsManager.resumeNotedAppOpsCollection(prevCollection);
-
-        if (transactListener != null) {
-            transactListener.onTransactEnded(session);
-        }
-
-        if (tracingEnabled) {
-            Trace.traceEnd(Trace.TRACE_TAG_ALWAYS);
-        }
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;ProxyTransactListener接口提供了binder请求开始和结束的回调：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public interface ProxyTransactListener {
-    /**
-     * Called before onTransact.
-     *
-     * @return an object that will be passed back to {@link #onTransactEnded} (or null).,
-     *
-     * @hide
-     */
-    @Nullable
-    default Object onTransactStarted(@NonNull IBinder binder, int transactionCode, int flags) {
-        return onTransactStarted(binder, transactionCode);
-    }
-
-    /**
-     * Called before onTransact.
-     *
-     * @return an object that will be passed back to {@link #onTransactEnded} (or null).
-     */
-    @Nullable
-    Object onTransactStarted(@NonNull IBinder binder, int transactionCode);
-
-    /**
-     * Called after onTransact (even when an exception is thrown).
-     *
-     * @param session The object return by {@link #onTransactStarted}.
-     */
-    void onTransactEnded(@Nullable Object session);
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;应用可以直接通过Binder的setProxyTransactListener方法来添加回调：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Binder.java
-public static void setProxyTransactListener(@Nullable ProxyTransactListener listener) {
-    BinderProxy.setTransactListener(listener);
-}
-
-// BinderProxy.java
-public static void setTransactListener(@Nullable Binder.ProxyTransactListener listener) {
-    sTransactListener = listener;
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;3基于binder接口统计binder应答&quot;&gt;3.基于Binder接口统计binder应答&lt;/h1&gt;
-
-&lt;p&gt;以上两种方式统计的应用作为客户端向服务端发起的binder调用请求，如何统计应用作为服务端应答请求信息呢？&lt;/p&gt;
-
-&lt;p&gt;在Binder类中提供了一个接口：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// Binder.java
-public static void setObserver(@Nullable BinderInternal.Observer observer) {
-    sObserver = observer;
-}
-
-// BinderInternal.java
-public interface Observer {
-    /**
-     * Called when a binder call starts.
-     *
-     * @return a CallSession to pass to the callEnded method.
-     */
-    CallSession callStarted(Binder binder, int code, int workSourceUid);
-
-    /**
-     * Called when a binder call stops.
-     *
-     * &amp;lt;li&amp;gt;This method will be called even when an exception is thrown by the binder stub
-     * implementation.
-     */
-    void callEnded(CallSession s, int parcelRequestSize, int parcelReplySize,
-            int workSourceUid);
-
-    /**
-     * Called if an exception is thrown while executing the binder transaction.
-     *
-     * &amp;lt;li&amp;gt;BinderCallsStats#callEnded will be called afterwards.
-     * &amp;lt;li&amp;gt;Do not throw an exception in this method, it will swallow the original exception
-     * thrown by the binder transaction.
-     */
-    public void callThrewException(CallSession s, Exception exception);
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;当服务端处理Binder请求时会调用到Binder类的execTransact方法：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private boolean execTransact(int code, long dataObj, long replyObj,
-        int flags) {
-    final int callingUid = Binder.getCallingUid();
-    final long origWorkSource = ThreadLocalWorkSource.setUid(callingUid);
-    try {
-        return execTransactInternal(code, dataObj, replyObj, flags, callingUid);
-    } finally {
-        ThreadLocalWorkSource.restore(origWorkSource);
-    }
-}
-
-private boolean execTransactInternal(int code, long dataObj, long replyObj, int flags,
-        int callingUid) {
-    // Make sure the observer won&apos;t change while processing a transaction.
-    final BinderInternal.Observer observer = sObserver;
-    final CallSession callSession =
-            observer != null ? observer.callStarted(this, code, UNSET_WORKSOURCE) : null;
-    Parcel data = Parcel.obtain(dataObj);
-    Parcel reply = Parcel.obtain(replyObj);
-
-    boolean res;
-    final boolean tracingEnabled = Trace.isTagEnabled(Trace.TRACE_TAG_AIDL) &amp;amp;&amp;amp;
-            (Binder.isStackTrackingEnabled() || Binder.isTracingEnabled(callingUid));
-    try {
-        final BinderCallHeavyHitterWatcher heavyHitterWatcher = sHeavyHitterWatcher;
-        if (heavyHitterWatcher != null) {
-            // Notify the heavy hitter watcher, if it&apos;s enabled.
-            heavyHitterWatcher.onTransaction(callingUid, getClass(), code);
-        }
-        if (tracingEnabled) {
-            Trace.traceBegin(Trace.TRACE_TAG_AIDL, getTransactionTraceName(code));
-        }
-
-        if ((flags &amp;amp; FLAG_COLLECT_NOTED_APP_OPS) != 0) {
-            AppOpsManager.startNotedAppOpsCollection(callingUid);
-            try {
-                res = onTransact(code, data, reply, flags);
-            } finally {
-                AppOpsManager.finishNotedAppOpsCollection();
-            }
-        } else {
-            res = onTransact(code, data, reply, flags);
-        }
-    } catch (RemoteException|RuntimeException e) {
-        if (observer != null) {
-            observer.callThrewException(callSession, e);
-        }
-        if (LOG_RUNTIME_EXCEPTION) {
-            Log.w(TAG, &quot;Caught a RuntimeException from the binder stub implementation.&quot;, e);
-        }
-        if ((flags &amp;amp; FLAG_ONEWAY) != 0) {
-            if (e instanceof RemoteException) {
-                Log.w(TAG, &quot;Binder call failed.&quot;, e);
-            } else {
-                Log.w(TAG, &quot;Caught a RuntimeException from the binder stub implementation.&quot;, e);
-            }
-        } else {
-            // Clear the parcel before writing the exception.
-            reply.setDataSize(0);
-            reply.setDataPosition(0);
-            reply.writeException(e);
-        }
-        res = true;
-    } finally {
-        if (tracingEnabled) {
-            Trace.traceEnd(Trace.TRACE_TAG_AIDL);
-        }
-        if (observer != null) {
-            // The parcel RPC headers have been called during onTransact so we can now access
-            // the worksource UID from the parcel.
-            final int workSourceUid = sWorkSourceProvider.resolveWorkSourceUid(
-                    data.readCallingWorkSourceUid());
-            observer.callEnded(callSession, data.dataSize(), reply.dataSize(), workSourceUid);
-        }
-
-        checkParcel(this, code, reply, &quot;Unreasonably large binder reply buffer&quot;);
-        reply.recycle();
-        data.recycle();
-    }
-
-    StrictMode.clearGatheredViolations();
-    return res;
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-</description>
-        <pubDate>Sat, 20 Aug 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/08/20/ANR%E6%B2%BB%E7%90%86-Binder%E8%B0%83%E7%94%A8%E7%BB%9F%E8%AE%A1/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/08/20/ANR%E6%B2%BB%E7%90%86-Binder%E8%B0%83%E7%94%A8%E7%BB%9F%E8%AE%A1/</guid>
-        
-        <category>Android</category>
-        
-        <category>ANR</category>
-        
-        <category>Binder</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>Recovery机制介绍</title>
-        <description>&lt;p&gt;2020年三星手机发生了一场严重事故，中国三星手机用户在5月23日这一天凌晨突然无限重启，事故原因是因SystemUI发生异常重复Crash导致手机进入Recovery界面，用户只能选择恢复出厂设置导致用户数据永久丢失。&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://www.zhihu.com/question/396666758/answer/1245994988&quot;&gt;怎么看待三星大量手机在今天（5.23）凌晨系统崩溃并数据丢失？&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;知乎上已经有大佬详细分析了事故原因，本文重点介绍下为什么SystemUI频繁Crash会进入Recovery界面。&lt;/p&gt;
-
-&lt;h1 id=&quot;1-resureparty功能初始化&quot;&gt;&lt;strong&gt;1. ResureParty功能初始化&lt;/strong&gt;&lt;/h1&gt;
-
-&lt;p&gt;ResureParty是一套系统自救机制，当监控到系统核心程序出现循环崩溃时，通过尝试一系列措施达到恢复设备正常运行的目的，直到所有措施都无济于事，则会进入Recovery界面让用户通过擦除数据的方式进行设备恢复。&lt;/p&gt;
-
-&lt;p&gt;其初始化流程如下图：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/Recovery/r1.png&quot; alt=&quot;r1&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;在SystemServer启动时，会初始化ResureParty机制。核心逻辑在PackageWatchDog，当应用发生异常退出时，PackageWatchDog会记录相关异常信息。&lt;/p&gt;
-
-&lt;p&gt;​&lt;/p&gt;
-
-&lt;h1 id=&quot;2-systemui发生crash被系统重新拉起&quot;&gt;&lt;strong&gt;2. SystemUI发生Crash被系统重新拉起&lt;/strong&gt;&lt;/h1&gt;
-
-&lt;p&gt;SystemUI是常驻进程，当其发生异常退出时，系统会尝试重新启动，其流程图如下：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/Recovery/r2.png&quot; alt=&quot;r2&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;ActivityManagerService中收到应用死亡的回调后，会判断应用是否为系统常驻进程。如果应用是系统常驻进程，则会重新启动该进程。&lt;/p&gt;
-
-&lt;h1 id=&quot;3-systemui频繁重启触发resureparty机制&quot;&gt;&lt;strong&gt;3. SystemUI频繁重启触发ResureParty机制&lt;/strong&gt;&lt;/h1&gt;
-
-&lt;p&gt;当SystemUI发生异常退出时，系统会重新启动SystemUI。但如果SystemUI的异常状态没有恢复，即重启后依然发生异常退出，则会陷入到异常退出-重启-异常退出-重启…这种循环崩溃的状态，此时就会触发ResureParty机制。&lt;/p&gt;
-
-&lt;p&gt;触发ResureParty机制的流程图如下：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/Recovery/r3.png&quot; alt=&quot;r3&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;当应用异常退出后，会上报到PackageWatchDog，其onPackageFailureLocked方法中会判断当前应用是否为系统常驻进程，如果应用是系统常驻进程，则会更新mitigationCount，其对应的严重等级如下表：&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;mitigationCount&lt;/th&gt;
-      &lt;th&gt;严重等级&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;1&lt;/td&gt;
-      &lt;td&gt;LEVEL_RESET_SETTINGS_UNTRUSTED_DEFAULTS&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;2&lt;/td&gt;
-      &lt;td&gt;LEVEL_RESET_SETTINGS_UNTRUSTED_CHANGES&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;3&lt;/td&gt;
-      &lt;td&gt;LEVEL_RESET_SETTINGS_TRUSTED_DEFAULTS&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;4&lt;/td&gt;
-      &lt;td&gt;LEVEL_WARM_REBOOT&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;5&lt;/td&gt;
-      &lt;td&gt;LEVEL_FACTORY_RESET&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;p&gt;当达到严重等级达到LEVEL_FACTORY_RESET级别后，系统就会进入Recovery界面2&lt;/p&gt;
-</description>
-        <pubDate>Sun, 29 May 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/</guid>
-        
-        <category>Android</category>
-        
-        <category>SystemUI</category>
-        
-        <category>Recovery</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>Android源码编译mk转bp</title>
-        <description>&lt;h3 id=&quot;1-基本概念介绍&quot;&gt;1. 基本概念介绍&lt;/h3&gt;
-
-&lt;p&gt;自Android N开始，Google开始用Ninja来替代Makefile编译系统。编译时，会先把Android.mk通过kati转换成.ninja文件，然后使用ninja命令进行编译。&lt;/p&gt;
-
-&lt;p&gt;Android.bp是替代Android.mk的配置文件，在Android O默认开启相关支持。编译时，由Soong解析转换成.ninja文件。&lt;/p&gt;
-
-&lt;p&gt;Soong是为Android编译设计的工具，Blueprint和Soong都是由Golang写的项目，Blueprint解析文件的格式，而Soong解释内容的含义，bp即Blueprint的缩写。&lt;/p&gt;
-
-&lt;p&gt;与Android.mk不同的是，Android.bp是纯粹的配置文件，不包含分支、循环等流程控制，也不能做算数、逻辑运算，需使用Golang编写控制逻辑。&lt;/p&gt;
-
-&lt;p&gt;注意：Android.mk文件中的模块可以依赖Android.bp文件中的模块，但不能相反。&lt;/p&gt;
-
-&lt;h3 id=&quot;2-androidbp文件格式&quot;&gt;2. Android.bp文件格式&lt;/h3&gt;
-
-&lt;p&gt;Android.bp文件的语法和语义与Bazel BUILD文件类似，参考：&lt;a href=&quot;https://docs.bazel.build/versions/master/be/overview.html&quot;&gt;bazel&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;模块：Android.bp文件中的模块以一个模块类型开始，后面跟着一组属性，以名值对(name: value)表示。每个模块必须有一个name属性，并且在所有的Android.bp文件中必须是唯一的。&lt;/p&gt;
-
-&lt;p&gt;Globs：用于获取文件列表，可以包含普通的Unix通配符*，如”*.java”，还可以包含单个**通配符作为路径元素，它将匹配零个或多个路径元素。&lt;/p&gt;
-
-&lt;p&gt;变量：Android.bp文件可以包含顶级变量并赋值。变量的范围被限定为它们声明的文件的剩余部分，以及任何子 blueprint 文件。一个例外是变量不可变，能够被 += 进行附加赋值，而且只能在被引用之前。&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-6
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;gzip_srcs = [&quot;src/test/minigzip.c&quot;],
- 
-cc_binary {
-    name: &quot;gzip&quot;,
-    srcs: gzip_srcs,
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;注释：Android.bp文件能包含C风格的多行/* */注释和C++风格的单行注释//。&lt;/p&gt;
-
-&lt;p&gt;类型：变量和属性是强类型的，基于第一个赋值动态变量，以及模块类型静态属性。他们支持的类型有：布尔型（bool) 整型（int）字符串（string）字符串列表（”string1”, “string2”）Maps ({key1: “value1”, key2: [“value2”]})。&lt;/p&gt;
-
-&lt;p&gt;Map 可以包含任意类型的值，包括嵌套的maps。列表和 maps 允许在最后一个值之后有逗号。&lt;/p&gt;
-
-&lt;p&gt;操作符：字符串、字符串列表、和maps能使用+操作符进行附加。整型可以用+操作符来总结。附加的maps将生成两个map中键的并集，并附加的两个map中存在任何键的值。&lt;/p&gt;
-
-&lt;p&gt;缺省模块：缺省模块可用于在多个模块中重复相同的属性。&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-6
-7
-8
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;cc_defaults {
-    name: &quot;gzip_defaults&quot;,
-}
- 
-cc_binary {
-    name: &quot;gzip&quot;,
-    defaults: [&quot;gzip_defaults&quot;],
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;名称解析：Soong为不同目录中的模块提供了指定相同名称的能力。只要每个模块在一个单独的名称空间中声明。 命名空间可以这样声明：&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;soong_namespace {
-    imports: [&quot;path/to/otherNamespace1&quot;, &quot;path/to/otherNamespace2&quot;],
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;每个Soong模块都会根据其在树中的位置分配一个名称空间，除非找不到soong_namespace模块，否则每个Soong模块都被认为位于当前目录或最接近的父目录中的Android.bp中的soong_namespace所定义的名称空间中。在这种情况下，该模块被认为处于隐式根目录命名空间。&lt;/p&gt;
-
-&lt;p&gt;格式化：Soong 包含了一个 blueprint 文件的格式化器，类似于 gofmt。使用以下命令来递归格式化当前目录中的所有 Android.bp 文件：&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;bpfmt -w .
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;标准格式包括 4 个空格的缩进，包含多个元素的列表中，每个元素之后的换行符，并且始终包括列表和 maps中的逗号。&lt;/p&gt;
-
-&lt;h3 id=&quot;3-mk与bp对照&quot;&gt;3. mk与bp对照&lt;/h3&gt;
-
-&lt;p&gt;参考：&lt;a href=&quot;https://android.googlesource.com/platform/build/soong/+/a930003/androidmk/cmd/androidmk/android.go&quot;&gt;android.go&lt;/a&gt;&lt;/p&gt;
-
-&lt;h3 id=&quot;4-go语言&quot;&gt;4. go语言&lt;/h3&gt;
-
-&lt;p&gt;声明变量：var identifier type ，简短形式使用 := 赋值操作符&lt;/p&gt;
-
-&lt;p&gt;声明常量：const identifier [type] = value&lt;/p&gt;
-
-&lt;p&gt;声明数组：var variable_name [SIZE] variable_type&lt;/p&gt;
-
-&lt;p&gt;指针：var var_name *var-type&lt;/p&gt;
-
-&lt;p&gt;type关键字：定义结构体，定义接口，类型定义，类型别名，类型查询&lt;/p&gt;
-
-&lt;p&gt;结构体：结构体是由一系列具有相同类型或不同类型的数据构成的数据集合。也可以不包含任何字段，称为空结构体。&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-6
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;type struct_variable_type struct {
-   member definition;
-   member definition;
-   ...
-   member definition;
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;接口：把所有的具有共性的方法定义在一起，任何其他类型只要实现了这些方法就是实现了这个接口。也可以不带任何方法，成为空接口。&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-6
-7
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;type interface_name interface {
-   method_name1 [return_type]
-   method_name2 [return_type]
-   method_name3 [return_type]
-   ...
-   method_namen [return_type]
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;切片(Slice)：是对数组的抽象，实现“动态数组”。append()用来将元素添加到切片末尾并返回结果。&lt;/p&gt;
-
-&lt;p&gt;范围(Range)：用于 for 循环中迭代数组(array)、切片(slice)、通道(channel)或集合(map)的元素。在数组和切片中它返回元素的索引和索引对应的值，在集合中返回 key-value 对的 key 值。&lt;/p&gt;
-
-&lt;p&gt;Map(集合)：可以使用内建函数 make 也可以使用 map 关键字来定义 Map&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;/* 声明变量，默认 map 是 nil */
-var map_variable map[key_data_type]value_data_type
- 
-/* 使用 make 函数 */
-map_variable := make(map[key_data_type]value_data_type)
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;函数定义：不属于任何结构体、类型的方法。&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;func function_name([parameter list]) [return_types] {
-   函数体
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;方法定义：与函数区别的是，方法在定义的时候，会在func和方法名之间增加一个参数，这个参数就是接收者，这样我们定义的这个方法就和接收者绑定在了一起，称之为这个接收者的方法。&lt;/p&gt;
-
-&lt;p&gt;init()函数：没有输入参数和返回值，用于包(package)的初始化，先于main()函数执行，不被其他函数调用，主要用于程序运行前的注册。&lt;/p&gt;
-
-&lt;h3 id=&quot;5-添加逻辑控制&quot;&gt;5. 添加逻辑控制&lt;/h3&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;
-    &lt;p&gt;在bp中添加bluetoothext_defaults模块并指定go文件：&lt;/p&gt;
-
-    &lt;p&gt;bootstrap_go_package {
-    name: “soong-xxx”,
-    pkgPath: “android/soong/xxx”,
-    deps: [
-    ],
-    srcs: [
-        “bluetoothext.go”,
-    ],
-    pluginFor: [“soong_build”],
-}&lt;/p&gt;
-
-    &lt;p&gt;// 定义模块
-bluetoothext_defaults {
-    name: “bluetoothext_defaults”,
-}&lt;/p&gt;
-  &lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;这里需要注意的是，bluetoothext_defaults是自定义的模块，bluetoothext.go配置这个模块包含了哪些内容，编译时需要在Android.bp中引用这个模块。&lt;/p&gt;
-
-&lt;p&gt;2.编写go文件，定制bluetoothext_defaults模块的编译内容：&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-22
-23
-24
-25
-26
-27
-28
-29
-30
-31
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;package bluetoothext
- 
-import (
-    &quot;android/soong/android&quot;
-    &quot;android/soong/cc&quot;
-)
- 
-func init() {
-    // bluetoothext_defaults在Android.bp中定义
-    android.RegisterModuleType(&quot;bluetoothext_defaults&quot;, bluetoothextDefaultsFactory)
-}
- 
-...
- 
-func bluetoothextDefaultsFactory() android.Module {
-    module := cc.DefaultsFactory()
-    android.AddLoadHook(module, bluetoothextDefaults)
- 
-    return module
-}
- 
-func bluetoothextDefaults(ctx android.LoadHookContext) {
-    type props struct {
-    //参考mk与bp对照
-    }
- 
-    p := &amp;amp;props{}
-    //定制模块内容
- 
-    ctx.AppendProperties(p)
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;3.引用自定义的bluetoothext_defaults模块：&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-6
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;// 编译模块中添加定义的模块
-cc_library_shared {
-    name: &quot;libbluetooth_jni&quot;,
-    defaults: [&quot;bluetoothext_defaults&quot;]
-    ...
-}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;h3 id=&quot;6-config常用方法&quot;&gt;6. config常用方法&lt;/h3&gt;
-
-&lt;p&gt;参考：&lt;a href=&quot;https://android.googlesource.com/platform/build/soong/+/master/android/config.go&quot;&gt;config.go&lt;/a&gt;&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-6
-7
-8
-9
-10
-11
-12
-13
-14
-15
-16
-17
-18
-19
-20
-21
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;// 获取编译常量
-func (c *config) Getenv(key string) string {}
-func (c *config) GetenvWithDefault(key string, defaultValue string) string {}
- 
-// 判断常量值是否为true
-func (c *config) IsEnvTrue(key string) bool {}
- 
-// 判断常量值是否为false
-func (c *config) IsEnvFalse(key string) bool {}
- 
-// 获取机器名
-func (c *config) DeviceName() string {}
- 
-// 获取Android版本名
-func (c *config) PlatformVersionName() string {}
- 
-// 获取Android版本int值
-func (c *config) PlatformSdkVersionInt() int {}
- 
-// 获取Android版本String值
-func (c *config) PlatformSdkVersion() string {}
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;h3 id=&quot;参考资料&quot;&gt;参考资料&lt;/h3&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://android.googlesource.com/platform/build/soong&quot;&gt;soong&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://www.jianshu.com/p/699cfa0f8a74&quot;&gt;Android soong 代码分析&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://note.qidong.name/2017/08/android-ninja/&quot;&gt;Android中的Ninja简介&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://note.qidong.name/2017/08/android-blueprint/&quot;&gt;Android编译系统中的Android.bp、Blueprint与Soong&lt;/a&gt;&lt;/p&gt;
-</description>
-        <pubDate>Sun, 08 May 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/05/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/05/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/</guid>
-        
-        <category>Android</category>
         
         
       </item>

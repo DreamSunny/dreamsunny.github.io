@@ -12,13 +12,13 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="SystemUI-功能介绍 - Android学习笔记 | Yaku Blog">
+        content="Android应用内存基础 - Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="1. SystemUI介绍
+    <meta property="og:description" content="1.内存基础知识
 ">
     
-    <meta property="article:published_time" content=" 2022-03-04T20:00:00Z">
+    <meta property="article:published_time" content=" 2021-11-20T20:00:00Z">
     
     
     <meta property="article:author" content="Yaku">
@@ -26,14 +26,14 @@
     
     <meta property="article:tag" content="Android">
     
-    <meta property="article:tag" content="SystemUI">
+    <meta property="article:tag" content="Memory">
     
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
+    <meta property="og:url" content="http://localhost:4000/2021/11/20/Android%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E5%9F%BA%E7%A1%80/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>SystemUI-功能介绍 - Android学习笔记 | Yaku Blog</title>
+    <title>Android应用内存基础 - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -42,7 +42,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
+    <link rel="canonical" href="http://localhost:4000/2021/11/20/Android%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E5%9F%BA%E7%A1%80/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -243,13 +243,13 @@
                         
                         <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
                         
-                        <a class="tag" href="/archive/?tag=SystemUI" title="SystemUI">SystemUI</a>
+                        <a class="tag" href="/archive/?tag=Memory" title="Memory">Memory</a>
                         
                     </div>
-                    <h1>SystemUI-功能介绍</h1>
+                    <h1>Android应用内存基础</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">Posted by Yaku on March 4, 2022</span>
+                    <span class="meta">Posted by Yaku on November 20, 2021</span>
                 </div>
             </div>
         </div>
@@ -276,171 +276,211 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="1-systemui介绍">1. SystemUI介绍</h1>
+				<h1 id="1内存基础知识">1.内存基础知识</h1>
 
-<p>SystemUI正如其名，即系统的显示界面。它是一个常驻进程，独立于system_server进程。</p>
+<p><a href="https://developer.android.com/topic/performance/memory-overview">内存管理概览</a> <br />
+<a href="https://developer.android.com/topic/performance/memory-management">进程间的内存分配 </a><br />
+<a href="https://developer.android.com/topic/performance/memory">管理应用内存 </a><br />
+<a href="https://developer.android.com/studio/profile/memory-profiler">使用内存性能分析器查看应用的内存使用情况 </a></p>
 
-<p>SystemUI内部包含一系列组件，在其启动的时候会初始化这些组件。</p>
-
-<p>SystemUI通过IStatusBar接口收到系统侧的回调，又通过一系列私有APIs与系统通信。</p>
-
-<h1 id="2-systemui启动流程">2. SystemUI启动流程</h1>
-
-<p>SystemUIService 继承于 Service，在 SystemServer 中启动，方法调用顺序如下：</p>
-
-<ol>
-  <li>SystemServer.main(..)</li>
-  <li>SystemServer.run()</li>
-  <li>SystemServer.startOtherServices(..)</li>
-  <li>SystemServer.startSystemUi(..)</li>
-</ol>
-
-<pre><code class="language-Java">// SystemServer.java
-private static void startSystemUi(Context context, WindowManagerService windowManager) {
-    PackageManagerInternal pm = LocalServices.getService(PackageManagerInternal.class);
-    Intent intent = new Intent();
-    intent.setComponent(pm.getSystemUiServiceComponent());
-    intent.addFlags(Intent.FLAG_DEBUG_TRIAGED_MISSING);
-    context.startServiceAsUser(intent, UserHandle.SYSTEM);
-    windowManager.onSystemUiStarted();
-}
-
-// PackageManagerInternalBase.java
-public final ComponentName getSystemUiServiceComponent() {
-    return ComponentName.unflattenFromString(getContext().getResources().getString(
-            com.android.internal.R.string.config_systemUIServiceComponent));
-}
-
-// config.xml
-&lt;string name="config_systemUIServiceComponent" translatable="false"
-        &gt;com.android.systemui/com.android.systemui.SystemUIService&lt;/string&gt;
-</code></pre>
-
-<h1 id="3-systemui核心组件">3. SystemUI核心组件</h1>
+<h1 id="2内存指标概念">2.内存指标概念</h1>
 
 <table>
   <thead>
     <tr>
-      <th>组件</th>
+      <th> </th>
+      <th>全称</th>
+      <th>含义</th>
+      <th>等价</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>USS</td>
+      <td>Unique Set Size</td>
+      <td>物理内存</td>
+      <td>进程独占的内存</td>
+    </tr>
+    <tr>
+      <td>PSS</td>
+      <td>Proportional Set Size</td>
+      <td>物理内存</td>
+      <td>USS + 按比例包含共享库</td>
+    </tr>
+    <tr>
+      <td>RSS</td>
+      <td>Resident Set Size</td>
+      <td>物理内存</td>
+      <td>USS + 包含共享库</td>
+    </tr>
+    <tr>
+      <td>VSS</td>
+      <td>Virtual Set Size</td>
+      <td>虚拟内存</td>
+      <td>RSS + 未分配实际物理内存</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>内存大小关系：VSS &gt;= RSS &gt;= PSS &gt;= USS</p>
+
+<h1 id="3查看应用内存占用">3.查看应用内存占用</h1>
+
+<p>在命令行下执行 adb shell dumpsys meminfo package_name 可以查看应用内存信息，其代码逻辑在ApplicationThread.dumpMemInfo()，对应字段的含义参考：</p>
+
+<p><a href="https://developer.android.google.cn/studio/command-line/dumpsys?hl=zh-cn#meminfo">https://developer.android.google.cn/studio/command-line/dumpsys?hl=zh-cn#meminfo</a></p>
+
+<p><strong>Java</strong>：从 Java 或 Kotlin 代码分配的对象的内存。</p>
+
+<p><strong>Native</strong>：从 C 或 C++ 代码分配的对象的内存。</p>
+
+<p><strong>Graphics</strong>：图形缓冲区队列为向屏幕显示像素（包括 GL 表面、GL 纹理等等）所使用的内存。</p>
+
+<p><strong>Stack</strong>：应用中的原生堆栈和 Java 堆栈使用的内存。</p>
+
+<p><strong>Code</strong>：应用用于处理代码和资源（如 dex 字节码、经过优化或编译的 dex 代码、.so 库和字体）的内存。</p>
+
+<p><strong>Others</strong>：应用使用的系统不确定如何分类的内存。</p>
+
+<p><strong>Allocated</strong>：应用分配的 Java/Kotlin 对象数。此数字没有计入 C 或 C++ 中分配的对象。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>PSS</th>
+      <th>RSS</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Java Heap</td>
+      <td>dalvikPrivateDirty + getOtherPrivate(OTHER_ART)</td>
+      <td>dalvikRss + getOtherRss(OTHER_ART)</td>
+    </tr>
+    <tr>
+      <td>Native Heap</td>
+      <td>nativePrivateDirty</td>
+      <td>nativeRss</td>
+    </tr>
+    <tr>
+      <td>Code</td>
+      <td>getOtherPrivate(OTHER_SO) + getOtherPrivate(OTHER_JAR) + getOtherPrivate(OTHER_APK) + getOtherPrivate(OTHER_TTF) + getOtherPrivate(OTHER_DEX) + getOtherPrivate(OTHER_OAT) + getOtherPrivate(OTHER_DALVIK_OTHER_ZYGOTE_CODE_CACHE) + getOtherPrivate(OTHER_DALVIK_OTHER_APP_CODE_CACHE)</td>
+      <td>getOtherRss(OTHER_SO) + getOtherRss(OTHER_JAR) + getOtherRss(OTHER_APK) + getOtherRss(OTHER_TTF) + getOtherRss(OTHER_DEX) + getOtherRss(OTHER_OAT) + getOtherRss(OTHER_DALVIK_OTHER_ZYGOTE_CODE_CACHE) + getOtherRss(OTHER_DALVIK_OTHER_APP_CODE_CACHE)</td>
+    </tr>
+    <tr>
+      <td>Stack</td>
+      <td>getOtherPrivateDirty(OTHER_STACK)</td>
+      <td>getOtherRss(OTHER_STACK)</td>
+    </tr>
+    <tr>
+      <td>Graphics</td>
+      <td>getOtherPrivate(OTHER_GL_DEV) + getOtherPrivate(OTHER_GRAPHICS) + getOtherPrivate(OTHER_GL)</td>
+      <td>getOtherRss(OTHER_GL_DEV) + getOtherRss(OTHER_GRAPHICS) + getOtherRss(OTHER_GL)</td>
+    </tr>
+    <tr>
+      <td>Private Other</td>
+      <td>dalvikPrivateClean + nativePrivateClean + otherPrivateClean + dalvikPrivateDirty + nativePrivateDirty + otherPrivateDirty - Java Heap - Native Heap - Code - Stack - Graphics</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>System</td>
+      <td>getTotalPss() - (dalvikPrivateClean + nativePrivateClean + otherPrivateClean) - (dalvikPrivateDirty + nativePrivateDirty + otherPrivateDirty)</td>
+      <td> </td>
+    </tr>
+    <tr>
+      <td>Unknown</td>
+      <td> </td>
+      <td>getTotalRss() - Java Heap - Native Heap - Code - Stack - Graphics</td>
+    </tr>
+    <tr>
+      <td>TOTAL</td>
+      <td>dalvikPss + nativePss + otherPss + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss</td>
+      <td>dalvikRss + nativeRss + otherRss</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>USS = dalvikPrivateClean + dalvikPrivateDirty</p>
+
+<p>​            + nativePrivateClean + nativePrivateDirty</p>
+
+<p>​            + otherPrivateClean + otherPrivateDirty</p>
+
+<p>PSS = dalvikPss + nativePss + otherPss</p>
+
+<p>​            + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss</p>
+
+<p>RSS = dalvikRss + nativeRss + otherRss</p>
+
+<p>可以推导出：</p>
+
+<p>USS = PSS - System</p>
+
+<p>System = dalvikPss - dalvikPrivateClean - dalvikPrivateDirty</p>
+
+<p>​                + nativePss - nativePrivateClean - nativePrivateDirty</p>
+
+<p>​                + otherPss - otherPrivateClean - otherPrivateDirty</p>
+
+<p>​                + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss</p>
+
+<h1 id="4查看应用内存相关命令">4.查看应用内存相关命令</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>命令</th>
       <th>功能</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>NotificationChannels</td>
-      <td>创建SystemUI的通知Channel</td>
+      <td>dumpsys meminfo</td>
+      <td>1.Total PSS by process，Total PSS by OOM adjustment，Total PSS by category，整体情况 2.输出某个pid或package的进程信息</td>
     </tr>
     <tr>
-      <td>KeyguardViewMediator</td>
-      <td>锁屏</td>
+      <td>procrank</td>
+      <td>获取所有进程的内存使用的排行榜，排行是以<code class="language-plaintext highlighter-rouge">Pss</code>的大小而排序。<code class="language-plaintext highlighter-rouge">procrank</code>命令比<code class="language-plaintext highlighter-rouge">dumpsys meminfo</code>命令，能输出更详细的VSS/RSS/PSS/USS内存指标。</td>
     </tr>
     <tr>
-      <td>Recents</td>
-      <td>最近任务</td>
+      <td>cat /proc/meminfo</td>
+      <td>查看更加详细的内存信息</td>
     </tr>
     <tr>
-      <td>VolumeUI</td>
-      <td>音量面板</td>
+      <td>free</td>
+      <td>查看可用内存，缺省单位KB。该命令比较简单、轻量，专注于查看剩余内存情况。数据来源于/proc/meminfo。</td>
     </tr>
     <tr>
-      <td>Divider</td>
-      <td>分屏</td>
+      <td>showmap</td>
+      <td>用于查看虚拟地址区域的内存情况</td>
     </tr>
     <tr>
-      <td>StatusBar</td>
-      <td>顶部状态栏+快捷开关+通知面板+底部导航键</td>
-    </tr>
-    <tr>
-      <td>StorageNotification</td>
-      <td>存储设备相关通知</td>
-    </tr>
-    <tr>
-      <td>PowerUI</td>
-      <td>低电量提醒</td>
-    </tr>
-    <tr>
-      <td>RingtonePlayer</td>
-      <td>播放铃声（包括通知铃声）</td>
-    </tr>
-    <tr>
-      <td>KeyboardUI</td>
-      <td>键盘</td>
-    </tr>
-    <tr>
-      <td>PipUI</td>
-      <td>画中画</td>
-    </tr>
-    <tr>
-      <td>ShortcutKeyDispatcher</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>GarbageMonitor$Service</td>
-      <td>定期检查SystemUI堆内存并报告</td>
-    </tr>
-    <tr>
-      <td>LatencyTester</td>
-      <td>在DEBUGGABLE版本运行，用于测试系统中的延迟</td>
-    </tr>
-    <tr>
-      <td>GlobalActionsComponent</td>
-      <td>关机菜单</td>
-    </tr>
-    <tr>
-      <td>ScreenDecorations</td>
-      <td>手机屏幕屏切圆角，模拟刘海屏</td>
-    </tr>
-    <tr>
-      <td>AuthController</td>
-      <td>显示生物识别UI（指纹认证，人脸认证）</td>
-    </tr>
-    <tr>
-      <td>SliceBroadcastRelayHandler</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>SizeCompatModeActivityController</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>InstantAppNotifier</td>
-      <td>显示Instant Apps（用户设备不需要安装的应用）的通知</td>
-    </tr>
-    <tr>
-      <td>ThemeOverlayController</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>WindowMagnification</td>
-      <td>管理窗口放大镜</td>
-    </tr>
-    <tr>
-      <td>SystemActions</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>ToastUI</td>
-      <td>在SystemUI进程显示其他应用的Toast</td>
+      <td>vmstat</td>
+      <td>不仅可以查看内存情况，还可以查看进程运行队列、系统切换、CPU时间占比等情况，另外该指令还是周期性地动态输出。</td>
     </tr>
   </tbody>
 </table>
+
+<h1 id="参考文档">参考文档</h1>
+<p><a href="http://gityuan.com/2016/01/02/memory-analysis-command/">Android内存分析命令</a></p>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/2021/12/05/Dagger2/" data-toggle="tooltip" data-placement="top" title="Dagger2">
+                        <a href="/2021/11/04/JNI%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="JNI介绍">
                         Previous<br>
-                        <span>Dagger2</span>
+                        <span>JNI介绍</span>
                         </a>
                     </li>
                     
                     
                     <li class="next">
-                        <a href="/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/" data-toggle="tooltip" data-placement="top" title="SystemUI-支持gradle编译">
+                        <a href="/2021/12/05/Dagger2/" data-toggle="tooltip" data-placement="top" title="Dagger2">
                         Next<br>
-                        <span>SystemUI-支持gradle编译</span>
+                        <span>Dagger2</span>
                         </a>
                     </li>
                     

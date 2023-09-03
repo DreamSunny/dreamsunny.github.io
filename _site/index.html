@@ -113,6 +113,8 @@
                         
                         
                         
+                        
+                        
                         <li class="search-icon">
                             <a href="javascript:void(0)">
                                 <i class="fa fa-search"></i>
@@ -463,6 +465,100 @@ sta...
 <hr>
 
 <div class="post-preview">
+    <a href="/2022/11/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/">
+        <h2 class="post-title">
+            内存泄漏-shark解析hprof文件
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                解析hprof文件主要分为如下几个步骤，逐一来介绍。
+
+1.PARSING_HEAP_DUMP
+
+这一步是解析hprof文件，包含两部分：
+
+
+  解析Header部分
+  解析Records部分
+
+
+hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/man...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on November 30, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/11/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/">
+        <h2 class="post-title">
+            内存泄漏-LeakCanary库解析
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.认识 LeakCanary
+
+1.1 什么是内存泄漏
+
+内存泄漏（Memory Leaks）指不再使用的对象或数据没有被回收，随着内存泄漏的堆积，应用性能会逐渐变差，甚至发生 OOM 奔溃。在 Android 应用中的内存泄漏可以分为 2 类：
+
+
+  Java 内存泄露： 不再使用的对象被生命周期更长的 GC Root 引用，无法被判定为垃圾对象而导致内存泄漏（LeakCanary 只...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on November 24, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/">
+        <h2 class="post-title">
+            内存泄漏-KOOM库解析
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.KOOM介绍
+
+主要包括如下三大功能：
+
+1.Java Heap 泄漏监控
+
+koom-java-leak 模块用于 Java Heap 泄漏监控：它利用 Copy-on-write 机制 fork 子进程 dump Java Heap，解决了 dump 过程中 app 长时间冻结的问题。
+
+2.Native Heap 泄漏监控
+
+koom-native-leak 模块用于 Native...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on November 11, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/">
         <h2 class="post-title">
             ANR治理-主线程耗时消息统计
@@ -491,88 +587,6 @@ Npth用来监控ANR，Sliver用来抓取线程堆栈，Raster用来做消息聚�
     </a>
     <p class="post-meta">
         Posted by Yaku on August 30, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/08/20/ANR%E6%B2%BB%E7%90%86-Binder%E8%B0%83%E7%94%A8%E7%BB%9F%E8%AE%A1/">
-        <h2 class="post-title">
-            ANR治理-Binder调用统计
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1.基于adb命令统计binder请求
-
-可以通过adb shell am trace-ipc可以检测binder的调用次数。
-
-比如想知道下拉通知栏有哪些binder调用，先运行adb shell am trace-ipc start，下拉通知栏，在执行
-
-adb shell am trace-ipc stop –dump-file /data/local/tmp/systemui.tra...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on August 20, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
-        <h2 class="post-title">
-            Recovery机制介绍
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                2020年三星手机发生了一场严重事故，中国三星手机用户在5月23日这一天凌晨突然无限重启，事故原因是因SystemUI发生异常重复Crash导致手机进入Recovery界面，用户只能选择恢复出厂设置导致用户数据永久丢失。
-
-怎么看待三星大量手机在今天（5.23）凌晨系统崩溃并数据丢失？
-
-知乎上已经有大佬详细分析了事故原因，本文重点介绍下为什么SystemUI频繁Crash会进入Recove...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on May 29, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/05/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/">
-        <h2 class="post-title">
-            Android源码编译mk转bp
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1. 基本概念介绍
-
-自Android N开始，Google开始用Ninja来替代Makefile编译系统。编译时，会先把Android.mk通过kati转换成.ninja文件，然后使用ninja命令进行编译。
-
-Android.bp是替代Android.mk的配置文件，在Android O默认开启相关支持。编译时，由Soong解析转换成.ninja文件。
-
-Soong是为Android编译...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on May 8, 2022
     </p>
 </div>
 <hr>
@@ -611,27 +625,32 @@ Soong是为Android编译...
                 <a data-sort="0000" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="18">Android</a>
+                    rel="24">Android</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0017" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="7">SystemUI</a>
         
-                <a data-sort="0016" 
+                <a data-sort="0022" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="2">ANR</a>
         
-                <a data-sort="0016" 
+                <a data-sort="0022" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0016" 
+                <a data-sort="0022" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="2">HotFix</a>
+        
+                <a data-sort="0022" 
+                    href="/archive/?tag=MemoryLeak"
+                    title="MemoryLeak"
+                    rel="2">MemoryLeak</a>
     </div>
 </section>
 

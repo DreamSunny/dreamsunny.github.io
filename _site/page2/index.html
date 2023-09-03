@@ -113,6 +113,8 @@
                         
                         
                         
+                        
+                        
                         <li class="search-icon">
                             <a href="javascript:void(0)">
                                 <i class="fa fa-search"></i>
@@ -245,6 +247,88 @@
     <div class="col-lg-8 col-lg-offset-1 col-md-8 col-md-offset-1 col-sm-12
       col-xs-12 postlist-container">
       
+<div class="post-preview">
+    <a href="/2022/08/20/ANR%E6%B2%BB%E7%90%86-Binder%E8%B0%83%E7%94%A8%E7%BB%9F%E8%AE%A1/">
+        <h2 class="post-title">
+            ANR治理-Binder调用统计
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.基于adb命令统计binder请求
+
+可以通过adb shell am trace-ipc可以检测binder的调用次数。
+
+比如想知道下拉通知栏有哪些binder调用，先运行adb shell am trace-ipc start，下拉通知栏，在执行
+
+adb shell am trace-ipc stop –dump-file /data/local/tmp/systemui.tra...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on August 20, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
+        <h2 class="post-title">
+            Recovery机制介绍
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                2020年三星手机发生了一场严重事故，中国三星手机用户在5月23日这一天凌晨突然无限重启，事故原因是因SystemUI发生异常重复Crash导致手机进入Recovery界面，用户只能选择恢复出厂设置导致用户数据永久丢失。
+
+怎么看待三星大量手机在今天（5.23）凌晨系统崩溃并数据丢失？
+
+知乎上已经有大佬详细分析了事故原因，本文重点介绍下为什么SystemUI频繁Crash会进入Recove...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on May 29, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/05/08/Android%E6%BA%90%E7%A0%81%E7%BC%96%E8%AF%91mk%E8%BD%ACbp/">
+        <h2 class="post-title">
+            Android源码编译mk转bp
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1. 基本概念介绍
+
+自Android N开始，Google开始用Ninja来替代Makefile编译系统。编译时，会先把Android.mk通过kati转换成.ninja文件，然后使用ninja命令进行编译。
+
+Android.bp是替代Android.mk的配置文件，在Android O默认开启相关支持。编译时，由Soong解析转换成.ninja文件。
+
+Soong是为Android编译...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on May 8, 2022
+    </p>
+</div>
+<hr>
+
 <div class="post-preview">
     <a href="/2022/04/30/SystemUI-%E6%8F%92%E4%BB%B6%E6%9C%BA%E5%88%B6/">
         <h2 class="post-title">
@@ -432,9 +516,9 @@ SystemUIService 继承于 Servic...
 <hr>
 
 <div class="post-preview">
-    <a href="/2021/10/29/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/">
+    <a href="/2021/12/05/Dagger2/">
         <h2 class="post-title">
-            微信Tinker热修复
+            Dagger2
         </h2>
         
         <h3 class="post-subtitle">
@@ -443,50 +527,27 @@ SystemUIService 继承于 Servic...
         
         <div class="post-content-preview">
             
-                Github地址：https://github.com/Tencent/tinker/tree/dev/tinker-android
+                1.依赖注入（Dependency Injection）
+
+如果类A持有对类B实例的引用，则称为类A对类B有依赖。类A获取类B实例的方式有两种：
 
 
-  
-    如何快速接入请参考Tinker 接入指南；
-  
-  
-    如何自定义类请参考Tinker 自定义扩展；
-  
-  
-    Tinker的API预览请参考Tinker API预览；
-  
+  通过new关键字创建B的实例；
+  通过构造函数注入/Setter注入/接口注入/注解注入获取B的实例。
 
 
-tinker-android的源码主要包括三...
+Dagger2就是通过Java注解在编译期来实现依赖注入。
+
+2.Dagger2注解
+
+@Inject
+
+标记依赖变量，告诉Dag...
             
         </div>
     </a>
     <p class="post-meta">
-        Posted by Yaku on October 29, 2021
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2021/10/19/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/">
-        <h2 class="post-title">
-            美团Robust热修复
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                Github地址：https://github.com/Meituan-Dianping/Robust
-WIKI：https://github.com/Meituan-Dianping/Robust/wiki
-Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on October 19, 2021
+        Posted by Yaku on December 5, 2021
     </p>
 </div>
 <hr>
@@ -500,6 +561,10 @@ Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studi
         <a href="/">&larr; Newer Posts</a>
     </li>
     
+    
+    <li class="next">
+        <a href="/page3">Older Posts &rarr;</a>
+    </li>
     
 </ul>
 
@@ -525,27 +590,32 @@ Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studi
                 <a data-sort="0000" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="18">Android</a>
+                    rel="24">Android</a>
         
-                <a data-sort="0011" 
+                <a data-sort="0017" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="7">SystemUI</a>
         
-                <a data-sort="0016" 
+                <a data-sort="0022" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="2">ANR</a>
         
-                <a data-sort="0016" 
+                <a data-sort="0022" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0016" 
+                <a data-sort="0022" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="2">HotFix</a>
+        
+                <a data-sort="0022" 
+                    href="/archive/?tag=MemoryLeak"
+                    title="MemoryLeak"
+                    rel="2">MemoryLeak</a>
     </div>
 </section>
 

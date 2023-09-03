@@ -12,13 +12,13 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="SystemUI-功能介绍 - Android学习笔记 | Yaku Blog">
+        content="内存泄漏-KOOM库解析 - Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="1. SystemUI介绍
+    <meta property="og:description" content="1.KOOM介绍
 ">
     
-    <meta property="article:published_time" content=" 2022-03-04T20:00:00Z">
+    <meta property="article:published_time" content=" 2022-11-11T20:00:00Z">
     
     
     <meta property="article:author" content="Yaku">
@@ -26,14 +26,16 @@
     
     <meta property="article:tag" content="Android">
     
-    <meta property="article:tag" content="SystemUI">
+    <meta property="article:tag" content="MemoryLeak">
+    
+    <meta property="article:tag" content="KOOM">
     
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
+    <meta property="og:url" content="http://localhost:4000/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>SystemUI-功能介绍 - Android学习笔记 | Yaku Blog</title>
+    <title>内存泄漏-KOOM库解析 - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -42,7 +44,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
+    <link rel="canonical" href="http://localhost:4000/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -243,13 +245,15 @@
                         
                         <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
                         
-                        <a class="tag" href="/archive/?tag=SystemUI" title="SystemUI">SystemUI</a>
+                        <a class="tag" href="/archive/?tag=MemoryLeak" title="MemoryLeak">MemoryLeak</a>
+                        
+                        <a class="tag" href="/archive/?tag=KOOM" title="KOOM">KOOM</a>
                         
                     </div>
-                    <h1>SystemUI-功能介绍</h1>
+                    <h1>内存泄漏-KOOM库解析</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">Posted by Yaku on March 4, 2022</span>
+                    <span class="meta">Posted by Yaku on November 11, 2022</span>
                 </div>
             </div>
         </div>
@@ -276,171 +280,132 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="1-systemui介绍">1. SystemUI介绍</h1>
+				<h1 id="1koom介绍">1.KOOM介绍</h1>
 
-<p>SystemUI正如其名，即系统的显示界面。它是一个常驻进程，独立于system_server进程。</p>
+<p>主要包括如下三大功能：</p>
 
-<p>SystemUI内部包含一系列组件，在其启动的时候会初始化这些组件。</p>
+<p><strong>1.Java Heap 泄漏监控</strong></p>
 
-<p>SystemUI通过IStatusBar接口收到系统侧的回调，又通过一系列私有APIs与系统通信。</p>
+<p>koom-java-leak 模块用于 Java Heap 泄漏监控：它利用 Copy-on-write 机制 fork 子进程 dump Java Heap，解决了 dump 过程中 app 长时间冻结的问题。</p>
 
-<h1 id="2-systemui启动流程">2. SystemUI启动流程</h1>
+<p><strong>2.Native Heap 泄漏监控</strong></p>
 
-<p>SystemUIService 继承于 Service，在 SystemServer 中启动，方法调用顺序如下：</p>
+<p>koom-native-leak 模块用于 Native Heap 泄漏监控：它利用 Tracing garbage collection 机制分析整个 Native Heap，直接输出泄漏内存信息「大小、分配堆栈等』；极大的降低了业务同学分析、解决内存泄漏的成本。</p>
 
-<ol>
-  <li>SystemServer.main(..)</li>
-  <li>SystemServer.run()</li>
-  <li>SystemServer.startOtherServices(..)</li>
-  <li>SystemServer.startSystemUi(..)</li>
-</ol>
+<p><strong>3.Thread 泄漏监控</strong></p>
 
-<pre><code class="language-Java">// SystemServer.java
-private static void startSystemUi(Context context, WindowManagerService windowManager) {
-    PackageManagerInternal pm = LocalServices.getService(PackageManagerInternal.class);
-    Intent intent = new Intent();
-    intent.setComponent(pm.getSystemUiServiceComponent());
-    intent.addFlags(Intent.FLAG_DEBUG_TRIAGED_MISSING);
-    context.startServiceAsUser(intent, UserHandle.SYSTEM);
-    windowManager.onSystemUiStarted();
+<p>koom-thread-leak 模块用于 Thread 泄漏监控：它会 hook 线程的生命周期函数，周期性的上报泄漏线程信息。</p>
+
+<p><strong>4.FD泄漏监控</strong></p>
+
+<p>读取”/proc/self/fd”目录统计打开fd数量。</p>
+
+<h1 id="2fast-dump核心逻辑">2.fast dump核心逻辑</h1>
+
+<p>Fast dump的核心逻辑在 hprof_dump.cpp，是基于dlsym函数实现的，翻译过来代码如下：</p>
+
+<pre><code class="language-C%2B%2B">void ForkDumpHeap(const char* filename, int fd, bool direct_to_ddms) NO_THREAD_SAFETY_ANALYSIS {
+  CHECK(filename != nullptr);
+  Thread* self = Thread::Current();
+  std::optional&lt;gc::ScopedGCCriticalSection&gt; gcs(std::in_place, self, gc::kGcCauseHprof, gc::kCollectorTypeHprof);
+  std::optional&lt;ScopedSuspendAll&gt; ssa(std::in_place, __FUNCTION__, true /* long suspend */);
+  Locks::mutator_lock_-&gt;ExclusiveUnlock(self);
+  gcs.reset();
+
+  pid_t pid = fork();
+  if (pid == 0) {
+    // Set timeout for child process
+    alarm(60);
+    prctl(PR_SET_NAME, "forked-dump-process");
+    DumpHeap(filename, fd, direct_to_ddms);
+    _exit(0);
+  } else if (pid &gt; 0) {
+    Locks::mutator_lock_-&gt;ExclusiveLock(self);
+    ssa.reset();
+    int status;
+    if (waitpid(pid, &amp;status, 0) != -1 || errno != EINTR) {
+      if (!WIFEXITED(status)) {
+        LOG(INFO) &lt;&lt; "Child process " &lt;&lt; pid
+                  &lt;&lt; " exited with status " &lt;&lt; WEXITSTATUS(status)
+                  &lt;&lt; ", terminated by signal " &lt;&lt; WTERMSIG(status);
+      }
+    }
+  }
 }
-
-// PackageManagerInternalBase.java
-public final ComponentName getSystemUiServiceComponent() {
-    return ComponentName.unflattenFromString(getContext().getResources().getString(
-            com.android.internal.R.string.config_systemUIServiceComponent));
-}
-
-// config.xml
-&lt;string name="config_systemUIServiceComponent" translatable="false"
-        &gt;com.android.systemui/com.android.systemui.SystemUIService&lt;/string&gt;
 </code></pre>
 
-<h1 id="3-systemui核心组件">3. SystemUI核心组件</h1>
+<p>这里涉及了几个知识点，我们逐一介绍下。</p>
 
-<table>
-  <thead>
-    <tr>
-      <th>组件</th>
-      <th>功能</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>NotificationChannels</td>
-      <td>创建SystemUI的通知Channel</td>
-    </tr>
-    <tr>
-      <td>KeyguardViewMediator</td>
-      <td>锁屏</td>
-    </tr>
-    <tr>
-      <td>Recents</td>
-      <td>最近任务</td>
-    </tr>
-    <tr>
-      <td>VolumeUI</td>
-      <td>音量面板</td>
-    </tr>
-    <tr>
-      <td>Divider</td>
-      <td>分屏</td>
-    </tr>
-    <tr>
-      <td>StatusBar</td>
-      <td>顶部状态栏+快捷开关+通知面板+底部导航键</td>
-    </tr>
-    <tr>
-      <td>StorageNotification</td>
-      <td>存储设备相关通知</td>
-    </tr>
-    <tr>
-      <td>PowerUI</td>
-      <td>低电量提醒</td>
-    </tr>
-    <tr>
-      <td>RingtonePlayer</td>
-      <td>播放铃声（包括通知铃声）</td>
-    </tr>
-    <tr>
-      <td>KeyboardUI</td>
-      <td>键盘</td>
-    </tr>
-    <tr>
-      <td>PipUI</td>
-      <td>画中画</td>
-    </tr>
-    <tr>
-      <td>ShortcutKeyDispatcher</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>GarbageMonitor$Service</td>
-      <td>定期检查SystemUI堆内存并报告</td>
-    </tr>
-    <tr>
-      <td>LatencyTester</td>
-      <td>在DEBUGGABLE版本运行，用于测试系统中的延迟</td>
-    </tr>
-    <tr>
-      <td>GlobalActionsComponent</td>
-      <td>关机菜单</td>
-    </tr>
-    <tr>
-      <td>ScreenDecorations</td>
-      <td>手机屏幕屏切圆角，模拟刘海屏</td>
-    </tr>
-    <tr>
-      <td>AuthController</td>
-      <td>显示生物识别UI（指纹认证，人脸认证）</td>
-    </tr>
-    <tr>
-      <td>SliceBroadcastRelayHandler</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>SizeCompatModeActivityController</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>InstantAppNotifier</td>
-      <td>显示Instant Apps（用户设备不需要安装的应用）的通知</td>
-    </tr>
-    <tr>
-      <td>ThemeOverlayController</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>WindowMagnification</td>
-      <td>管理窗口放大镜</td>
-    </tr>
-    <tr>
-      <td>SystemActions</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>ToastUI</td>
-      <td>在SystemUI进程显示其他应用的Toast</td>
-    </tr>
-  </tbody>
-</table>
+<p><strong>1.执行dumpHeap()发生了什么？</strong></p>
+
+<p>我们先来看原生art中的dumpHeap()逻辑：</p>
+
+<pre><code class="language-C%2B%2B">void DumpHeap(const char* filename, int fd, bool direct_to_ddms) {
+  CHECK(filename != nullptr);
+  Thread* self = Thread::Current();
+  // Need to take a heap dump while GC isn't running. See the comment in Heap::VisitObjects().
+  // Also we need the critical section to avoid visiting the same object twice. See b/34967844
+  gc::ScopedGCCriticalSection gcs(self,
+                                  gc::kGcCauseHprof,
+                                  gc::kCollectorTypeHprof);
+  ScopedSuspendAll ssa(__FUNCTION__, true /* long suspend */);
+  Hprof hprof(filename, fd, direct_to_ddms);
+  hprof.Dump();
+}
+</code></pre>
+
+<p>其中在ScopedGCCriticalSection类中执行了GC操作。</p>
+
+<p>在ScopedSuspendAll中执行了停止所有线程操作，这也是导致“卡顿”原因。</p>
+
+<p><strong>2.COW概述</strong></p>
+
+<p>来看下 https://en.wikipedia.org/wiki/Copy-on-write 的说明</p>
+
+<p>Copy-on-write (COW), sometimes referred to as implicit sharing[1] or shadowing,[2] is a resource-management technique used in computer programming to efficiently implement a “duplicate” or “copy” operation on modifiable resources.[3] If a resource is duplicated but not modified, it is not necessary to create a new resource; the resource can be shared between the copy and the original. Modifications must still create a copy, hence the technique: the copy operation is deferred to the first write. By sharing resources in this way, it is possible to significantly reduce the resource consumption of unmodified copies, while adding a small overhead to resource-modifying operations.</p>
+
+<p>写入时复制（COW），有时也称为隐式共享，是一种计算机管理中用来有效地对可修改资源执行“复制”操作的资源管理技术。</p>
+
+<p>如果资源重复但未修改，则无需创建新资源，资源可以在副本和原始副本之间共享。</p>
+
+<p>修改仍然必须创建一个副本，因此使用COW，可以将复制操作推迟到第一次写入。</p>
+
+<p>通过以这种方式共享资源，可以显着减少未修改副本的资源消耗，当然了资源修改操作的时候也会增加少量开销。</p>
+
+<p><strong>3.fork()函数</strong></p>
+
+<p>fork是类Unix操作系统上创建进程的主要方法，用于创建子进程。</p>
+
+<p>新的进程要通过老的进程复制自身得到，Linux下init进程是所有进程的父 。 Linux的进程都通过init进程或init的子进程fork(vfork)出来的。</p>
+
+<p>fork 函数会有两次返回 1) 将子进程的PID返回给父进程，2) 0返回给子进程。(如果小于0，则说明创建子进程失败)。</p>
+
+<p>当前进程调用fork()，会创建一个跟当前进程完全相同的子进程(除了pid)，所以子进程同样是会执行fork()之后的代码。</p>
+
+<p>fork()之后，kernel把父进程中所有的内存页的权限都设为read-only，然后子进程的地址空间指向父进程。当父子进程都只读内存时，相安无事。当其中某个进程写内存时，CPU硬件检测到内存页是read-only的，于是触发页异常中断（page-fault），陷入kernel的一个中断例程。中断例程中，kernel就会把触发的异常的页复制一份，于是父子进程各自持有独立的一份。</p>
+
+<p><strong>4.子进程回收</strong></p>
+
+<p>alarm()函数：在seconds秒之后向调用alarm()的进程发送一个SIGALRM信号。</p>
+
+<p>waitpid()函数：当指定等待的子进程已经停止运行或结束了，则waitpid()会立即返回；但是如果子进程还没有停止运行或结束，则调用waitpid()函数的父进程则会被阻塞，暂停运行。</p>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/2021/12/05/Dagger2/" data-toggle="tooltip" data-placement="top" title="Dagger2">
+                        <a href="/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/" data-toggle="tooltip" data-placement="top" title="ANR治理-主线程耗时消息统计">
                         Previous<br>
-                        <span>Dagger2</span>
+                        <span>ANR治理-主线程耗时消息统计</span>
                         </a>
                     </li>
                     
                     
                     <li class="next">
-                        <a href="/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/" data-toggle="tooltip" data-placement="top" title="SystemUI-支持gradle编译">
+                        <a href="/2022/11/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/" data-toggle="tooltip" data-placement="top" title="内存泄漏-LeakCanary库解析">
                         Next<br>
-                        <span>SystemUI-支持gradle编译</span>
+                        <span>内存泄漏-LeakCanary库解析</span>
                         </a>
                     </li>
                     
