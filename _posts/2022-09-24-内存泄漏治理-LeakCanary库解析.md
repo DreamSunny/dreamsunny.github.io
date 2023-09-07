@@ -1,8 +1,8 @@
 ---
 layout:     post
-title:      "内存泄漏-LeakCanary库解析"
+title:      "内存泄漏治理-LeakCanary库解析"
 subtitle:   ""
-date:       2022-11-24 12:00:00
+date:       2022-09-24 12:00:00
 author:     "Yaku"
 header-img: "img/post-bg-2015.jpg"
 tags:

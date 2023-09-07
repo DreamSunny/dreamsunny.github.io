@@ -465,9 +465,42 @@ sta...
 <hr>
 
 <div class="post-preview">
-    <a href="/2022/11/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/">
+    <a href="/2022/10/24/%E5%9F%BA%E4%BA%8Eatrace%E7%BB%9F%E8%AE%A1%E5%BA%94%E7%94%A8%E7%BB%98%E5%88%B6%E6%8E%89%E5%B8%A7/">
         <h2 class="post-title">
-            内存泄漏-shark解析hprof文件
+            基于atrace统计应用绘制掉帧
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                0.概述
+
+ftrace：是一个内核函数跟踪器，function tracer，旨在帮助开发人员和系统设计者可以找到内核内部发生的事情。
+
+atrace：Android tracer，使用ftrace来跟踪Android上层的函数调用。为数据采集部分。
+
+systrace：atrace数据分析工具，将atrace采集上来的数据，以图形化的方式展现出来。
+
+抓取trace方式：
+
+
+  开发者...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on October 24, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/">
+        <h2 class="post-title">
+            内存泄漏治理shark解析hprof文件
         </h2>
         
         <h3 class="post-subtitle">
@@ -492,15 +525,15 @@ hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/
         </div>
     </a>
     <p class="post-meta">
-        Posted by Yaku on November 30, 2022
+        Posted by Yaku on September 30, 2022
     </p>
 </div>
 <hr>
 
 <div class="post-preview">
-    <a href="/2022/11/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/">
+    <a href="/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/">
         <h2 class="post-title">
-            内存泄漏-LeakCanary库解析
+            内存泄漏治理-LeakCanary库解析
         </h2>
         
         <h3 class="post-subtitle">
@@ -521,15 +554,15 @@ hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/
         </div>
     </a>
     <p class="post-meta">
-        Posted by Yaku on November 24, 2022
+        Posted by Yaku on September 24, 2022
     </p>
 </div>
 <hr>
 
 <div class="post-preview">
-    <a href="/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/">
+    <a href="/2022/09/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/">
         <h2 class="post-title">
-            内存泄漏-KOOM库解析
+            内存泄漏治理-KOOM库解析
         </h2>
         
         <h3 class="post-subtitle">
@@ -553,40 +586,7 @@ koom-native-leak 模块用于 Native...
         </div>
     </a>
     <p class="post-meta">
-        Posted by Yaku on November 11, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/">
-        <h2 class="post-title">
-            ANR治理-主线程耗时消息统计
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                今日头条 ANR 优化实践系列 - 监控工具与分析思路
-西瓜卡顿 &amp; ANR 优化治理及监控体系建设
-
-从这两篇文章中可以大致猜出这三者之间的关系：
-
-Npth用来监控ANR，Sliver用来抓取线程堆栈，Raster用来做消息聚合。
-
-监控ANR的主流方案是微信的 监听signal+判断主线程卡顿，Sliver抓取堆栈是Native层实现，
-
-接下来主要分析消息聚合的实现。
-
-消息...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on August 30, 2022
+        Posted by Yaku on September 11, 2022
     </p>
 </div>
 <hr>
@@ -625,29 +625,29 @@ Npth用来监控ANR，Sliver用来抓取线程堆栈，Raster用来做消息聚�
                 <a data-sort="0000" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="24">Android</a>
+                    rel="25">Android</a>
         
-                <a data-sort="0017" 
+                <a data-sort="0018" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="7">SystemUI</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="2">ANR</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="2">HotFix</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

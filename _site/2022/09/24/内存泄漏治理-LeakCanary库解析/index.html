@@ -12,13 +12,13 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="内存泄漏-KOOM库解析 - Android学习笔记 | Yaku Blog">
+        content="内存泄漏治理-LeakCanary库解析 - Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="1.KOOM介绍
+    <meta property="og:description" content="1.认识 LeakCanary
 ">
     
-    <meta property="article:published_time" content=" 2022-11-11T20:00:00Z">
+    <meta property="article:published_time" content=" 2022-09-24T20:00:00Z">
     
     
     <meta property="article:author" content="Yaku">
@@ -28,14 +28,14 @@
     
     <meta property="article:tag" content="MemoryLeak">
     
-    <meta property="article:tag" content="KOOM">
+    <meta property="article:tag" content="LeakCanary">
     
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/">
+    <meta property="og:url" content="http://localhost:4000/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>内存泄漏-KOOM库解析 - Android学习笔记 | Yaku Blog</title>
+    <title>内存泄漏治理-LeakCanary库解析 - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -44,7 +44,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/">
+    <link rel="canonical" href="http://localhost:4000/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -247,13 +247,13 @@
                         
                         <a class="tag" href="/archive/?tag=MemoryLeak" title="MemoryLeak">MemoryLeak</a>
                         
-                        <a class="tag" href="/archive/?tag=KOOM" title="KOOM">KOOM</a>
+                        <a class="tag" href="/archive/?tag=LeakCanary" title="LeakCanary">LeakCanary</a>
                         
                     </div>
-                    <h1>内存泄漏-KOOM库解析</h1>
+                    <h1>内存泄漏治理-LeakCanary库解析</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">Posted by Yaku on November 11, 2022</span>
+                    <span class="meta">Posted by Yaku on September 24, 2022</span>
                 </div>
             </div>
         </div>
@@ -280,132 +280,252 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="1koom介绍">1.KOOM介绍</h1>
+				<h1 id="1认识-leakcanary">1.认识 LeakCanary</h1>
 
-<p>主要包括如下三大功能：</p>
+<h2 id="11-什么是内存泄漏">1.1 什么是内存泄漏</h2>
 
-<p><strong>1.Java Heap 泄漏监控</strong></p>
+<p>内存泄漏（Memory Leaks）指不再使用的对象或数据没有被回收，随着内存泄漏的堆积，应用性能会逐渐变差，甚至发生 OOM 奔溃。在 Android 应用中的内存泄漏可以分为 2 类：</p>
 
-<p>koom-java-leak 模块用于 Java Heap 泄漏监控：它利用 Copy-on-write 机制 fork 子进程 dump Java Heap，解决了 dump 过程中 app 长时间冻结的问题。</p>
+<ul>
+  <li>Java 内存泄露： 不再使用的对象被生命周期更长的 GC Root 引用，无法被判定为垃圾对象而导致内存泄漏（LeakCanary 只能监控 Java 内存泄漏）。</li>
+  <li>Native 内存泄露： Native 内存没有垃圾回收机制，未手动回收导致内存泄漏。</li>
+</ul>
 
-<p><strong>2.Native Heap 泄漏监控</strong></p>
+<h2 id="12-为什么要使用-leakcanary">1.2 为什么要使用 LeakCanary?</h2>
 
-<p>koom-native-leak 模块用于 Native Heap 泄漏监控：它利用 Tracing garbage collection 机制分析整个 Native Heap，直接输出泄漏内存信息「大小、分配堆栈等』；极大的降低了业务同学分析、解决内存泄漏的成本。</p>
+<p>LeakCanray 是 Square 开源的 Java 内存泄漏分析工具，用于在实验室阶段检测 Android 应用中常见中的内存泄漏。</p>
 
-<p><strong>3.Thread 泄漏监控</strong></p>
+<p>LeakCanary 的特点或优势在于提前预判出 Android 应用中最常见且影响较大的内存泄漏场景，并对此做针对性的监测手段。 这使得 LeakCanary 相比于其他排查内存泄漏的方案（如分析 OOM 异常时的堆栈日志、MAT 分析工具）更加高效。因为当内存泄漏堆积而内存不足时，应用可能从任何一次无关紧要的内存分配中抛出 OOM，堆栈日志只能体现最后一次内存分配的堆栈信息，而无法体现出导致发生 OOM 的主要原因。</p>
 
-<p>koom-thread-leak 模块用于 Thread 泄漏监控：它会 hook 线程的生命周期函数，周期性的上报泄漏线程信息。</p>
+<p>目前，LeakCanary 支持以下五种 Android 场景中的内存泄漏监测：</p>
 
-<p><strong>4.FD泄漏监控</strong></p>
+<ol>
+  <li>
+    <p>已销毁的 Activity 对象（进入 DESTROYED 状态）</p>
+  </li>
+  <li>
+    <p>已销毁的 Fragment 对象和 Fragment View 对象（进入 DESTROYED 状态）</p>
+  </li>
+  <li>
+    <p>已清除的的 ViewModel 对象（进入 CLEARED 状态）</p>
+  </li>
+  <li>
+    <p>已销毁的的 Service 对象（进入 DESTROYED 状态）</p>
+  </li>
+  <li>
+    <p>已从 WindowManager 中移除的 RootView 对象</p>
+  </li>
+</ol>
 
-<p>读取”/proc/self/fd”目录统计打开fd数量。</p>
+<h1 id="2-leakcanary监控内存泄漏原理">2. LeakCanary监控内存泄漏原理</h1>
 
-<h1 id="2fast-dump核心逻辑">2.fast dump核心逻辑</h1>
+<h2 id="21-activitywatcher">2.1 ActivityWatcher</h2>
 
-<p>Fast dump的核心逻辑在 hprof_dump.cpp，是基于dlsym函数实现的，翻译过来代码如下：</p>
+<p>通过 Application.registerActivityLifecycleCallbacks(…) 接口监听 Activity.onDestroy() 事件，将当前 Activity 对象交给 ObjectWatcher 监控：</p>
 
-<pre><code class="language-C%2B%2B">void ForkDumpHeap(const char* filename, int fd, bool direct_to_ddms) NO_THREAD_SAFETY_ANALYSIS {
-  CHECK(filename != nullptr);
-  Thread* self = Thread::Current();
-  std::optional&lt;gc::ScopedGCCriticalSection&gt; gcs(std::in_place, self, gc::kGcCauseHprof, gc::kCollectorTypeHprof);
-  std::optional&lt;ScopedSuspendAll&gt; ssa(std::in_place, __FUNCTION__, true /* long suspend */);
-  Locks::mutator_lock_-&gt;ExclusiveUnlock(self);
-  gcs.reset();
-
-  pid_t pid = fork();
-  if (pid == 0) {
-    // Set timeout for child process
-    alarm(60);
-    prctl(PR_SET_NAME, "forked-dump-process");
-    DumpHeap(filename, fd, direct_to_ddms);
-    _exit(0);
-  } else if (pid &gt; 0) {
-    Locks::mutator_lock_-&gt;ExclusiveLock(self);
-    ssa.reset();
-    int status;
-    if (waitpid(pid, &amp;status, 0) != -1 || errno != EINTR) {
-      if (!WIFEXITED(status)) {
-        LOG(INFO) &lt;&lt; "Child process " &lt;&lt; pid
-                  &lt;&lt; " exited with status " &lt;&lt; WEXITSTATUS(status)
-                  &lt;&lt; ", terminated by signal " &lt;&lt; WTERMSIG(status);
-      }
+<pre><code class="language-Kotlin">private val lifecycleCallbacks =
+  object : Application.ActivityLifecycleCallbacks by noOpDelegate() {
+    override fun onActivityDestroyed(activity: Activity) {
+      reachabilityWatcher.expectWeaklyReachable(
+        activity, "${activity::class.java.name} received Activity#onDestroy() callback"
+      )
     }
+  }
+</code></pre>
+
+<h2 id="22-fragmentandviewmodelwatcher">2.2 FragmentAndViewModelWatcher</h2>
+
+<p>通过 Application.registerActivityLifecycleCallbacks(…) 接口监听 Activity.onCreate() 事件，再通过 FragmentManager.registerFragmentLifecycleCallbacks(…) 接口监听 Fragment 的生命周期：</p>
+
+<pre><code class="language-Kotlin">private val fragmentLifecycleCallbacks = object : FragmentManager.FragmentLifecycleCallbacks() {
+
+  override fun onFragmentCreated(
+    fm: FragmentManager,
+    fragment: Fragment,
+    savedInstanceState: Bundle?
+  ) {
+    ViewModelClearedWatcher.install(fragment, reachabilityWatcher)
+  }
+
+  override fun onFragmentViewDestroyed(
+    fm: FragmentManager,
+    fragment: Fragment
+  ) {
+    val view = fragment.view
+    if (view != null) {
+      reachabilityWatcher.expectWeaklyReachable(
+        view, "${fragment::class.java.name} received Fragment#onDestroyView() callback " +
+        "(references to its views should be cleared to prevent leaks)"
+      )
+    }
+  }
+
+  override fun onFragmentDestroyed(
+    fm: FragmentManager,
+    fragment: Fragment
+  ) {
+    reachabilityWatcher.expectWeaklyReachable(
+      fragment, "${fragment::class.java.name} received Fragment#onDestroy() callback"
+    )
   }
 }
 </code></pre>
 
-<p>这里涉及了几个知识点，我们逐一介绍下。</p>
+<p>由于 Android Framework 未提供设置 ViewModel.onClear() 全局监听的方法，所以 LeakCanary 是通过 Hook 的方式实现。即：在 Activity.onCreate() 和 Fragment.onCreate() 事件中实例化一个自定义ViewModel，在进入 ViewModel.onClear() 方法时，通过反射获取当前作用域中所有的 ViewModel 对象交给 ObjectWatcher 监控：</p>
 
-<p><strong>1.执行dumpHeap()发生了什么？</strong></p>
-
-<p>我们先来看原生art中的dumpHeap()逻辑：</p>
-
-<pre><code class="language-C%2B%2B">void DumpHeap(const char* filename, int fd, bool direct_to_ddms) {
-  CHECK(filename != nullptr);
-  Thread* self = Thread::Current();
-  // Need to take a heap dump while GC isn't running. See the comment in Heap::VisitObjects().
-  // Also we need the critical section to avoid visiting the same object twice. See b/34967844
-  gc::ScopedGCCriticalSection gcs(self,
-                                  gc::kGcCauseHprof,
-                                  gc::kCollectorTypeHprof);
-  ScopedSuspendAll ssa(__FUNCTION__, true /* long suspend */);
-  Hprof hprof(filename, fd, direct_to_ddms);
-  hprof.Dump();
+<pre><code class="language-Kotlin">override fun invoke(activity: Activity) {
+  if (activity is FragmentActivity) {
+    val supportFragmentManager = activity.supportFragmentManager
+    supportFragmentManager.registerFragmentLifecycleCallbacks(fragmentLifecycleCallbacks, true)
+    ViewModelClearedWatcher.install(activity, reachabilityWatcher)
+  }
 }
 </code></pre>
 
-<p>其中在ScopedGCCriticalSection类中执行了GC操作。</p>
+<h2 id="23-rootviewwatcher">2.3 RootViewWatcher</h2>
 
-<p>在ScopedSuspendAll中执行了停止所有线程操作，这也是导致“卡顿”原因。</p>
+<p>由于 Android Framework 未提供设置全局监听 RootView 从 WindowManager 中移除的方法，所以 LeakCanary 是通过 Hook 的方式实现的，这一块是通过 squareup 另一个开源库 curtains 实现的。</p>
 
-<p><strong>2.COW概述</strong></p>
+<p>RootView 监控这部分源码也比较复杂了，需要通过 2 步 Hook 来实现：</p>
 
-<p>来看下 https://en.wikipedia.org/wiki/Copy-on-write 的说明</p>
+<ol>
+  <li>Hook WMS 服务内部的 WindowManagerGlobal.mViews RootView 列表，获取 RootView 新增和移除的时机</li>
+  <li>检查 View 对应的 Window 类型，如果是 Dialog 或 DreamService 等类型，则在注册 View.addOnAttachStateChangeListener() 监听，在其中的 onViewDetachedFromWindow() 回调中将 View 对象交给 ObjectWatcher 监控</li>
+</ol>
 
-<p>Copy-on-write (COW), sometimes referred to as implicit sharing[1] or shadowing,[2] is a resource-management technique used in computer programming to efficiently implement a “duplicate” or “copy” operation on modifiable resources.[3] If a resource is duplicated but not modified, it is not necessary to create a new resource; the resource can be shared between the copy and the original. Modifications must still create a copy, hence the technique: the copy operation is deferred to the first write. By sharing resources in this way, it is possible to significantly reduce the resource consumption of unmodified copies, while adding a small overhead to resource-modifying operations.</p>
+<pre><code class="language-Kotlin">private val listener = OnRootViewAddedListener { rootView -&gt;
+  val trackDetached = when(rootView.windowType) {
+    PHONE_WINDOW -&gt; {
+      when (rootView.phoneWindow?.callback?.wrappedCallback) {
+        // Activities are already tracked by ActivityWatcher
+        is Activity -&gt; false
+        is Dialog -&gt; {
+          // Use app context resources to avoid NotFoundException
+          // https://github.com/square/leakcanary/issues/2137
+          val resources = rootView.context.applicationContext.resources
+          resources.getBoolean(R.bool.leak_canary_watcher_watch_dismissed_dialogs)
+        }
+        // Probably a DreamService
+        else -&gt; true
+      }
+    }
+    // Android widgets keep detached popup window instances around.
+    POPUP_WINDOW -&gt; false
+    TOOLTIP, TOAST, UNKNOWN -&gt; true
+  }
+  if (trackDetached) {
+    rootView.addOnAttachStateChangeListener(object : OnAttachStateChangeListener {
 
-<p>写入时复制（COW），有时也称为隐式共享，是一种计算机管理中用来有效地对可修改资源执行“复制”操作的资源管理技术。</p>
+      val watchDetachedView = Runnable {
+        reachabilityWatcher.expectWeaklyReachable(
+          rootView, "${rootView::class.java.name} received View#onDetachedFromWindow() callback"
+        )
+      }
 
-<p>如果资源重复但未修改，则无需创建新资源，资源可以在副本和原始副本之间共享。</p>
+      override fun onViewAttachedToWindow(v: View) {
+        mainHandler.removeCallbacks(watchDetachedView)
+      }
 
-<p>修改仍然必须创建一个副本，因此使用COW，可以将复制操作推迟到第一次写入。</p>
+      override fun onViewDetachedFromWindow(v: View) {
+        mainHandler.post(watchDetachedView)
+      }
+    })
+  }
+}
+</code></pre>
 
-<p>通过以这种方式共享资源，可以显着减少未修改副本的资源消耗，当然了资源修改操作的时候也会增加少量开销。</p>
+<h2 id="24-servicewatcher">2.4 ServiceWatcher</h2>
 
-<p><strong>3.fork()函数</strong></p>
+<p>由于 Android Framework 未提供设置 Service#onDestroy() 全局监听的方法，所以 LeakCanary 是通过 Hook 的方式实现的。</p>
 
-<p>fork是类Unix操作系统上创建进程的主要方法，用于创建子进程。</p>
+<p>Service 监控这部分源码比较复杂了，需要通过 2 步 Hook 来实现：</p>
 
-<p>新的进程要通过老的进程复制自身得到，Linux下init进程是所有进程的父 。 Linux的进程都通过init进程或init的子进程fork(vfork)出来的。</p>
+<ol>
+  <li>Hook 主线程消息循环的 mH.mCallback 回调，监听其中的 STOP_SERVICE 消息，将即将 Destroy 的 Service 对象暂存起来（由于 ActivityThread.H 中没有 DESTROY_SERVICE 消息，所以不能直接监听到 onDestroy() 事件，需要第 2 步）</li>
+  <li>使用动态代理 Hook AMS 与 App 通信的的 IActivityManager Binder 对象，代理其中的 serviceDoneExecuting() 方法，视为 Service.onDestroy() 的执行时机，拿到暂存的 Service 对象交给 ObjectWatcher 监控</li>
+</ol>
 
-<p>fork 函数会有两次返回 1) 将子进程的PID返回给父进程，2) 0返回给子进程。(如果小于0，则说明创建子进程失败)。</p>
+<pre><code class="language-TypeScript">override fun install() {
+  checkMainThread()
+  check(uninstallActivityThreadHandlerCallback == null) {
+    "ServiceWatcher already installed"
+  }
+  check(uninstallActivityManager == null) {
+    "ServiceWatcher already installed"
+  }
+  try {
+    swapActivityThreadHandlerCallback { mCallback -&gt;
+      uninstallActivityThreadHandlerCallback = {
+        swapActivityThreadHandlerCallback {
+          mCallback
+        }
+      }
+      Handler.Callback { msg -&gt;
+        // https://github.com/square/leakcanary/issues/2114
+        // On some Motorola devices (Moto E5 and G6), the msg.obj returns an ActivityClientRecord
+        // instead of an IBinder. This crashes on a ClassCastException. Adding a type check
+        // here to prevent the crash.
+        if (msg.obj !is IBinder) {
+          return@Callback false
+        }
 
-<p>当前进程调用fork()，会创建一个跟当前进程完全相同的子进程(除了pid)，所以子进程同样是会执行fork()之后的代码。</p>
-
-<p>fork()之后，kernel把父进程中所有的内存页的权限都设为read-only，然后子进程的地址空间指向父进程。当父子进程都只读内存时，相安无事。当其中某个进程写内存时，CPU硬件检测到内存页是read-only的，于是触发页异常中断（page-fault），陷入kernel的一个中断例程。中断例程中，kernel就会把触发的异常的页复制一份，于是父子进程各自持有独立的一份。</p>
-
-<p><strong>4.子进程回收</strong></p>
-
-<p>alarm()函数：在seconds秒之后向调用alarm()的进程发送一个SIGALRM信号。</p>
-
-<p>waitpid()函数：当指定等待的子进程已经停止运行或结束了，则waitpid()会立即返回；但是如果子进程还没有停止运行或结束，则调用waitpid()函数的父进程则会被阻塞，暂停运行。</p>
+        if (msg.what == STOP_SERVICE) {
+          val key = msg.obj as IBinder
+          activityThreadServices[key]?.let {
+            onServicePreDestroy(key, it)
+          }
+        }
+        mCallback?.handleMessage(msg) ?: false
+      }
+    }
+    swapActivityManager { activityManagerInterface, activityManagerInstance -&gt;
+      uninstallActivityManager = {
+        swapActivityManager { _, _ -&gt;
+          activityManagerInstance
+        }
+      }
+      Proxy.newProxyInstance(
+        activityManagerInterface.classLoader, arrayOf(activityManagerInterface)
+      ) { _, method, args -&gt;
+        if (METHOD_SERVICE_DONE_EXECUTING == method.name) {
+          val token = args!![0] as IBinder
+          if (servicesToBeDestroyed.containsKey(token)) {
+            onServiceDestroyed(token)
+          }
+        }
+        try {
+          if (args == null) {
+            method.invoke(activityManagerInstance)
+          } else {
+            method.invoke(activityManagerInstance, *args)
+          }
+        } catch (invocationException: InvocationTargetException) {
+          throw invocationException.targetException
+        }
+      }
+    }
+  } catch (ignored: Throwable) {
+    SharkLog.d(ignored) { "Could not watch destroyed services" }
+  }
+}
+</code></pre>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/" data-toggle="tooltip" data-placement="top" title="ANR治理-主线程耗时消息统计">
+                        <a href="/2022/09/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/" data-toggle="tooltip" data-placement="top" title="内存泄漏治理-KOOM库解析">
                         Previous<br>
-                        <span>ANR治理-主线程耗时消息统计</span>
+                        <span>内存泄漏治理-KOOM库解析</span>
                         </a>
                     </li>
                     
                     
                     <li class="next">
-                        <a href="/2022/11/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/" data-toggle="tooltip" data-placement="top" title="内存泄漏-LeakCanary库解析">
+                        <a href="/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/" data-toggle="tooltip" data-placement="top" title="内存泄漏治理shark解析hprof文件">
                         Next<br>
-                        <span>内存泄漏-LeakCanary库解析</span>
+                        <span>内存泄漏治理shark解析hprof文件</span>
                         </a>
                     </li>
                     
@@ -459,29 +579,29 @@
                 <a data-sort="0000" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="24">Android</a>
+                    rel="25">Android</a>
         
-                <a data-sort="0017" 
+                <a data-sort="0018" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="7">SystemUI</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="2">ANR</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="2">HotFix</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Sun, 03 Sep 2023 13:25:34 +0800</pubDate>
-    <lastBuildDate>Sun, 03 Sep 2023 13:25:34 +0800</lastBuildDate>
+    <pubDate>Thu, 07 Sep 2023 23:02:27 +0800</pubDate>
+    <lastBuildDate>Thu, 07 Sep 2023 23:02:27 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -1688,9 +1688,7 @@ Task build() {
 
 &lt;p&gt;&lt;img src=&quot;/img/Activity/trace2.png&quot; alt=&quot;trace2&quot; /&gt;&lt;/p&gt;
 
-&lt;ol&gt;
-  &lt;li&gt;创建ActivityRecord：&lt;/li&gt;
-&lt;/ol&gt;
+&lt;p&gt;1.创建ActivityRecord：&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityStarter.java
 private int executeRequest(Request request) {
@@ -1718,9 +1716,7 @@ private static class Token extends Binder {
 }
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;ol&gt;
-  &lt;li&gt;添加到 Task 中：&lt;/li&gt;
-&lt;/ol&gt;
+&lt;p&gt;2.添加到 Task 中：&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// ActivityStarter.java
 private void addOrReparentStartingActivity(@NonNull Task task, String reason) {
@@ -1736,9 +1732,7 @@ private void addOrReparentStartingActivity(@NonNull Task task, String reason) {
 }
 &lt;/code&gt;&lt;/pre&gt;
 
-&lt;ol&gt;
-  &lt;li&gt;添加到 DisplayContent 的 mTokenMap 中：&lt;/li&gt;
-&lt;/ol&gt;
+&lt;p&gt;3.添加到 DisplayContent 的 mTokenMap 中：&lt;/p&gt;
 
 &lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// WindowToken.java
 void onDisplayChanged(DisplayContent dc) {
@@ -3780,7 +3774,572 @@ ROOT
       </item>
     
       <item>
-        <title>内存泄漏-shark解析hprof文件</title>
+        <title>基于atrace统计应用绘制掉帧</title>
+        <description>&lt;h1 id=&quot;0概述&quot;&gt;0.概述&lt;/h1&gt;
+
+&lt;p&gt;ftrace：是一个内核函数跟踪器，function tracer，旨在帮助开发人员和系统设计者可以找到内核内部发生的事情。&lt;/p&gt;
+
+&lt;p&gt;atrace：Android tracer，使用ftrace来跟踪Android上层的函数调用。为数据采集部分。&lt;/p&gt;
+
+&lt;p&gt;systrace：atrace数据分析工具，将atrace采集上来的数据，以图形化的方式展现出来。&lt;/p&gt;
+
+&lt;p&gt;抓取trace方式：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;开发者选项-系统跟踪，文件后缀为.perfetto-trace，二进制格式。&lt;/li&gt;
+  &lt;li&gt;使用python脚本，文件后缀为.html。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Android SDK：Sdk/platform-tools/systrace.py&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://chromium.googlesource.com/catapult/&quot;&gt;Chrome catapult&lt;/a&gt;：catapult/systrace/bin/systrace&lt;/p&gt;
+
+&lt;p&gt;命令：python2.7 systrace -a com.android.systemui am wm disk memreclaim mmc res sched freq binder_driver binder_lock dalvik pagecache database pm bionic rs gfx input view sm aidl sched freq idle&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;atrace命令&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;//开始&lt;/p&gt;
+
+&lt;p&gt;adb shell atrace –async_start -b 10240 gfx input view wm am res sched freq dalvik idle pm hal disk memreclaim sync binder_lock binder_driver&lt;/p&gt;
+
+&lt;p&gt;//结束&lt;/p&gt;
+
+&lt;p&gt;adb shell atrace –async_stop &amp;gt; trace.atrace&lt;/p&gt;
+
+&lt;h1 id=&quot;1atrace文件格式&quot;&gt;1.atrace文件格式&lt;/h1&gt;
+
+&lt;p&gt;参考文档：https://www.kernel.org/doc/Documentation/trace/ftrace.txt&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/atrace/frame1.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;TASK-PID：线程名-线程ID&lt;/p&gt;
+
+&lt;p&gt;TGID：进程ID&lt;/p&gt;
+
+&lt;p&gt;CPU#：CPU ID，即线程运行在哪一个CPU上&lt;/p&gt;
+
+&lt;p&gt;irqs-off：’d’ interrupts are disabled. ‘.’ otherwise.&lt;/p&gt;
+
+&lt;p&gt;need-resched：’N’ both TIF_NEED_RESCHED and PREEMPT_NEED_RESCHED is set,&lt;/p&gt;
+
+&lt;p&gt;​                          ‘n’ only TIF_NEED_RESCHED is set,&lt;/p&gt;
+
+&lt;p&gt;​                          ‘p’ only PREEMPT_NEED_RESCHED is set,&lt;/p&gt;
+
+&lt;p&gt;​                           ‘.’ otherwise.&lt;/p&gt;
+
+&lt;p&gt;hardirq/softirq：’Z’ - NMI occurred inside a hardirq&lt;/p&gt;
+
+&lt;p&gt;​                          ‘z’ - NMI is running&lt;/p&gt;
+
+&lt;p&gt;​                          ‘H’ - hard irq occurred inside a softirq.&lt;/p&gt;
+
+&lt;p&gt;​                          ‘h’ - hard irq is running&lt;/p&gt;
+
+&lt;p&gt;​                          ‘s’ - soft irq is running&lt;/p&gt;
+
+&lt;p&gt;​                          ‘.’ - normal context.&lt;/p&gt;
+
+&lt;p&gt;preempt-depth：The level of preempt_disabled&lt;/p&gt;
+
+&lt;p&gt;delay TIMESTAMP：时间戳，单位是秒.&lt;/p&gt;
+
+&lt;p&gt;FUNCTION：函数: 信息&lt;/p&gt;
+
+&lt;p&gt;realtime_ts：Unix时间戳&lt;/p&gt;
+
+&lt;h1 id=&quot;2文件内容&quot;&gt;2.文件内容&lt;/h1&gt;
+
+&lt;p&gt;Systrace抓取的trace数据，总体上可以分为两类：一类是Java和Native在用户层发生的函数调用，一类是内核态的事件信息。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;记录Java代码函数调用&lt;/strong&gt;：&lt;/p&gt;
+
+&lt;p&gt;Trace.traceBegin(Trace.TRACE_TAG_VIEW, “Choreographer#doFrame”);&lt;/p&gt;
+
+&lt;p&gt;Trace.traceEnd(Trace.TRACE_TAG_VIEW);&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;记录C++代码函数调用：&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;ATRACE_CALL();&lt;/p&gt;
+
+&lt;p&gt;用户层的函数调用记录在文件节点：/sys/kernel/debug/tracing/trace_marker。&lt;/p&gt;
+
+&lt;p&gt;此节点允许用户层写入字符串，ftrace会记录该写入操作时的时间戳，当用户在上层调用不同函数时，写入不同的调用信息，比如函数进入和退出分别写入，那么ftrace就可以记录跟踪函数的运行时间。&lt;/p&gt;
+
+&lt;p&gt;内核态的事件信息，则不是统一的，需要激活各自对应的事件节点，让ftrace记录下不同事件的tracepoint。&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;tracing_mark_write&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;tracing_mark_write函数的作用就是写入内容，格式定义在 system/core/libcutils/trace-dev.cpp&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C%2B%2B&quot;&gt;void atrace_begin_body(const char* name)
+{
+    WRITE_MSG(&quot;B|%d|&quot;, &quot;%s&quot;, name, &quot;&quot;);
+}
+
+void atrace_end_body()
+{
+    WRITE_MSG(&quot;E|%d&quot;, &quot;%s&quot;, &quot;&quot;, &quot;&quot;);
+}
+
+void atrace_async_begin_body(const char* name, int32_t cookie)
+{
+    WRITE_MSG(&quot;S|%d|&quot;, &quot;|%&quot; PRId32, name, cookie);
+}
+
+void atrace_async_end_body(const char* name, int32_t cookie)
+{
+    WRITE_MSG(&quot;F|%d|&quot;, &quot;|%&quot; PRId32, name, cookie);
+}
+
+void atrace_int_body(const char* name, int32_t value)
+{
+    WRITE_MSG(&quot;C|%d|&quot;, &quot;|%&quot; PRId32, name, value);
+}
+
+void atrace_int64_body(const char* name, int64_t value)
+{
+    WRITE_MSG(&quot;C|%d|&quot;, &quot;|%&quot; PRId64, name, value);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;其中begin和end是以栈结构成对出现的，举个例子：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;… tracing_mark_write: B&lt;/td&gt;
+      &lt;td&gt;1000&lt;/td&gt;
+      &lt;td&gt;name1&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;… tracing_mark_write: B&lt;/td&gt;
+      &lt;td&gt;1000&lt;/td&gt;
+      &lt;td&gt;name2&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;… tracing_mark_write: E&lt;/td&gt;
+      &lt;td&gt;1000  //匹配name2&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;table&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;… tracing_mark_write: E&lt;/td&gt;
+      &lt;td&gt;1000  //匹配name1&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;用户侧 ATRACE_TAG_xxx 事件，定义在 frameworks/native/cmds/atrace/atrace.cpp&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Bash&quot;&gt;{ &quot;gfx&quot;,        &quot;Graphics&quot;,                 ATRACE_TAG_GRAPHICS, { } },
+{ &quot;input&quot;,      &quot;Input&quot;,                    ATRACE_TAG_INPUT, { } },
+{ &quot;view&quot;,       &quot;View System&quot;,              ATRACE_TAG_VIEW, { } },
+{ &quot;webview&quot;,    &quot;WebView&quot;,                  ATRACE_TAG_WEBVIEW, { } },
+{ &quot;wm&quot;,         &quot;Window Manager&quot;,           ATRACE_TAG_WINDOW_MANAGER, { } },
+{ &quot;am&quot;,         &quot;Activity Manager&quot;,         ATRACE_TAG_ACTIVITY_MANAGER, { } },
+{ &quot;sm&quot;,         &quot;Sync Manager&quot;,             ATRACE_TAG_SYNC_MANAGER, { } },
+{ &quot;audio&quot;,      &quot;Audio&quot;,                    ATRACE_TAG_AUDIO, { } },
+{ &quot;video&quot;,      &quot;Video&quot;,                    ATRACE_TAG_VIDEO, { } },
+{ &quot;camera&quot;,     &quot;Camera&quot;,                   ATRACE_TAG_CAMERA, { } },
+{ &quot;hal&quot;,        &quot;Hardware Modules&quot;,         ATRACE_TAG_HAL, { } },
+{ &quot;res&quot;,        &quot;Resource Loading&quot;,         ATRACE_TAG_RESOURCES, { } },
+{ &quot;dalvik&quot;,     &quot;Dalvik VM&quot;,                ATRACE_TAG_DALVIK, { } },
+{ &quot;rs&quot;,         &quot;RenderScript&quot;,             ATRACE_TAG_RS, { } },
+{ &quot;bionic&quot;,     &quot;Bionic C Library&quot;,         ATRACE_TAG_BIONIC, { } },
+{ &quot;power&quot;,      &quot;Power Management&quot;,         ATRACE_TAG_POWER, { } },
+{ &quot;pm&quot;,         &quot;Package Manager&quot;,          ATRACE_TAG_PACKAGE_MANAGER, { } },
+{ &quot;ss&quot;,         &quot;System Server&quot;,            ATRACE_TAG_SYSTEM_SERVER, { } },
+{ &quot;database&quot;,   &quot;Database&quot;,                 ATRACE_TAG_DATABASE, { } },
+{ &quot;network&quot;,    &quot;Network&quot;,                  ATRACE_TAG_NETWORK, { } },
+{ &quot;adb&quot;,        &quot;ADB&quot;,                      ATRACE_TAG_ADB, { } },
+{ &quot;vibrator&quot;,   &quot;Vibrator&quot;,                 ATRACE_TAG_VIBRATOR, { } },
+{ &quot;aidl&quot;,       &quot;AIDL calls&quot;,               ATRACE_TAG_AIDL, { } },
+{ &quot;nnapi&quot;,      &quot;NNAPI&quot;,                    ATRACE_TAG_NNAPI, { } },
+{ &quot;rro&quot;,        &quot;Runtime Resource Overlay&quot;, ATRACE_TAG_RRO, { } },
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;第1列是使用命令抓取systrace时的可选&lt;em&gt;categories。&lt;/em&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;内核侧 events/xxx/enable，定义在 frameworks/native/cmds/atrace/atrace.cpp&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Assembly%20language&quot;&gt;{ &quot;sched&quot;,      &quot;CPU Scheduling&quot;,   0, {
+    { REQ,      &quot;events/sched/sched_switch/enable&quot; },
+    { REQ,      &quot;events/sched/sched_wakeup/enable&quot; },
+    { OPT,      &quot;events/sched/sched_waking/enable&quot; },
+    { OPT,      &quot;events/sched/sched_blocked_reason/enable&quot; },
+    { OPT,      &quot;events/sched/sched_cpu_hotplug/enable&quot; },
+    { OPT,      &quot;events/sched/sched_pi_setprio/enable&quot; },
+    { OPT,      &quot;events/sched/sched_process_exit/enable&quot; },
+    { OPT,      &quot;events/cgroup/enable&quot; },
+    { OPT,      &quot;events/oom/oom_score_adj_update/enable&quot; },
+    { OPT,      &quot;events/task/task_rename/enable&quot; },
+    { OPT,      &quot;events/task/task_newtask/enable&quot; },
+} },
+{ &quot;irq&quot;,        &quot;IRQ Events&quot;,   0, {
+    { REQ,      &quot;events/irq/enable&quot; },
+    { OPT,      &quot;events/ipi/enable&quot; },
+} },
+{ &quot;irqoff&quot;,     &quot;IRQ-disabled code section tracing&quot;, 0, {
+    { REQ,      &quot;events/preemptirq/irq_enable/enable&quot; },
+    { REQ,      &quot;events/preemptirq/irq_disable/enable&quot; },
+} },
+{ &quot;preemptoff&quot;, &quot;Preempt-disabled code section tracing&quot;, 0, {
+    { REQ,      &quot;events/preemptirq/preempt_enable/enable&quot; },
+    { REQ,      &quot;events/preemptirq/preempt_disable/enable&quot; },
+} },
+{ &quot;i2c&quot;,        &quot;I2C Events&quot;,   0, {
+    { REQ,      &quot;events/i2c/enable&quot; },
+    { REQ,      &quot;events/i2c/i2c_read/enable&quot; },
+    { REQ,      &quot;events/i2c/i2c_write/enable&quot; },
+    { REQ,      &quot;events/i2c/i2c_result/enable&quot; },
+    { REQ,      &quot;events/i2c/i2c_reply/enable&quot; },
+    { OPT,      &quot;events/i2c/smbus_read/enable&quot; },
+    { OPT,      &quot;events/i2c/smbus_write/enable&quot; },
+    { OPT,      &quot;events/i2c/smbus_result/enable&quot; },
+    { OPT,      &quot;events/i2c/smbus_reply/enable&quot; },
+} },
+{ &quot;freq&quot;,       &quot;CPU Frequency&quot;,    0, {
+    { REQ,      &quot;events/power/cpu_frequency/enable&quot; },
+    { OPT,      &quot;events/power/clock_set_rate/enable&quot; },
+    { OPT,      &quot;events/power/clock_disable/enable&quot; },
+    { OPT,      &quot;events/power/clock_enable/enable&quot; },
+    { OPT,      &quot;events/clk/clk_set_rate/enable&quot; },
+    { OPT,      &quot;events/clk/clk_disable/enable&quot; },
+    { OPT,      &quot;events/clk/clk_enable/enable&quot; },
+    { OPT,      &quot;events/power/cpu_frequency_limits/enable&quot; },
+    { OPT,      &quot;events/power/suspend_resume/enable&quot; },
+} },
+{ &quot;membus&quot;,     &quot;Memory Bus Utilization&quot;, 0, {
+    { REQ,      &quot;events/memory_bus/enable&quot; },
+} },
+{ &quot;idle&quot;,       &quot;CPU Idle&quot;,         0, {
+    { REQ,      &quot;events/power/cpu_idle/enable&quot; },
+} },
+{ &quot;disk&quot;,       &quot;Disk I/O&quot;,         0, {
+    { OPT,      &quot;events/f2fs/f2fs_sync_file_enter/enable&quot; },
+    { OPT,      &quot;events/f2fs/f2fs_sync_file_exit/enable&quot; },
+    { OPT,      &quot;events/f2fs/f2fs_write_begin/enable&quot; },
+    { OPT,      &quot;events/f2fs/f2fs_write_end/enable&quot; },
+    { OPT,      &quot;events/ext4/ext4_da_write_begin/enable&quot; },
+    { OPT,      &quot;events/ext4/ext4_da_write_end/enable&quot; },
+    { OPT,      &quot;events/ext4/ext4_sync_file_enter/enable&quot; },
+    { OPT,      &quot;events/ext4/ext4_sync_file_exit/enable&quot; },
+    { REQ,      &quot;events/block/block_rq_issue/enable&quot; },
+    { REQ,      &quot;events/block/block_rq_complete/enable&quot; },
+} },
+{ &quot;mmc&quot;,        &quot;eMMC commands&quot;,    0, {
+    { REQ,      &quot;events/mmc/enable&quot; },
+} },
+{ &quot;load&quot;,       &quot;CPU Load&quot;,         0, {
+    { REQ,      &quot;events/cpufreq_interactive/enable&quot; },
+} },
+{ &quot;sync&quot;,       &quot;Synchronization&quot;,  0, {
+    // linux kernel &amp;lt; 4.9
+    { OPT,      &quot;events/sync/enable&quot; },
+    // linux kernel == 4.9.x
+    { OPT,      &quot;events/fence/enable&quot; },
+    // linux kernel &amp;gt; 4.9
+    { OPT,      &quot;events/dma_fence/enable&quot; },
+} },
+{ &quot;workq&quot;,      &quot;Kernel Workqueues&quot;, 0, {
+    { REQ,      &quot;events/workqueue/enable&quot; },
+} },
+{ &quot;memreclaim&quot;, &quot;Kernel Memory Reclaim&quot;, 0, {
+    { REQ,      &quot;events/vmscan/mm_vmscan_direct_reclaim_begin/enable&quot; },
+    { REQ,      &quot;events/vmscan/mm_vmscan_direct_reclaim_end/enable&quot; },
+    { REQ,      &quot;events/vmscan/mm_vmscan_kswapd_wake/enable&quot; },
+    { REQ,      &quot;events/vmscan/mm_vmscan_kswapd_sleep/enable&quot; },
+    { OPT,      &quot;events/lowmemorykiller/enable&quot; },
+} },
+{ &quot;regulators&quot;,  &quot;Voltage and Current Regulators&quot;, 0, {
+    { REQ,      &quot;events/regulator/enable&quot; },
+} },
+{ &quot;binder_driver&quot;, &quot;Binder Kernel driver&quot;, 0, {
+    { REQ,      &quot;events/binder/binder_transaction/enable&quot; },
+    { REQ,      &quot;events/binder/binder_transaction_received/enable&quot; },
+    { REQ,      &quot;events/binder/binder_transaction_alloc_buf/enable&quot; },
+    { OPT,      &quot;events/binder/binder_set_priority/enable&quot; },
+} },
+{ &quot;binder_lock&quot;, &quot;Binder global lock trace&quot;, 0, {
+    { OPT,      &quot;events/binder/binder_lock/enable&quot; },
+    { OPT,      &quot;events/binder/binder_locked/enable&quot; },
+    { OPT,      &quot;events/binder/binder_unlock/enable&quot; },
+} },
+{ &quot;pagecache&quot;,  &quot;Page cache&quot;, 0, {
+    { REQ,      &quot;events/filemap/enable&quot; },
+} },
+{ &quot;memory&quot;,  &quot;Memory&quot;, 0, {
+    { OPT,      &quot;events/mm_event/mm_event_record/enable&quot; },
+    { OPT,      &quot;events/kmem/rss_stat/enable&quot; },
+    { OPT,      &quot;events/kmem/ion_heap_grow/enable&quot; },
+    { OPT,      &quot;events/kmem/ion_heap_shrink/enable&quot; },
+    { OPT,      &quot;events/ion/ion_stat/enable&quot; },
+} },
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;REQ即required的缩写，OPT即optional的缩写。&lt;/p&gt;
+
+&lt;p&gt;与CPU调度相关：&lt;/p&gt;
+
+&lt;p&gt;sched_wakeup / sched_waking：内核会通过try_to_wake_up把任务唤醒，这会涉及到这sched_wakeup和sched_waking两个tracepoint。&lt;/p&gt;
+
+&lt;p&gt;sched_switch：当调度器决定schedule另一个task运行的时候，也就是任务切换的时候，会触发该tracepoint。&lt;/p&gt;
+
+&lt;p&gt;Linux进程状态：&lt;/p&gt;
+
+&lt;p&gt;D：Uninterruptible sleep (usually IO)&lt;/p&gt;
+
+&lt;p&gt;R：Running or runnable (on run queue)&lt;/p&gt;
+
+&lt;p&gt;S：Interruptible sleep (waiting for an event to complete)&lt;/p&gt;
+
+&lt;p&gt;T：Stopped, either by a job control signal or because it is being traced.&lt;/p&gt;
+
+&lt;p&gt;W：paging (not valid since the 2.6.xx kernel)&lt;/p&gt;
+
+&lt;p&gt;X：dead (should never be seen)&lt;/p&gt;
+
+&lt;p&gt;Z：Defunct (“zombie”) process, terminated but not reaped by its parent.&lt;/p&gt;
+
+&lt;p&gt;binder通信相关：&lt;/p&gt;
+
+&lt;p&gt;binder_transaction：client端发起请求&lt;/p&gt;
+
+&lt;p&gt;binder_transaction_alloc_buf：分配内存&lt;/p&gt;
+
+&lt;p&gt;binder_transaction_received：server端收到请求&lt;/p&gt;
+
+&lt;h1 id=&quot;3应用绘制流程&quot;&gt;3.应用绘制流程&lt;/h1&gt;
+
+&lt;p&gt;应用侧：buffer的生产者&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;线程&lt;/th&gt;
+      &lt;th&gt;类#方法 - TAG&lt;/th&gt;
+      &lt;th&gt;描述&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;UIThread&lt;/td&gt;
+      &lt;td&gt;Choreographer#doFrame –input   –animation –traversal —-ViewRootImpl.doTraversal ——ViewRootImpl.draw ——–ThreadedRenderer.draw - syncAndDrawFrame&lt;/td&gt;
+      &lt;td&gt;构建Display List Display List的本质是一个缓冲区，它里面记录了即将要执行的绘制命令序列。这些绘制命令最终会转化为Open GL命令由GPU执行。这意味着我们在调用Canvas API绘制UI时，实际上只是将Canvas API调用及其参数记录在Display List中，然后等到下一个Vsync信号到来时，记录在Display List里面的绘制命令才会转化为Open GL命令由GPU执行。 UIThread和RenderThread都各自维护了一份应用程序窗口视图信息。各自维护了一份应用程序窗口视图信息的目的，就是为了可以互不干扰，进而实现最大程度的并行。RenderThread维护的应用程序窗口视图信息是来自于Main Thread的，当UIThread维护的应用程序窗口信息发生了变化时，就需要同步到RenderThread去。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;RenderThread&lt;/td&gt;
+      &lt;td&gt;DrawFrameTask::run - DrawFrame –DrawFrameTask::syncFrameState —-RenderNode::prepareTree –EglManager::beginFrame —-BufferQueueProducer::dequeueBuffer -&amp;gt; SF#dequeueBuffer –SkiaPipeline::renderFrame —-SkiaPipeline::renderLayersImpl ——drawLayer ——flush layers —-SkiaPipeline::renderFrameImpl —-flush commands –eglApi::eglSwapBuffersWithDamageKHR —-BufferQueueProducer::queueBuffer -&amp;gt; SF#onFrameAvailables&lt;/td&gt;
+      &lt;td&gt;渲染Display List Android应用程序窗口的Root Render Node的Display List，包含了Android应用程序窗口所有的绘制命令，因此我们只要对Root Render Node的Display List进行渲染，就可以得到整个Android应用程序窗口的UI。     buffer被queue到buffer队列之后就会回调onFrameAvailable函数通知SurfaceFlinger进行消费&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;hwuiTask0/1&lt;/td&gt;
+      &lt;td&gt;DrawFrameTask::run() - DrawFrame CanvasContext::enqueueFrameWork CommonPool::async CommonPool::enqueue&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;SurfaceFlinger侧：buffer的消费者&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;消息&lt;/th&gt;
+      &lt;th&gt;类#方法&lt;/th&gt;
+      &lt;th&gt;描述&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;INVALIDATE&lt;/td&gt;
+      &lt;td&gt;onMessageReceived –SurfaceFlinger::onMessageInvalidate —-SurfaceFlinger::handleMessageTransaction —-SurfaceFlinger::handleMessageInvalidate ——SurfaceFlinger::handlePageFlip ——–BufferLayer::latchBuffer ———-BufferQueueConsumer::acquireBuffer —-Scheduler::chooseRefreshRateForContent —-SurfaceFlinger::performSetActiveConfig —-SurfaceFlinger::updateInputFlinger&lt;/td&gt;
+      &lt;td&gt;CPU和GPU处理完之后将buffer入队BufferQueue，并调用onFrameAvailable通知SurfaceFlinger有可用buffer了； SurfaceFlinger通过内部MessageQueue调用requestNextVsync请求接收下一个VSYNC用于合成； 下一个VSYNC到了之后回调MessageQueue的handleMessage函数，实际调到SurfaceFlinger的onMessageReceived函数处理如下两种类型消息：INVALIDATE和REFRESH； 处理REFRESH消息时最终会调用acquireBuffer函数从BufferQueue中将之前APP绘制完成的buffer取出来合成。 处理REFRESH消息时最终会调用releaseBuffer函数将各layer合成后的buffer释放重新入队到BufferQueue中。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;REFRESH&lt;/td&gt;
+      &lt;td&gt;onMessageReceived –SurfaceFlinger::onMessageRefresh —-CompositionEngine::present ——CompositionEngine::preComposition ——Output::prepare ——–Output::rebuildLayerStacks ——Output::present ——–Output::prepareFrame ———-Display::chooseCompositionStrategy ——–Output::finishFrame ———-Output::composeSurfaces ———-BufferQueueConsumer::acquireBuffer ——–Output::postFramebuffer ———-HWComposer::presentAndGetReleaseFences —-SurfaceFlinger::postComposition ——BufferQueueConsumer::releaseBuffer&lt;/td&gt;
+      &lt;td&gt;preComposition：根据上次绘制的图层中是否有更新，来决定是否执行invalidate过程； rebuildLayerStacks：重建每个显示屏的所有可见Layer列表； setUpHWComposer：更新HWComposer的图层 doComposition：合成所有图层的图像 postComposition：回调每个layer的onPostComposition。&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h1 id=&quot;4解析atrace文件统计绘制掉帧&quot;&gt;4.解析atrace文件统计绘制掉帧&lt;/h1&gt;
+
+&lt;p&gt;以桌面左右滑动为例，如下截图：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/atrace/frame2.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;VSYNC周期分为：VSYNC-app和VSYNC-sf&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;在VSYNC-app周期内：SurfaceFlinger的app线程唤醒home主线程，接下来执行Choreographer的doFrame流程，包括input，animation，traversal阶段，在traversal中执行draw绘制并将绘制的内容同步给RenderThread线程。RenderThread线程先从buffer队列中dequeueBuffer申请一个buffer，填充内容，然后queueBuffer将buffer加入队列，并通知SurfaceFlinger。&lt;/li&gt;
+  &lt;li&gt;在VSYNC-sf周期内：处理MessageQueue::INVALIDATE消息，从各Layer的BufferQueue拿到最新的缓冲数据，并根据内容更新脏区域；处理MessageQueue::REFRESH消息，通过HWC合成各Layer的buffer，发送至显示设备进行显示。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;对应atrace中的日志：&lt;/p&gt;
+
+&lt;p&gt;// EventThread线程sf-app唤醒home主线程&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;app-1786  ( 1049) [002] d..4 14425.778934: sched_wakeup: comm=com.miui.home pid=3022 prio=98 target_cpu=005
+
+&amp;lt;idle&amp;gt;-0     (-----) [005] d..2 14425.778938: sched_switch: prev_comm=swapper/5 prev_pid=0 prev_prio=120 prev_state=R ==&amp;gt; next_comm=com.miui.home next_pid=3022 next_prio=98
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;// home主线程&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779000: tracing_mark_write: B|3022|Choreographer#doFrame
+
+&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779010: tracing_mark_write: B|3022|animation
+
+&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779599: tracing_mark_write: B|3022|traversal
+
+&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779695: tracing_mark_write: B|3022|draw
+
+&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779745: tracing_mark_write: B|3022|syncAndDrawFrame
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;// home主线程唤醒RenderThread线程&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3022  ( 3022) [005] d..4 14425.779767: sched_wakeup: comm=RenderThread pid=3253 prio=98 target_cpu=006
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;// RenderThread线程&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3253  ( 3022) [006] .... 14425.779787: tracing_mark_write: B|3022|DrawFrame
+
+&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780064: tracing_mark_write: B|3022|syncFrameState
+
+&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780294: tracing_mark_write: B|3022|beginFrame
+
+&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780336: tracing_mark_write: B|3022|dequeueBuffer
+
+&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780615: tracing_mark_write: B|3022|renderFrame
+
+&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.782260: tracing_mark_write: B|3022|eglSwapBuffersWithDamageKHR
+
+&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.782401: tracing_mark_write: B|3022|queueBuffer
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;// 更新buffer数量&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.782772: tracing_mark_write: C|3022|GPU completion|1
+
+&amp;lt;...&amp;gt;-3299  ( 1049) [001] .... 14425.782498: tracing_mark_write: C|1049|com.miui.home/com.miui.home.launcher.Launcher#0|1
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;// MessageQueue::INVALIDATE&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+4
+5
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;surfaceflinger-1049  ( 1049) [000] .... 14425.778852: tracing_mark_write: B|1049|onMessageReceived
+
+surfaceflinger-1049  ( 1049) [000] .... 14425.778856: tracing_mark_write: B|1049|onMessageInvalidate
+
+surfaceflinger-1049  ( 1049) [000] .... 14425.778918: tracing_mark_write: B|1049|handleMessageInvalidate
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;// MessageQueue::REFRESH&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;surfaceflinger-1049  ( 1049) [000] .... 14425.779283: tracing_mark_write: B|1049|onMessageReceived
+
+surfaceflinger-1049  ( 1049) [000] .... 14425.779288: tracing_mark_write: B|1049|onMessageRefresh
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;// hwc&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-1157  (  931) [004] .... 14425.779796: tracing_mark_write: B|931|HIDL::IComposerClient::executeCommands_2_2::server
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;// crtc&lt;/p&gt;
+
+&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373|commit|1
+
+crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373|commit|0
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;h1 id=&quot;5参考文档&quot;&gt;5.参考文档&lt;/h1&gt;
+&lt;p&gt;&lt;a href=&quot;https://blog.csdn.net/qq_34211365/category_10070121.html&quot;&gt;Android图形系统&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://www.kancloud.cn/alex_wsc/androids/473752&quot;&gt;Android应用程序UI架构&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;http://gityuan.com/2017/02/11/surface_flinger/&quot;&gt;SurfaceFlinger启动篇&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;http://gityuan.com/2017/02/18/surface_flinger_2/&quot;&gt;SurfaceFlinger绘图篇&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://blog.csdn.net/SSSxCCC/article/details/119250538&quot;&gt;SurfaceFlinger中Layer的合成&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://cloud.tencent.com/developer/article/1639711&quot;&gt;HWC在SurfaceFlinger中的角色&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Mon, 24 Oct 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/10/24/%E5%9F%BA%E4%BA%8Eatrace%E7%BB%9F%E8%AE%A1%E5%BA%94%E7%94%A8%E7%BB%98%E5%88%B6%E6%8E%89%E5%B8%A7/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/10/24/%E5%9F%BA%E4%BA%8Eatrace%E7%BB%9F%E8%AE%A1%E5%BA%94%E7%94%A8%E7%BB%98%E5%88%B6%E6%8E%89%E5%B8%A7/</guid>
+        
+        <category>Android</category>
+        
+        <category>atrace</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>内存泄漏治理shark解析hprof文件</title>
         <description>&lt;p&gt;解析hprof文件主要分为如下几个步骤，逐一来介绍。&lt;/p&gt;
 
 &lt;h1 id=&quot;1parsing_heap_dump&quot;&gt;1.PARSING_HEAP_DUMP&lt;/h1&gt;
@@ -4024,9 +4583,9 @@ ROOT
 
 &lt;p&gt;最后一步，报告分析结果，包括：HeapAnalysisSuccess，HeapAnalysisFailure。&lt;/p&gt;
 </description>
-        <pubDate>Wed, 30 Nov 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/11/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/11/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/</guid>
+        <pubDate>Fri, 30 Sep 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/</guid>
         
         <category>Android</category>
         
@@ -4036,7 +4595,7 @@ ROOT
       </item>
     
       <item>
-        <title>内存泄漏-LeakCanary库解析</title>
+        <title>内存泄漏治理-LeakCanary库解析</title>
         <description>&lt;h1 id=&quot;1认识-leakcanary&quot;&gt;1.认识 LeakCanary&lt;/h1&gt;
 
 &lt;h2 id=&quot;11-什么是内存泄漏&quot;&gt;1.1 什么是内存泄漏&lt;/h2&gt;
@@ -4267,9 +4826,9 @@ ROOT
 }
 &lt;/code&gt;&lt;/pre&gt;
 </description>
-        <pubDate>Thu, 24 Nov 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/11/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/11/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/</guid>
+        <pubDate>Sat, 24 Sep 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/</guid>
         
         <category>Android</category>
         
@@ -4281,7 +4840,7 @@ ROOT
       </item>
     
       <item>
-        <title>内存泄漏-KOOM库解析</title>
+        <title>内存泄漏治理-KOOM库解析</title>
         <description>&lt;h1 id=&quot;1koom介绍&quot;&gt;1.KOOM介绍&lt;/h1&gt;
 
 &lt;p&gt;主要包括如下三大功能：&lt;/p&gt;
@@ -4364,7 +4923,7 @@ ROOT
 
 &lt;p&gt;来看下 https://en.wikipedia.org/wiki/Copy-on-write 的说明&lt;/p&gt;
 
-&lt;p&gt;Copy-on-write (COW), sometimes referred to as implicit sharing[1] or shadowing,[2] is a resource-management technique used in computer programming to efficiently implement a “duplicate” or “copy” operation on modifiable resources.[3] If a resource is duplicated but not modified, it is not necessary to create a new resource; the resource can be shared between the copy and the original. Modifications must still create a copy, hence the technique: the copy operation is deferred to the first write. By sharing resources in this way, it is possible to significantly reduce the resource consumption of unmodified copies, while adding a small overhead to resource-modifying operations.&lt;/p&gt;
+&lt;p&gt;Copy-on-write (COW), sometimes referred to as implicit sharing[1] or shadowing,[2] is a resource-management technique used in computer programming to efficiently implement a “duplicate” or “copy” operation on modifiable resources.[3] If a resource is duplicated but not modizhhified, it is not necessary to create a new resource; the resource can be shared between the copy and the original. Modifications must still create a copy, hence the technique: the copy operation is deferred to the first write. By sharing resources in this way, it is possible to significantly reduce the resource consumption of unmodified copies, while adding a small overhead to resource-modifying operations.&lt;/p&gt;
 
 &lt;p&gt;写入时复制（COW），有时也称为隐式共享，是一种计算机管理中用来有效地对可修改资源执行“复制”操作的资源管理技术。&lt;/p&gt;
 
@@ -4392,276 +4951,15 @@ ROOT
 
 &lt;p&gt;waitpid()函数：当指定等待的子进程已经停止运行或结束了，则waitpid()会立即返回；但是如果子进程还没有停止运行或结束，则调用waitpid()函数的父进程则会被阻塞，暂停运行。&lt;/p&gt;
 </description>
-        <pubDate>Fri, 11 Nov 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/</guid>
+        <pubDate>Sun, 11 Sep 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/09/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/09/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/</guid>
         
         <category>Android</category>
         
         <category>MemoryLeak</category>
         
         <category>KOOM</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>ANR治理-主线程耗时消息统计</title>
-        <description>&lt;p&gt;&lt;a href=&quot;https://juejin.cn/post/6942665216781975582&quot;&gt;今日头条 ANR 优化实践系列 - 监控工具与分析思路&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://juejin.cn/post/6997227972973461512&quot;&gt;西瓜卡顿 &amp;amp; ANR 优化治理及监控体系建设&lt;/a&gt;&lt;/p&gt;
-
-&lt;p&gt;从这两篇文章中可以大致猜出这三者之间的关系：&lt;/p&gt;
-
-&lt;p&gt;Npth用来监控ANR，Sliver用来抓取线程堆栈，Raster用来做消息聚合。&lt;/p&gt;
-
-&lt;p&gt;监控ANR的主流方案是微信的 监听signal+判断主线程卡顿，Sliver抓取堆栈是Native层实现，&lt;/p&gt;
-
-&lt;p&gt;接下来主要分析消息聚合的实现。&lt;/p&gt;
-
-&lt;h1 id=&quot;消息类型&quot;&gt;消息类型&lt;/h1&gt;
-
-&lt;p&gt;定义在 ScheduleMsgItem.java 类：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-undefined&quot;&gt;public static final int SCHEDULE_TYPE_IDLE = 0;
-public static final int SCHEDULE_TYPE_LAST_LONG_MSG = 4;
-public static final int SCHEDULE_TYPE_LONG_IDLE = 1;
-public static final int SCHEDULE_TYPE_LONG_MSG = 8;
-public static final int SCHEDULE_TYPE_MSG = 2;
-public static final int SCHEDULE_TYPE_MSGS = 9;
-public static final int SCHEDULE_TYPE_MSGS_IDLE = 7;
-public static final int SCHEDULE_TYPE_MSGS_LONG_IDLE = 5;
-public static final int SCHEDULE_TYPE_MSG_IDLE = 3;
-public static final int SCHEDULE_TYPE_MSG_LONG_IDLE = 6;
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;Looper 中打印 Message 日志，可以将消息分为两个阶段：Dispatching 和 Finished。&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private static boolean loopOnce(final Looper me,
-        final long ident, final int thresholdOverride) {
-    ...
-
-    final Printer logging = me.mLogging;
-    if (logging != null) {
-        logging.println(&quot;&amp;gt;&amp;gt;&amp;gt;&amp;gt;&amp;gt; Dispatching to &quot; + msg.target + &quot; &quot;
-                + msg.callback + &quot;: &quot; + msg.what);
-    }
-    ...
-
-    if (logging != null) {
-        logging.println(&quot;&amp;lt;&amp;lt;&amp;lt;&amp;lt;&amp;lt; Finished to &quot; + msg.target + &quot; &quot; + msg.callback);
-    }
-    ...
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;创建 ScheduleMsgItem 实例的逻辑在 LooperMonitor.java 类，对应上述两个阶段：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public static void setMessageLogging() {
-    if (!ApmConfig.disableLooperMonitor() &amp;amp;&amp;amp; g.a() == null) {
-        LooperMessageManager.getInstance().start();
-        LooperMessageManager.getInstance().registerSyncStartPrinter(new Printer() { // from class: com.bytedance.crash.anr.LooperMonitor.2
-            @Override // android.util.Printer
-            public void println(String str) {
-                if (LooperMonitor.sMainLooperMonitor) {
-                    LooperMonitor.sCurrentStartMessage = str;
-                    if (!LooperMonitor.sStartAsyncAutoTick) {
-                        LooperMonitor.sStartAsyncAutoTick = true;
-                        LooperMonitor.sMainThreadId = Process.myTid();
-                        LooperMonitor.startAsyncAutoTick();
-                    }
-                    if (LooperMonitor.sLastUpdateTicks == -1) {
-                        LooperMonitor.sLastUpdateTicks = 0;
-                        LooperMonitor.sTempCurrentMessageStartTick = 0;
-                        return;
-                    }
-                    long j = LooperMonitor.sAsyncAutoTick;
-                    LooperMonitor.sTempCurrentMessageStartTick = j;
-                    long j2 = j - LooperMonitor.sLastUpdateTicks;
-                    if (j2 &amp;lt;= 0) {
-                        LooperMonitor.sCurMsgIndex++;
-                        return;
-                    }
-                    int i = j2 == 1 ? LooperMonitor.sCurMsgIndex &amp;gt; 1 ? 7 : LooperMonitor.sCurMsgIndex == 1 ? 3 : 0 : LooperMonitor.sCurMsgIndex &amp;gt; 1 ? 5 : LooperMonitor.sCurMsgIndex == 1 ? 6 : 1;
-                    long mainThreadTimeMills = LooperMonitor.mainThreadTimeMills();
-                    long uptimeMillis = SystemClock.uptimeMillis();
-                    if (!LooperMonitor.sDumpingMessage) {
-                        LooperMonitor.saveDataToItem(LooperMonitor.obtainItem(), mainThreadTimeMills - LooperMonitor.sCurThreadTime, uptimeMillis - LooperMonitor.sLastUpdateTime, j2, i, LooperMonitor.sCurMsgIndex, null);
-                    }
-                    LooperMonitor.sCurThreadTime = mainThreadTimeMills;
-                    LooperMonitor.sLastUpdateTime = uptimeMillis;
-                    LooperMonitor.sCurMsgIndex = 1;
-                    LooperMonitor.sLastUpdateTicks = j;
-                }
-            }
-        });
-        LooperMessageManager.getInstance().registerSyncEndPrinter(new Printer() { // from class: com.bytedance.crash.anr.LooperMonitor.3
-            @Override // android.util.Printer
-            public void println(String str) {
-                if (LooperMonitor.sMainLooperMonitor &amp;amp;&amp;amp; LooperMonitor.sLastUpdateTicks &amp;gt;= 0) {
-                    long j = LooperMonitor.sAsyncAutoTick;
-                    LooperMonitor.sCurrentStartMessage = &quot;no message running&quot;;
-                    long j2 = j - LooperMonitor.sLastUpdateTicks;
-                    if (j2 &amp;gt; 0) {
-                        long mainThreadTimeMills = LooperMonitor.mainThreadTimeMills();
-                        long uptimeMillis = SystemClock.uptimeMillis();
-                        int i = (j2 != 1 || LooperMonitor.sCurMsgIndex &amp;lt;= 1) ? (j2 == 1 &amp;amp;&amp;amp; LooperMonitor.sCurMsgIndex == 1) ? 2 : (j2 &amp;lt;= 1 || LooperMonitor.sCurMsgIndex &amp;lt;= 1) ? (j2 &amp;lt;= 1 || LooperMonitor.sCurMsgIndex != 1) ? 0 : 8 : 4 : 9;
-                        if (!LooperMonitor.sDumpingMessage) {
-                            LooperMonitor.saveDataToItem(LooperMonitor.obtainItem(), mainThreadTimeMills - LooperMonitor.sCurThreadTime, uptimeMillis - LooperMonitor.sLastUpdateTime, j2, i, LooperMonitor.sCurMsgIndex, str);
-                        }
-                        LooperMonitor.sCurThreadTime = mainThreadTimeMills;
-                        LooperMonitor.sLastUpdateTime = uptimeMillis;
-                        LooperMonitor.sCurMsgIndex = 0;
-                        LooperMonitor.sLastUpdateTicks = j;
-                    }
-                }
-            }
-        });
-        sCurThreadTime = mainThreadTimeMills();
-        sLastUpdateTime = SystemClock.uptimeMillis();
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;格式化第一处红色背景代码，在 Dispatching 阶段创建如下类型的 ScheduleMsgItem ：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;long j2 = LooperMonitor.sAsyncAutoTick - LooperMonitor.sLastUpdateTicks
-if (j2 &amp;lt;= 0) return;
-if (j2 == 1) {
-    if (LooperMonitor.sCurMsgIndex &amp;gt; 1) {
-        SCHEDULE_TYPE_MSGS_IDLE
-    } else {
-        if (LooperMonitor.sCurMsgIndex == 1) {
-            SCHEDULE_TYPE_MSG_IDLE
-        } else {
-            SCHEDULE_TYPE_IDLE
-        }
-    }
-} else {
-    if (LooperMonitor.sCurMsgIndex &amp;gt; 1) {
-        SCHEDULE_TYPE_MSGS_LONG_IDLE
-    } else {
-        if (LooperMonitor.sCurMsgIndex == 1) {
-            SCHEDULE_TYPE_MSG_LONG_IDLE
-        } else {
-            SCHEDULE_TYPE_LONG_IDLE
-        }
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;格式化第二处红色背景代码，在 Finished 阶段创建如下类型的 ScheduleMsgItem ：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;long j2 = LooperMonitor.sAsyncAutoTick - LooperMonitor.sLastUpdateTicks
-if (j2 &amp;lt;= 0) return;
-if (j2 != 1 || LooperMonitor.sCurMsgIndex &amp;lt;= 1) {
-    if (j2 == 1 &amp;amp;&amp;amp; LooperMonitor.sCurMsgIndex == 1) {
-        SCHEDULE_TYPE_MSG
-    } else {
-        if (j2 &amp;lt;= 1 || LooperMonitor.sCurMsgIndex &amp;lt;= 1) {
-            if (j2 &amp;lt;= 1 || LooperMonitor.sCurMsgIndex != 1) {
-                SCHEDULE_TYPE_IDLE
-            } else {
-                SCHEDULE_TYPE_LONG_MSG
-            }
-        } else {
-            SCHEDULE_TYPE_LAST_LONG_MSG
-        }
-    }
-} else {
-    SCHEDULE_TYPE_MSGS
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;重新整理下：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;long j2 = LooperMonitor.sAsyncAutoTick - LooperMonitor.sLastUpdateTicks
-if (j2 &amp;lt;= 0) return;
-if (j2 == 1) {
-    if (LooperMonitor.sCurMsgIndex &amp;gt; 1) {
-        SCHEDULE_TYPE_MSGS
-    } else {
-        if (LooperMonitor.sCurMsgIndex == 1) {
-            SCHEDULE_TYPE_MSG
-        } else {
-            SCHEDULE_TYPE_IDLE
-        }
-    }
-} else {
-    if (LooperMonitor.sCurMsgIndex &amp;gt; 1) {
-        SCHEDULE_TYPE_LAST_LONG_MSG
-    } else {
-        if (LooperMonitor.sCurMsgIndex == 1) {
-            SCHEDULE_TYPE_LONG_MSG
-        } else {
-            SCHEDULE_TYPE_IDLE
-        }
-    }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;简单整理下 sCurMsgIndex 的逻辑：&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;通常情况下在 Dispatching 阶段置为1，在 Finished 阶段置为0。&lt;/li&gt;
-  &lt;li&gt;在 Dispatching 阶段有个特殊的逻辑，如果在同一个 tick 周期内，sCurMsgIndex将会+1，即为消息聚合。&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;h1 id=&quot;autotick&quot;&gt;AutoTick&lt;/h1&gt;
-
-&lt;p&gt;sTickTimeOut 的默认值是100，可以在 startMainLooperMonitor(int, int) 方法中进行设置。&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;static void startAsyncAutoTick() {
-    HandlerThread defaultHandlerThread = NpthHandlerThread.getDefaultHandlerThread();
-    sBaseElapsedTime = SystemClock.uptimeMillis();
-    new Handler(defaultHandlerThread.getLooper()).postDelayed(new Runnable() { // from class: com.bytedance.crash.anr.LooperMonitor.4
-        @Override // java.lang.Runnable
-        public void run() {
-            new Thread(&quot;npth-tick&quot;) { // from class: com.bytedance.crash.anr.LooperMonitor.4.1
-                @Override // java.lang.Thread, java.lang.Runnable
-                public void run() {
-                    long j;
-                    while (LooperMonitor.sMainLooperMonitor) {
-                        try {
-                            long uptimeMillis = SystemClock.uptimeMillis();
-                            if (!ANRStatus.noRun()) {
-                                LooperMonitor.sMainThreadCpuTime = LooperMonitor.mainThreadTimeMillsInner();
-                            }
-                            LooperMonitor.sAsyncAutoTick = (uptimeMillis - LooperMonitor.sBaseElapsedTime) / LooperMonitor.sTickTimeOut;
-                            long j2 = (uptimeMillis - LooperMonitor.sBaseElapsedTime) % LooperMonitor.sTickTimeOut;
-                            if (j2 &amp;gt;= 95) {
-                                LooperMonitor.sAsyncAutoTick--;
-                                j = LooperMonitor.sTickTimeOut &amp;lt;&amp;lt; 1;
-                            } else {
-                                j = LooperMonitor.sTickTimeOut;
-                            }
-                            SystemClock.sleep(j - j2);
-                        } catch (Throwable unused) {
-                        }
-                    }
-                    LooperMonitor.sStartAsyncAutoTick = false;
-                }
-            }.start();
-        }
-    }, sTickTimeOut);
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;sAsyncAutoTick 可以理解成在第 N 个 Tick 周期内，周期间隔为 sTickTimeOut 。&lt;/p&gt;
-
-&lt;p&gt;简单整理下 sAsyncAutoTick 的逻辑：&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;结合消息类型中的分析，其优点在于不需要计算每一条 Message 的耗时，即可找出耗时消息。&lt;/li&gt;
-  &lt;li&gt;SystemClock.uptimeMillis() 返回的是不包含手机深度睡眠的启动时间，tick线程的主要逻辑就是规避手机深度睡眠的场景。&lt;/li&gt;
-&lt;/ol&gt;
-</description>
-        <pubDate>Tue, 30 Aug 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/</guid>
-        
-        <category>Android</category>
-        
-        <category>ANR</category>
         
         
       </item>

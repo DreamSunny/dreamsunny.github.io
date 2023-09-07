@@ -1,0 +1,1249 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Android学习笔记">
+    <meta name="keywords" content="Android, 博客, 互联网">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Open Graph -->
+    <meta property="og:title"
+        content="基于atrace统计应用绘制掉帧 - Android学习笔记 | Yaku Blog">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="0.概述
+">
+    
+    <meta property="article:published_time" content=" 2022-10-24T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Android">
+    
+    <meta property="article:tag" content="atrace">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
+    <meta property="og:url" content="http://localhost:4000/2022/10/24/%E5%9F%BA%E4%BA%8Eatrace%E7%BB%9F%E8%AE%A1%E5%BA%94%E7%94%A8%E7%BB%98%E5%88%B6%E6%8E%89%E5%B8%A7/">
+    <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
+
+    <title>基于atrace统计应用绘制掉帧 - Android学习笔记 | Yaku Blog</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/2022/10/24/%E5%9F%BA%E4%BA%8Eatrace%E7%BB%9F%E8%AE%A1%E5%BA%94%E7%94%A8%E7%BB%98%E5%88%B6%E6%8E%89%E5%B8%A7/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href=" /css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href=" /css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet"
+        type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+
+    <!-- Google AdSense -->
+    <script data-ad-client="ca-pub-6487568398225121" async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">Android学习笔记</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/img/post-bg-2015.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+
+
+
+<header class="intro-header" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
+                        
+                        <a class="tag" href="/archive/?tag=atrace" title="atrace">atrace</a>
+                        
+                    </div>
+                    <h1>基于atrace统计应用绘制掉帧</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on October 24, 2022</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<h1 id="0概述">0.概述</h1>
+
+<p>ftrace：是一个内核函数跟踪器，function tracer，旨在帮助开发人员和系统设计者可以找到内核内部发生的事情。</p>
+
+<p>atrace：Android tracer，使用ftrace来跟踪Android上层的函数调用。为数据采集部分。</p>
+
+<p>systrace：atrace数据分析工具，将atrace采集上来的数据，以图形化的方式展现出来。</p>
+
+<p>抓取trace方式：</p>
+
+<ol>
+  <li>开发者选项-系统跟踪，文件后缀为.perfetto-trace，二进制格式。</li>
+  <li>使用python脚本，文件后缀为.html。</li>
+</ol>
+
+<p>Android SDK：Sdk/platform-tools/systrace.py</p>
+
+<p><a href="https://chromium.googlesource.com/catapult/">Chrome catapult</a>：catapult/systrace/bin/systrace</p>
+
+<p>命令：python2.7 systrace -a com.android.systemui am wm disk memreclaim mmc res sched freq binder_driver binder_lock dalvik pagecache database pm bionic rs gfx input view sm aidl sched freq idle</p>
+
+<ol>
+  <li>atrace命令</li>
+</ol>
+
+<p>//开始</p>
+
+<p>adb shell atrace –async_start -b 10240 gfx input view wm am res sched freq dalvik idle pm hal disk memreclaim sync binder_lock binder_driver</p>
+
+<p>//结束</p>
+
+<p>adb shell atrace –async_stop &gt; trace.atrace</p>
+
+<h1 id="1atrace文件格式">1.atrace文件格式</h1>
+
+<p>参考文档：https://www.kernel.org/doc/Documentation/trace/ftrace.txt</p>
+
+<p><img src="/img/atrace/frame1.png" alt="img" /></p>
+
+<p>TASK-PID：线程名-线程ID</p>
+
+<p>TGID：进程ID</p>
+
+<p>CPU#：CPU ID，即线程运行在哪一个CPU上</p>
+
+<p>irqs-off：’d’ interrupts are disabled. ‘.’ otherwise.</p>
+
+<p>need-resched：’N’ both TIF_NEED_RESCHED and PREEMPT_NEED_RESCHED is set,</p>
+
+<p>​                          ‘n’ only TIF_NEED_RESCHED is set,</p>
+
+<p>​                          ‘p’ only PREEMPT_NEED_RESCHED is set,</p>
+
+<p>​                           ‘.’ otherwise.</p>
+
+<p>hardirq/softirq：’Z’ - NMI occurred inside a hardirq</p>
+
+<p>​                          ‘z’ - NMI is running</p>
+
+<p>​                          ‘H’ - hard irq occurred inside a softirq.</p>
+
+<p>​                          ‘h’ - hard irq is running</p>
+
+<p>​                          ‘s’ - soft irq is running</p>
+
+<p>​                          ‘.’ - normal context.</p>
+
+<p>preempt-depth：The level of preempt_disabled</p>
+
+<p>delay TIMESTAMP：时间戳，单位是秒.</p>
+
+<p>FUNCTION：函数: 信息</p>
+
+<p>realtime_ts：Unix时间戳</p>
+
+<h1 id="2文件内容">2.文件内容</h1>
+
+<p>Systrace抓取的trace数据，总体上可以分为两类：一类是Java和Native在用户层发生的函数调用，一类是内核态的事件信息。</p>
+
+<p><strong>记录Java代码函数调用</strong>：</p>
+
+<p>Trace.traceBegin(Trace.TRACE_TAG_VIEW, “Choreographer#doFrame”);</p>
+
+<p>Trace.traceEnd(Trace.TRACE_TAG_VIEW);</p>
+
+<p><strong>记录C++代码函数调用：</strong></p>
+
+<p>ATRACE_CALL();</p>
+
+<p>用户层的函数调用记录在文件节点：/sys/kernel/debug/tracing/trace_marker。</p>
+
+<p>此节点允许用户层写入字符串，ftrace会记录该写入操作时的时间戳，当用户在上层调用不同函数时，写入不同的调用信息，比如函数进入和退出分别写入，那么ftrace就可以记录跟踪函数的运行时间。</p>
+
+<p>内核态的事件信息，则不是统一的，需要激活各自对应的事件节点，让ftrace记录下不同事件的tracepoint。</p>
+
+<ol>
+  <li>tracing_mark_write</li>
+</ol>
+
+<p>tracing_mark_write函数的作用就是写入内容，格式定义在 system/core/libcutils/trace-dev.cpp</p>
+
+<pre><code class="language-C%2B%2B">void atrace_begin_body(const char* name)
+{
+    WRITE_MSG("B|%d|", "%s", name, "");
+}
+
+void atrace_end_body()
+{
+    WRITE_MSG("E|%d", "%s", "", "");
+}
+
+void atrace_async_begin_body(const char* name, int32_t cookie)
+{
+    WRITE_MSG("S|%d|", "|%" PRId32, name, cookie);
+}
+
+void atrace_async_end_body(const char* name, int32_t cookie)
+{
+    WRITE_MSG("F|%d|", "|%" PRId32, name, cookie);
+}
+
+void atrace_int_body(const char* name, int32_t value)
+{
+    WRITE_MSG("C|%d|", "|%" PRId32, name, value);
+}
+
+void atrace_int64_body(const char* name, int64_t value)
+{
+    WRITE_MSG("C|%d|", "|%" PRId64, name, value);
+}
+</code></pre>
+
+<p>其中begin和end是以栈结构成对出现的，举个例子：</p>
+
+<table>
+  <tbody>
+    <tr>
+      <td>… tracing_mark_write: B</td>
+      <td>1000</td>
+      <td>name1</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <tbody>
+    <tr>
+      <td>… tracing_mark_write: B</td>
+      <td>1000</td>
+      <td>name2</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <tbody>
+    <tr>
+      <td>… tracing_mark_write: E</td>
+      <td>1000  //匹配name2</td>
+    </tr>
+  </tbody>
+</table>
+
+<table>
+  <tbody>
+    <tr>
+      <td>… tracing_mark_write: E</td>
+      <td>1000  //匹配name1</td>
+    </tr>
+  </tbody>
+</table>
+
+<ol>
+  <li>用户侧 ATRACE_TAG_xxx 事件，定义在 frameworks/native/cmds/atrace/atrace.cpp</li>
+</ol>
+
+<pre><code class="language-Bash">{ "gfx",        "Graphics",                 ATRACE_TAG_GRAPHICS, { } },
+{ "input",      "Input",                    ATRACE_TAG_INPUT, { } },
+{ "view",       "View System",              ATRACE_TAG_VIEW, { } },
+{ "webview",    "WebView",                  ATRACE_TAG_WEBVIEW, { } },
+{ "wm",         "Window Manager",           ATRACE_TAG_WINDOW_MANAGER, { } },
+{ "am",         "Activity Manager",         ATRACE_TAG_ACTIVITY_MANAGER, { } },
+{ "sm",         "Sync Manager",             ATRACE_TAG_SYNC_MANAGER, { } },
+{ "audio",      "Audio",                    ATRACE_TAG_AUDIO, { } },
+{ "video",      "Video",                    ATRACE_TAG_VIDEO, { } },
+{ "camera",     "Camera",                   ATRACE_TAG_CAMERA, { } },
+{ "hal",        "Hardware Modules",         ATRACE_TAG_HAL, { } },
+{ "res",        "Resource Loading",         ATRACE_TAG_RESOURCES, { } },
+{ "dalvik",     "Dalvik VM",                ATRACE_TAG_DALVIK, { } },
+{ "rs",         "RenderScript",             ATRACE_TAG_RS, { } },
+{ "bionic",     "Bionic C Library",         ATRACE_TAG_BIONIC, { } },
+{ "power",      "Power Management",         ATRACE_TAG_POWER, { } },
+{ "pm",         "Package Manager",          ATRACE_TAG_PACKAGE_MANAGER, { } },
+{ "ss",         "System Server",            ATRACE_TAG_SYSTEM_SERVER, { } },
+{ "database",   "Database",                 ATRACE_TAG_DATABASE, { } },
+{ "network",    "Network",                  ATRACE_TAG_NETWORK, { } },
+{ "adb",        "ADB",                      ATRACE_TAG_ADB, { } },
+{ "vibrator",   "Vibrator",                 ATRACE_TAG_VIBRATOR, { } },
+{ "aidl",       "AIDL calls",               ATRACE_TAG_AIDL, { } },
+{ "nnapi",      "NNAPI",                    ATRACE_TAG_NNAPI, { } },
+{ "rro",        "Runtime Resource Overlay", ATRACE_TAG_RRO, { } },
+</code></pre>
+
+<p>第1列是使用命令抓取systrace时的可选<em>categories。</em></p>
+
+<ol>
+  <li>内核侧 events/xxx/enable，定义在 frameworks/native/cmds/atrace/atrace.cpp</li>
+</ol>
+
+<pre><code class="language-Assembly%20language">{ "sched",      "CPU Scheduling",   0, {
+    { REQ,      "events/sched/sched_switch/enable" },
+    { REQ,      "events/sched/sched_wakeup/enable" },
+    { OPT,      "events/sched/sched_waking/enable" },
+    { OPT,      "events/sched/sched_blocked_reason/enable" },
+    { OPT,      "events/sched/sched_cpu_hotplug/enable" },
+    { OPT,      "events/sched/sched_pi_setprio/enable" },
+    { OPT,      "events/sched/sched_process_exit/enable" },
+    { OPT,      "events/cgroup/enable" },
+    { OPT,      "events/oom/oom_score_adj_update/enable" },
+    { OPT,      "events/task/task_rename/enable" },
+    { OPT,      "events/task/task_newtask/enable" },
+} },
+{ "irq",        "IRQ Events",   0, {
+    { REQ,      "events/irq/enable" },
+    { OPT,      "events/ipi/enable" },
+} },
+{ "irqoff",     "IRQ-disabled code section tracing", 0, {
+    { REQ,      "events/preemptirq/irq_enable/enable" },
+    { REQ,      "events/preemptirq/irq_disable/enable" },
+} },
+{ "preemptoff", "Preempt-disabled code section tracing", 0, {
+    { REQ,      "events/preemptirq/preempt_enable/enable" },
+    { REQ,      "events/preemptirq/preempt_disable/enable" },
+} },
+{ "i2c",        "I2C Events",   0, {
+    { REQ,      "events/i2c/enable" },
+    { REQ,      "events/i2c/i2c_read/enable" },
+    { REQ,      "events/i2c/i2c_write/enable" },
+    { REQ,      "events/i2c/i2c_result/enable" },
+    { REQ,      "events/i2c/i2c_reply/enable" },
+    { OPT,      "events/i2c/smbus_read/enable" },
+    { OPT,      "events/i2c/smbus_write/enable" },
+    { OPT,      "events/i2c/smbus_result/enable" },
+    { OPT,      "events/i2c/smbus_reply/enable" },
+} },
+{ "freq",       "CPU Frequency",    0, {
+    { REQ,      "events/power/cpu_frequency/enable" },
+    { OPT,      "events/power/clock_set_rate/enable" },
+    { OPT,      "events/power/clock_disable/enable" },
+    { OPT,      "events/power/clock_enable/enable" },
+    { OPT,      "events/clk/clk_set_rate/enable" },
+    { OPT,      "events/clk/clk_disable/enable" },
+    { OPT,      "events/clk/clk_enable/enable" },
+    { OPT,      "events/power/cpu_frequency_limits/enable" },
+    { OPT,      "events/power/suspend_resume/enable" },
+} },
+{ "membus",     "Memory Bus Utilization", 0, {
+    { REQ,      "events/memory_bus/enable" },
+} },
+{ "idle",       "CPU Idle",         0, {
+    { REQ,      "events/power/cpu_idle/enable" },
+} },
+{ "disk",       "Disk I/O",         0, {
+    { OPT,      "events/f2fs/f2fs_sync_file_enter/enable" },
+    { OPT,      "events/f2fs/f2fs_sync_file_exit/enable" },
+    { OPT,      "events/f2fs/f2fs_write_begin/enable" },
+    { OPT,      "events/f2fs/f2fs_write_end/enable" },
+    { OPT,      "events/ext4/ext4_da_write_begin/enable" },
+    { OPT,      "events/ext4/ext4_da_write_end/enable" },
+    { OPT,      "events/ext4/ext4_sync_file_enter/enable" },
+    { OPT,      "events/ext4/ext4_sync_file_exit/enable" },
+    { REQ,      "events/block/block_rq_issue/enable" },
+    { REQ,      "events/block/block_rq_complete/enable" },
+} },
+{ "mmc",        "eMMC commands",    0, {
+    { REQ,      "events/mmc/enable" },
+} },
+{ "load",       "CPU Load",         0, {
+    { REQ,      "events/cpufreq_interactive/enable" },
+} },
+{ "sync",       "Synchronization",  0, {
+    // linux kernel &lt; 4.9
+    { OPT,      "events/sync/enable" },
+    // linux kernel == 4.9.x
+    { OPT,      "events/fence/enable" },
+    // linux kernel &gt; 4.9
+    { OPT,      "events/dma_fence/enable" },
+} },
+{ "workq",      "Kernel Workqueues", 0, {
+    { REQ,      "events/workqueue/enable" },
+} },
+{ "memreclaim", "Kernel Memory Reclaim", 0, {
+    { REQ,      "events/vmscan/mm_vmscan_direct_reclaim_begin/enable" },
+    { REQ,      "events/vmscan/mm_vmscan_direct_reclaim_end/enable" },
+    { REQ,      "events/vmscan/mm_vmscan_kswapd_wake/enable" },
+    { REQ,      "events/vmscan/mm_vmscan_kswapd_sleep/enable" },
+    { OPT,      "events/lowmemorykiller/enable" },
+} },
+{ "regulators",  "Voltage and Current Regulators", 0, {
+    { REQ,      "events/regulator/enable" },
+} },
+{ "binder_driver", "Binder Kernel driver", 0, {
+    { REQ,      "events/binder/binder_transaction/enable" },
+    { REQ,      "events/binder/binder_transaction_received/enable" },
+    { REQ,      "events/binder/binder_transaction_alloc_buf/enable" },
+    { OPT,      "events/binder/binder_set_priority/enable" },
+} },
+{ "binder_lock", "Binder global lock trace", 0, {
+    { OPT,      "events/binder/binder_lock/enable" },
+    { OPT,      "events/binder/binder_locked/enable" },
+    { OPT,      "events/binder/binder_unlock/enable" },
+} },
+{ "pagecache",  "Page cache", 0, {
+    { REQ,      "events/filemap/enable" },
+} },
+{ "memory",  "Memory", 0, {
+    { OPT,      "events/mm_event/mm_event_record/enable" },
+    { OPT,      "events/kmem/rss_stat/enable" },
+    { OPT,      "events/kmem/ion_heap_grow/enable" },
+    { OPT,      "events/kmem/ion_heap_shrink/enable" },
+    { OPT,      "events/ion/ion_stat/enable" },
+} },
+</code></pre>
+
+<p>REQ即required的缩写，OPT即optional的缩写。</p>
+
+<p>与CPU调度相关：</p>
+
+<p>sched_wakeup / sched_waking：内核会通过try_to_wake_up把任务唤醒，这会涉及到这sched_wakeup和sched_waking两个tracepoint。</p>
+
+<p>sched_switch：当调度器决定schedule另一个task运行的时候，也就是任务切换的时候，会触发该tracepoint。</p>
+
+<p>Linux进程状态：</p>
+
+<p>D：Uninterruptible sleep (usually IO)</p>
+
+<p>R：Running or runnable (on run queue)</p>
+
+<p>S：Interruptible sleep (waiting for an event to complete)</p>
+
+<p>T：Stopped, either by a job control signal or because it is being traced.</p>
+
+<p>W：paging (not valid since the 2.6.xx kernel)</p>
+
+<p>X：dead (should never be seen)</p>
+
+<p>Z：Defunct (“zombie”) process, terminated but not reaped by its parent.</p>
+
+<p>binder通信相关：</p>
+
+<p>binder_transaction：client端发起请求</p>
+
+<p>binder_transaction_alloc_buf：分配内存</p>
+
+<p>binder_transaction_received：server端收到请求</p>
+
+<h1 id="3应用绘制流程">3.应用绘制流程</h1>
+
+<p>应用侧：buffer的生产者</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>线程</th>
+      <th>类#方法 - TAG</th>
+      <th>描述</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>UIThread</td>
+      <td>Choreographer#doFrame –input   –animation –traversal —-ViewRootImpl.doTraversal ——ViewRootImpl.draw ——–ThreadedRenderer.draw - syncAndDrawFrame</td>
+      <td>构建Display List Display List的本质是一个缓冲区，它里面记录了即将要执行的绘制命令序列。这些绘制命令最终会转化为Open GL命令由GPU执行。这意味着我们在调用Canvas API绘制UI时，实际上只是将Canvas API调用及其参数记录在Display List中，然后等到下一个Vsync信号到来时，记录在Display List里面的绘制命令才会转化为Open GL命令由GPU执行。 UIThread和RenderThread都各自维护了一份应用程序窗口视图信息。各自维护了一份应用程序窗口视图信息的目的，就是为了可以互不干扰，进而实现最大程度的并行。RenderThread维护的应用程序窗口视图信息是来自于Main Thread的，当UIThread维护的应用程序窗口信息发生了变化时，就需要同步到RenderThread去。</td>
+    </tr>
+    <tr>
+      <td>RenderThread</td>
+      <td>DrawFrameTask::run - DrawFrame –DrawFrameTask::syncFrameState —-RenderNode::prepareTree –EglManager::beginFrame —-BufferQueueProducer::dequeueBuffer -&gt; SF#dequeueBuffer –SkiaPipeline::renderFrame —-SkiaPipeline::renderLayersImpl ——drawLayer ——flush layers —-SkiaPipeline::renderFrameImpl —-flush commands –eglApi::eglSwapBuffersWithDamageKHR —-BufferQueueProducer::queueBuffer -&gt; SF#onFrameAvailables</td>
+      <td>渲染Display List Android应用程序窗口的Root Render Node的Display List，包含了Android应用程序窗口所有的绘制命令，因此我们只要对Root Render Node的Display List进行渲染，就可以得到整个Android应用程序窗口的UI。     buffer被queue到buffer队列之后就会回调onFrameAvailable函数通知SurfaceFlinger进行消费</td>
+    </tr>
+    <tr>
+      <td>hwuiTask0/1</td>
+      <td>DrawFrameTask::run() - DrawFrame CanvasContext::enqueueFrameWork CommonPool::async CommonPool::enqueue</td>
+      <td> </td>
+    </tr>
+  </tbody>
+</table>
+
+<p>SurfaceFlinger侧：buffer的消费者</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>消息</th>
+      <th>类#方法</th>
+      <th>描述</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>INVALIDATE</td>
+      <td>onMessageReceived –SurfaceFlinger::onMessageInvalidate —-SurfaceFlinger::handleMessageTransaction —-SurfaceFlinger::handleMessageInvalidate ——SurfaceFlinger::handlePageFlip ——–BufferLayer::latchBuffer ———-BufferQueueConsumer::acquireBuffer —-Scheduler::chooseRefreshRateForContent —-SurfaceFlinger::performSetActiveConfig —-SurfaceFlinger::updateInputFlinger</td>
+      <td>CPU和GPU处理完之后将buffer入队BufferQueue，并调用onFrameAvailable通知SurfaceFlinger有可用buffer了； SurfaceFlinger通过内部MessageQueue调用requestNextVsync请求接收下一个VSYNC用于合成； 下一个VSYNC到了之后回调MessageQueue的handleMessage函数，实际调到SurfaceFlinger的onMessageReceived函数处理如下两种类型消息：INVALIDATE和REFRESH； 处理REFRESH消息时最终会调用acquireBuffer函数从BufferQueue中将之前APP绘制完成的buffer取出来合成。 处理REFRESH消息时最终会调用releaseBuffer函数将各layer合成后的buffer释放重新入队到BufferQueue中。</td>
+    </tr>
+    <tr>
+      <td>REFRESH</td>
+      <td>onMessageReceived –SurfaceFlinger::onMessageRefresh —-CompositionEngine::present ——CompositionEngine::preComposition ——Output::prepare ——–Output::rebuildLayerStacks ——Output::present ——–Output::prepareFrame ———-Display::chooseCompositionStrategy ——–Output::finishFrame ———-Output::composeSurfaces ———-BufferQueueConsumer::acquireBuffer ——–Output::postFramebuffer ———-HWComposer::presentAndGetReleaseFences —-SurfaceFlinger::postComposition ——BufferQueueConsumer::releaseBuffer</td>
+      <td>preComposition：根据上次绘制的图层中是否有更新，来决定是否执行invalidate过程； rebuildLayerStacks：重建每个显示屏的所有可见Layer列表； setUpHWComposer：更新HWComposer的图层 doComposition：合成所有图层的图像 postComposition：回调每个layer的onPostComposition。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1 id="4解析atrace文件统计绘制掉帧">4.解析atrace文件统计绘制掉帧</h1>
+
+<p>以桌面左右滑动为例，如下截图：</p>
+
+<p><img src="/img/atrace/frame2.png" alt="img" /></p>
+
+<p>VSYNC周期分为：VSYNC-app和VSYNC-sf</p>
+
+<ol>
+  <li>在VSYNC-app周期内：SurfaceFlinger的app线程唤醒home主线程，接下来执行Choreographer的doFrame流程，包括input，animation，traversal阶段，在traversal中执行draw绘制并将绘制的内容同步给RenderThread线程。RenderThread线程先从buffer队列中dequeueBuffer申请一个buffer，填充内容，然后queueBuffer将buffer加入队列，并通知SurfaceFlinger。</li>
+  <li>在VSYNC-sf周期内：处理MessageQueue::INVALIDATE消息，从各Layer的BufferQueue拿到最新的缓冲数据，并根据内容更新脏区域；处理MessageQueue::REFRESH消息，通过HWC合成各Layer的buffer，发送至显示设备进行显示。</li>
+</ol>
+
+<p>对应atrace中的日志：</p>
+
+<p>// EventThread线程sf-app唤醒home主线程</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>app-1786  ( 1049) [002] d..4 14425.778934: sched_wakeup: comm=com.miui.home pid=3022 prio=98 target_cpu=005
+
+&lt;idle&gt;-0     (-----) [005] d..2 14425.778938: sched_switch: prev_comm=swapper/5 prev_pid=0 prev_prio=120 prev_state=R ==&gt; next_comm=com.miui.home next_pid=3022 next_prio=98
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>// home主线程</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td><td class="rouge-code"><pre>&lt;...&gt;-3022  ( 3022) [005] .... 14425.779000: tracing_mark_write: B|3022|Choreographer#doFrame
+
+&lt;...&gt;-3022  ( 3022) [005] .... 14425.779010: tracing_mark_write: B|3022|animation
+
+&lt;...&gt;-3022  ( 3022) [005] .... 14425.779599: tracing_mark_write: B|3022|traversal
+
+&lt;...&gt;-3022  ( 3022) [005] .... 14425.779695: tracing_mark_write: B|3022|draw
+
+&lt;...&gt;-3022  ( 3022) [005] .... 14425.779745: tracing_mark_write: B|3022|syncAndDrawFrame
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>// home主线程唤醒RenderThread线程</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>&lt;...&gt;-3022  ( 3022) [005] d..4 14425.779767: sched_wakeup: comm=RenderThread pid=3253 prio=98 target_cpu=006
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>// RenderThread线程</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class="rouge-code"><pre>&lt;...&gt;-3253  ( 3022) [006] .... 14425.779787: tracing_mark_write: B|3022|DrawFrame
+
+&lt;...&gt;-3253  ( 3022) [004] .... 14425.780064: tracing_mark_write: B|3022|syncFrameState
+
+&lt;...&gt;-3253  ( 3022) [004] .... 14425.780294: tracing_mark_write: B|3022|beginFrame
+
+&lt;...&gt;-3253  ( 3022) [004] .... 14425.780336: tracing_mark_write: B|3022|dequeueBuffer
+
+&lt;...&gt;-3253  ( 3022) [004] .... 14425.780615: tracing_mark_write: B|3022|renderFrame
+
+&lt;...&gt;-3253  ( 3022) [004] .... 14425.782260: tracing_mark_write: B|3022|eglSwapBuffersWithDamageKHR
+
+&lt;...&gt;-3253  ( 3022) [004] .... 14425.782401: tracing_mark_write: B|3022|queueBuffer
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>// 更新buffer数量</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>&lt;...&gt;-3253  ( 3022) [004] .... 14425.782772: tracing_mark_write: C|3022|GPU completion|1
+
+&lt;...&gt;-3299  ( 1049) [001] .... 14425.782498: tracing_mark_write: C|1049|com.miui.home/com.miui.home.launcher.Launcher#0|1
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>// MessageQueue::INVALIDATE</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class="rouge-code"><pre>surfaceflinger-1049  ( 1049) [000] .... 14425.778852: tracing_mark_write: B|1049|onMessageReceived
+
+surfaceflinger-1049  ( 1049) [000] .... 14425.778856: tracing_mark_write: B|1049|onMessageInvalidate
+
+surfaceflinger-1049  ( 1049) [000] .... 14425.778918: tracing_mark_write: B|1049|handleMessageInvalidate
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>// MessageQueue::REFRESH</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>surfaceflinger-1049  ( 1049) [000] .... 14425.779283: tracing_mark_write: B|1049|onMessageReceived
+
+surfaceflinger-1049  ( 1049) [000] .... 14425.779288: tracing_mark_write: B|1049|onMessageRefresh
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>// hwc</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class="rouge-code"><pre>&lt;...&gt;-1157  (  931) [004] .... 14425.779796: tracing_mark_write: B|931|HIDL::IComposerClient::executeCommands_2_2::server
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<p>// crtc</p>
+
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class="rouge-code"><pre>crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373|commit|1
+
+crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373|commit|0
+</pre></td></tr></tbody></table></code></pre></div></div>
+
+<h1 id="5参考文档">5.参考文档</h1>
+<p><a href="https://blog.csdn.net/qq_34211365/category_10070121.html">Android图形系统</a><br />
+<a href="https://www.kancloud.cn/alex_wsc/androids/473752">Android应用程序UI架构</a><br />
+<a href="http://gityuan.com/2017/02/11/surface_flinger/">SurfaceFlinger启动篇</a><br />
+<a href="http://gityuan.com/2017/02/18/surface_flinger_2/">SurfaceFlinger绘图篇</a><br />
+<a href="https://blog.csdn.net/SSSxCCC/article/details/119250538">SurfaceFlinger中Layer的合成</a><br />
+<a href="https://cloud.tencent.com/developer/article/1639711">HWC在SurfaceFlinger中的角色</a></p>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/" data-toggle="tooltip" data-placement="top" title="内存泄漏治理shark解析hprof文件">
+                        Previous<br>
+                        <span>内存泄漏治理shark解析hprof文件</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2023/01/04/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/" data-toggle="tooltip" data-placement="top" title="DisplayArea树层级结构">
+                        Next<br>
+                        <span>DisplayArea树层级结构</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0000" 
+                    href="/archive/?tag=Android"
+                    title="Android"
+                    rel="25">Android</a>
+        
+                <a data-sort="0018" 
+                    href="/archive/?tag=SystemUI"
+                    title="SystemUI"
+                    rel="7">SystemUI</a>
+        
+                <a data-sort="0023" 
+                    href="/archive/?tag=ANR"
+                    title="ANR"
+                    rel="2">ANR</a>
+        
+                <a data-sort="0023" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="2">Activity</a>
+        
+                <a data-sort="0023" 
+                    href="/archive/?tag=HotFix"
+                    title="HotFix"
+                    rel="2">HotFix</a>
+        
+                <a data-sort="0023" 
+                    href="/archive/?tag=MemoryLeak"
+                    title="MemoryLeak"
+                    rel="2">MemoryLeak</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+  <li><a href="https://weishu.me/">weishu</a></li>
+  
+  <li><a href="https://androidperformance.com/">Gracker</a></li>
+  
+  <li><a href="http://gityuan.com/">Gityuan</a></li>
+  
+  <li><a href="https://juejin.cn/user/149189312913511/posts">芦半山</a></li>
+  
+</ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; Android学习笔记 2023
+                    <br>
+                    Powered by <a href="http://huangxuan.me">Hux Blog</a> |
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0" width="100px"
+                        height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=huxpro&repo=huxpro.github.io&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/js/snackbar.js "></script>
+<script src="/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4aa6afabf05ffd2ce6f459088368d4a3';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function () {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?" + _baId;
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2><h3 class="post-subtitle">{subtitle}</h3><hr></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false,
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        templateMiddleware: function (prop, value, template) {
+            if (prop === 'subtitle' || prop === 'title') {
+                if (value.indexOf("code")) {
+                    return htmlDecode(value);
+                } else {
+                    return value;
+                }
+            }
+        }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+<!-- Image to hack wechat -->
+<img src="/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

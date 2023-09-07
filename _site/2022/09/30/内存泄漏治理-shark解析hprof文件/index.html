@@ -12,13 +12,13 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="内存泄漏-LeakCanary库解析 - Android学习笔记 | Yaku Blog">
+        content="内存泄漏治理shark解析hprof文件 - Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="1.认识 LeakCanary
+    <meta property="og:description" content="解析hprof文件主要分为如下几个步骤，逐一来介绍。
 ">
     
-    <meta property="article:published_time" content=" 2022-11-24T20:00:00Z">
+    <meta property="article:published_time" content=" 2022-09-30T20:00:00Z">
     
     
     <meta property="article:author" content="Yaku">
@@ -26,16 +26,14 @@
     
     <meta property="article:tag" content="Android">
     
-    <meta property="article:tag" content="MemoryLeak">
-    
-    <meta property="article:tag" content="LeakCanary">
+    <meta property="article:tag" content="LeakCanary-shark">
     
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/2022/11/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/">
+    <meta property="og:url" content="http://localhost:4000/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>内存泄漏-LeakCanary库解析 - Android学习笔记 | Yaku Blog</title>
+    <title>内存泄漏治理shark解析hprof文件 - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -44,7 +42,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/2022/11/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/">
+    <link rel="canonical" href="http://localhost:4000/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -245,15 +243,13 @@
                         
                         <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
                         
-                        <a class="tag" href="/archive/?tag=MemoryLeak" title="MemoryLeak">MemoryLeak</a>
-                        
-                        <a class="tag" href="/archive/?tag=LeakCanary" title="LeakCanary">LeakCanary</a>
+                        <a class="tag" href="/archive/?tag=LeakCanary-shark" title="LeakCanary-shark">LeakCanary-shark</a>
                         
                     </div>
-                    <h1>内存泄漏-LeakCanary库解析</h1>
+                    <h1>内存泄漏治理shark解析hprof文件</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">Posted by Yaku on November 24, 2022</span>
+                    <span class="meta">Posted by Yaku on September 30, 2022</span>
                 </div>
             </div>
         </div>
@@ -280,252 +276,265 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="1认识-leakcanary">1.认识 LeakCanary</h1>
+				<p>解析hprof文件主要分为如下几个步骤，逐一来介绍。</p>
 
-<h2 id="11-什么是内存泄漏">1.1 什么是内存泄漏</h2>
+<h1 id="1parsing_heap_dump">1.PARSING_HEAP_DUMP</h1>
 
-<p>内存泄漏（Memory Leaks）指不再使用的对象或数据没有被回收，随着内存泄漏的堆积，应用性能会逐渐变差，甚至发生 OOM 奔溃。在 Android 应用中的内存泄漏可以分为 2 类：</p>
+<p>这一步是解析hprof文件，包含两部分：</p>
 
 <ul>
-  <li>Java 内存泄露： 不再使用的对象被生命周期更长的 GC Root 引用，无法被判定为垃圾对象而导致内存泄漏（LeakCanary 只能监控 Java 内存泄漏）。</li>
-  <li>Native 内存泄露： Native 内存没有垃圾回收机制，未手动回收导致内存泄漏。</li>
+  <li>解析Header部分</li>
+  <li>解析Records部分</li>
 </ul>
 
-<h2 id="12-为什么要使用-leakcanary">1.2 为什么要使用 LeakCanary?</h2>
+<p>hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/manual.html</p>
 
-<p>LeakCanray 是 Square 开源的 Java 内存泄漏分析工具，用于在实验室阶段检测 Android 应用中常见中的内存泄漏。</p>
+<p>重点在读取Records部分，读取逻辑在 StreamingHprofReader 这个类，处理逻辑在</p>
 
-<p>LeakCanary 的特点或优势在于提前预判出 Android 应用中最常见且影响较大的内存泄漏场景，并对此做针对性的监测手段。 这使得 LeakCanary 相比于其他排查内存泄漏的方案（如分析 OOM 异常时的堆栈日志、MAT 分析工具）更加高效。因为当内存泄漏堆积而内存不足时，应用可能从任何一次无关紧要的内存分配中抛出 OOM，堆栈日志只能体现最后一次内存分配的堆栈信息，而无法体现出导致发生 OOM 的主要原因。</p>
+<p>HprofInMemoryIndex 这个类中，这里共读取了两遍：</p>
 
-<p>目前，LeakCanary 支持以下五种 Android 场景中的内存泄漏监测：</p>
+<p>第1遍，收集数据信息，包括 类/实例/object数组/原始类型数组 的数量、数据最大长度等等。</p>
 
-<ol>
-  <li>
-    <p>已销毁的 Activity 对象（进入 DESTROYED 状态）</p>
-  </li>
-  <li>
-    <p>已销毁的 Fragment 对象和 Fragment View 对象（进入 DESTROYED 状态）</p>
-  </li>
-  <li>
-    <p>已清除的的 ViewModel 对象（进入 CLEARED 状态）</p>
-  </li>
-  <li>
-    <p>已销毁的的 Service 对象（进入 DESTROYED 状态）</p>
-  </li>
-  <li>
-    <p>已从 WindowManager 中移除的 RootView 对象</p>
-  </li>
-</ol>
+<p>第2遍，生成 类/实例/object数组/原始类型数组 的信息，以支持随机读取。</p>
 
-<h1 id="2-leakcanary监控内存泄漏原理">2. LeakCanary监控内存泄漏原理</h1>
+<table>
+  <thead>
+    <tr>
+      <th> </th>
+      <th>支持随机读取所需信息，以Byte数组形式存储</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>类</td>
+      <td>ID，文件中位置，父类ID，实例大小，数据长度，数组下标</td>
+    </tr>
+    <tr>
+      <td>实例</td>
+      <td>ID，文件中位置，类ID，数据长度</td>
+    </tr>
+    <tr>
+      <td>object数组</td>
+      <td>ID，文件中位置，类ID，数据长度</td>
+    </tr>
+    <tr>
+      <td>primitive数组</td>
+      <td>ID，文件中位置，原始类型，数据长度</td>
+    </tr>
+  </tbody>
+</table>
 
-<h2 id="21-activitywatcher">2.1 ActivityWatcher</h2>
+<p>这里解释下为什么要读两遍：</p>
 
-<p>通过 Application.registerActivityLifecycleCallbacks(…) 接口监听 Activity.onDestroy() 事件，将当前 Activity 对象交给 ObjectWatcher 监控：</p>
+<p>主要是从节省内存的角度考虑，比如 文件中位置 这个数值，第一遍读取后我们可以获得文件的大小，从而可以确定存储 文件中位置 这个数值所需要的byte数量，从而避免直接使用int或long存储节省内存。</p>
 
-<pre><code class="language-Kotlin">private val lifecycleCallbacks =
-  object : Application.ActivityLifecycleCallbacks by noOpDelegate() {
-    override fun onActivityDestroyed(activity: Activity) {
-      reachabilityWatcher.expectWeaklyReachable(
-        activity, "${activity::class.java.name} received Activity#onDestroy() callback"
-      )
-    }
-  }
+<p>这里有两个知识点：</p>
+
+<p><strong>1.Shark 比 Haha 占用内存小的原因？</strong></p>
+
+<p>Shark并不会直接把所有的Records都读取到内存中。</p>
+
+<p><strong>2.gc root对象都有哪些？</strong></p>
+
+<pre><code class="language-Kotlin">fun defaultIndexedGcRootTags(): EnumSet&lt;HprofRecordTag&gt; = EnumSet.of(
+  HprofRecordTag.ROOT_JNI_GLOBAL,
+  HprofRecordTag.ROOT_JAVA_FRAME,
+  HprofRecordTag.ROOT_JNI_LOCAL,
+  HprofRecordTag.ROOT_MONITOR_USED,
+  HprofRecordTag.ROOT_NATIVE_STACK,
+  HprofRecordTag.ROOT_STICKY_CLASS,
+  HprofRecordTag.ROOT_THREAD_BLOCK,
+  HprofRecordTag.ROOT_THREAD_OBJECT,
+  HprofRecordTag.ROOT_JNI_MONITOR
+)
 </code></pre>
 
-<h2 id="22-fragmentandviewmodelwatcher">2.2 FragmentAndViewModelWatcher</h2>
+<h1 id="2extracting_metadata">2.EXTRACTING_METADATA</h1>
 
-<p>通过 Application.registerActivityLifecycleCallbacks(…) 接口监听 Activity.onCreate() 事件，再通过 FragmentManager.registerFragmentLifecycleCallbacks(…) 接口监听 Fragment 的生命周期：</p>
+<p>这一步是解析一些常量值，具体参考 AndroidMetadataExtractor 这个类。</p>
 
-<pre><code class="language-Kotlin">private val fragmentLifecycleCallbacks = object : FragmentManager.FragmentLifecycleCallbacks() {
+<pre><code class="language-Kotlin">override fun extractMetadata(graph: HeapGraph): Map&lt;String, String&gt; {
+  val metadata = mutableMapOf&lt;String, String&gt;()
 
-  override fun onFragmentCreated(
-    fm: FragmentManager,
-    fragment: Fragment,
-    savedInstanceState: Bundle?
-  ) {
-    ViewModelClearedWatcher.install(fragment, reachabilityWatcher)
-  }
+  val build = AndroidBuildMirror.fromHeapGraph(graph)
+  metadata["Build.VERSION.SDK_INT"] = build.sdkInt.toString()
+  metadata["Build.MANUFACTURER"] = build.manufacturer
+  metadata["LeakCanary version"] = readLeakCanaryVersion(graph)
+  metadata["App process name"] = readProcessName(graph)
+  metadata["Class count"] = graph.classCount.toString()
+  metadata["Instance count"] = graph.instanceCount.toString()
+  metadata["Primitive array count"] = graph.primitiveArrayCount.toString()
+  metadata["Object array count"] = graph.objectArrayCount.toString()
+  metadata["Thread count"] = readThreadCount(graph).toString()
+  metadata["Heap total bytes"] = readHeapTotalBytes(graph).toString()
+  metadata.putBitmaps(graph)
+  metadata.putDbLabels(graph)
 
-  override fun onFragmentViewDestroyed(
-    fm: FragmentManager,
-    fragment: Fragment
-  ) {
-    val view = fragment.view
-    if (view != null) {
-      reachabilityWatcher.expectWeaklyReachable(
-        view, "${fragment::class.java.name} received Fragment#onDestroyView() callback " +
-        "(references to its views should be cleared to prevent leaks)"
+  return metadata
+}
+</code></pre>
+
+<h1 id="3finding_retained_objects">3.FINDING_RETAINED_OBJECTS</h1>
+
+<p>这一步是找出泄漏对象。Android中常见的泄漏对象定义在 AndroidObjectInspectors 这个类中，</p>
+
+<p>以 Activity 为例，当 Activity 实例中 mDestroyed == true 时，也就是 Activity 执行完 onDestroyed 回调，Activity 实例仍存在则判定为内存泄漏。</p>
+
+<pre><code class="language-Kotlin">override val leakingObjectFilter = { heapObject: HeapObject -&gt;
+  heapObject is HeapInstance &amp;&amp;
+    heapObject instanceOf "android.app.Activity" &amp;&amp;
+    heapObject["android.app.Activity", "mDestroyed"]?.value?.asBoolean == true
+}
+</code></pre>
+
+<h1 id="4finding_paths_to_retained_objects">4.FINDING_PATHS_TO_RETAINED_OBJECTS</h1>
+
+<p>这一步是找出泄漏最短路径。核心逻辑在 PathFinder 类，首先遍历所有的 gc roots 对象，然后依次递归遍历其所引用的子对象，直至找出包含上一步找出的所有泄漏对象。因为在遍历过程中可以创建父子关系，所以从泄漏对象一直找parent，即为最短泄漏路径。</p>
+
+<pre><code class="language-Kotlin">private fun State.findPathsFromGcRoots(): PathFindingResults {
+  enqueueGcRoots()
+
+  val shortestPathsToLeakingObjects = mutableListOf&lt;ReferencePathNode&gt;()
+  visitingQueue@ while (queuesNotEmpty) {
+    val node = poll()
+    if (leakingObjectIds.contains(node.objectId)) {
+      shortestPathsToLeakingObjects.add(node)
+      // Found all refs, stop searching (unless computing retained size)
+      if (shortestPathsToLeakingObjects.size == leakingObjectIds.size()) {
+        if (computeRetainedHeapSize) {
+          listener.onAnalysisProgress(FINDING_DOMINATORS)
+        } else {
+          break@visitingQueue
+        }
+      }
+    }
+
+    val heapObject = graph.findObjectById(node.objectId)
+    objectReferenceReader.read(heapObject).forEach { reference -&gt;
+      val newNode = ChildNode(
+        objectId = reference.valueObjectId,
+        parent = node,
+        lazyDetailsResolver = reference.lazyDetailsResolver
       )
+      enqueue(newNode, isLowPriority = reference.isLowPriority)
     }
   }
+  return PathFindingResults(
+    shortestPathsToLeakingObjects,
+    if (visitTracker is Dominated) visitTracker.dominatorTree else null
+  )
+}
+</code></pre>
 
-  override fun onFragmentDestroyed(
-    fm: FragmentManager,
-    fragment: Fragment
-  ) {
-    reachabilityWatcher.expectWeaklyReachable(
-      fragment, "${fragment::class.java.name} received Fragment#onDestroy() callback"
+<p>这里还包含了关键一步，去重最短路径，逻辑在 HeapAnalyzer.deduplicateShortestPaths() ，也就是相同泄漏路径会被合并。举个例子，比如2个不同Activity都是注册了同一listener导致的泄漏，因此泄漏路径是一致的，会被自动合并。</p>
+
+<h1 id="5finding_dominators">5.FINDING_DOMINATORS</h1>
+
+<p>如果需要计算泄漏对象导致内存泄漏大小，会在上一步的基础上遍历所有对象。</p>
+
+<p>备注：为了提升效率，我们去掉了这部分功能。</p>
+
+<h1 id="6inspecting_objects">6.INSPECTING_OBJECTS</h1>
+
+<p>这一步是描述对象是否有泄漏及泄漏原因，还是以 Activity 为例：</p>
+
+<pre><code class="language-Kotlin">override fun inspect(
+  reporter: ObjectReporter
+) {
+  reporter.whenInstanceOf("android.app.Activity") { instance -&gt;
+    // Activity.mDestroyed was introduced in 17.
+    // https://android.googlesource.com/platform/frameworks/base/+
+    // /6d9dcbccec126d9b87ab6587e686e28b87e5a04d
+    val field = instance["android.app.Activity", "mDestroyed"]
+
+    if (field != null) {
+      if (field.value.asBoolean!!) {
+        leakingReasons += field describedWithValue "true"
+      } else {
+        notLeakingReasons += field describedWithValue "false"
+      }
+    }
+  }
+}
+</code></pre>
+
+<h1 id="7computing_native_retained_size">7.COMPUTING_NATIVE_RETAINED_SIZE</h1>
+
+<p>这一步是计算 Native 内存泄漏大小，主要逻辑在 AndroidNativeSizeMapper 类。</p>
+
+<h1 id="8computing_retained_size">8.COMPUTING_RETAINED_SIZE</h1>
+
+<p>这一步是计算泄漏对象导致内存泄漏大小，主要逻辑在 DominatorTree 类。</p>
+
+<h1 id="9building_leak_traces">9.BUILDING_LEAK_TRACES</h1>
+
+<p>这一步是生成泄漏堆栈，包括：ApplicationLeak，LibraryLeak。</p>
+
+<pre><code class="language-Kotlin">private fun FindLeakInput.buildLeakTraces(
+  shortestPaths: List&lt;ShortestPath&gt;,
+  inspectedObjectsByPath: List&lt;List&lt;InspectedObject&gt;&gt;,
+  retainedSizes: Map&lt;Long, Pair&lt;Int, Int&gt;&gt;?
+): Pair&lt;List&lt;ApplicationLeak&gt;, List&lt;LibraryLeak&gt;&gt; {
+  listener.onAnalysisProgress(BUILDING_LEAK_TRACES)
+
+  val applicationLeaksMap = mutableMapOf&lt;String, MutableList&lt;LeakTrace&gt;&gt;()
+  val libraryLeaksMap =
+    mutableMapOf&lt;String, Pair&lt;LibraryLeakReferenceMatcher, MutableList&lt;LeakTrace&gt;&gt;&gt;()
+
+  shortestPaths.forEachIndexed { pathIndex, shortestPath -&gt;
+    val inspectedObjects = inspectedObjectsByPath[pathIndex]
+
+    val leakTraceObjects = buildLeakTraceObjects(inspectedObjects, retainedSizes)
+
+    val referencePath = buildReferencePath(shortestPath, leakTraceObjects)
+
+    val leakTrace = LeakTrace(
+      gcRootType = GcRootType.fromGcRoot(shortestPath.root.gcRoot),
+      referencePath = referencePath,
+      leakingObject = leakTraceObjects.last()
     )
-  }
-}
-</code></pre>
 
-<p>由于 Android Framework 未提供设置 ViewModel.onClear() 全局监听的方法，所以 LeakCanary 是通过 Hook 的方式实现。即：在 Activity.onCreate() 和 Fragment.onCreate() 事件中实例化一个自定义ViewModel，在进入 ViewModel.onClear() 方法时，通过反射获取当前作用域中所有的 ViewModel 对象交给 ObjectWatcher 监控：</p>
-
-<pre><code class="language-Kotlin">override fun invoke(activity: Activity) {
-  if (activity is FragmentActivity) {
-    val supportFragmentManager = activity.supportFragmentManager
-    supportFragmentManager.registerFragmentLifecycleCallbacks(fragmentLifecycleCallbacks, true)
-    ViewModelClearedWatcher.install(activity, reachabilityWatcher)
-  }
-}
-</code></pre>
-
-<h2 id="23-rootviewwatcher">2.3 RootViewWatcher</h2>
-
-<p>由于 Android Framework 未提供设置全局监听 RootView 从 WindowManager 中移除的方法，所以 LeakCanary 是通过 Hook 的方式实现的，这一块是通过 squareup 另一个开源库 curtains 实现的。</p>
-
-<p>RootView 监控这部分源码也比较复杂了，需要通过 2 步 Hook 来实现：</p>
-
-<ol>
-  <li>Hook WMS 服务内部的 WindowManagerGlobal.mViews RootView 列表，获取 RootView 新增和移除的时机</li>
-  <li>检查 View 对应的 Window 类型，如果是 Dialog 或 DreamService 等类型，则在注册 View.addOnAttachStateChangeListener() 监听，在其中的 onViewDetachedFromWindow() 回调中将 View 对象交给 ObjectWatcher 监控</li>
-</ol>
-
-<pre><code class="language-Kotlin">private val listener = OnRootViewAddedListener { rootView -&gt;
-  val trackDetached = when(rootView.windowType) {
-    PHONE_WINDOW -&gt; {
-      when (rootView.phoneWindow?.callback?.wrappedCallback) {
-        // Activities are already tracked by ActivityWatcher
-        is Activity -&gt; false
-        is Dialog -&gt; {
-          // Use app context resources to avoid NotFoundException
-          // https://github.com/square/leakcanary/issues/2137
-          val resources = rootView.context.applicationContext.resources
-          resources.getBoolean(R.bool.leak_canary_watcher_watch_dismissed_dialogs)
-        }
-        // Probably a DreamService
-        else -&gt; true
-      }
+    val firstLibraryLeakMatcher = shortestPath.firstLibraryLeakMatcher()
+    if (firstLibraryLeakMatcher != null) {
+      val signature: String = firstLibraryLeakMatcher.pattern.toString()
+        .createSHA1Hash()
+      libraryLeaksMap.getOrPut(signature) { firstLibraryLeakMatcher to mutableListOf() }
+        .second += leakTrace
+    } else {
+      applicationLeaksMap.getOrPut(leakTrace.signature) { mutableListOf() } += leakTrace
     }
-    // Android widgets keep detached popup window instances around.
-    POPUP_WINDOW -&gt; false
-    TOOLTIP, TOAST, UNKNOWN -&gt; true
   }
-  if (trackDetached) {
-    rootView.addOnAttachStateChangeListener(object : OnAttachStateChangeListener {
-
-      val watchDetachedView = Runnable {
-        reachabilityWatcher.expectWeaklyReachable(
-          rootView, "${rootView::class.java.name} received View#onDetachedFromWindow() callback"
-        )
-      }
-
-      override fun onViewAttachedToWindow(v: View) {
-        mainHandler.removeCallbacks(watchDetachedView)
-      }
-
-      override fun onViewDetachedFromWindow(v: View) {
-        mainHandler.post(watchDetachedView)
-      }
-    })
+  val applicationLeaks = applicationLeaksMap.map { (_, leakTraces) -&gt;
+    ApplicationLeak(leakTraces)
   }
+  val libraryLeaks = libraryLeaksMap.map { (_, pair) -&gt;
+    val (matcher, leakTraces) = pair
+    LibraryLeak(leakTraces, matcher.pattern, matcher.description)
+  }
+  return applicationLeaks to libraryLeaks
 }
 </code></pre>
 
-<h2 id="24-servicewatcher">2.4 ServiceWatcher</h2>
+<h1 id="10reporting_heap_analysis">10.REPORTING_HEAP_ANALYSIS</h1>
 
-<p>由于 Android Framework 未提供设置 Service#onDestroy() 全局监听的方法，所以 LeakCanary 是通过 Hook 的方式实现的。</p>
-
-<p>Service 监控这部分源码比较复杂了，需要通过 2 步 Hook 来实现：</p>
-
-<ol>
-  <li>Hook 主线程消息循环的 mH.mCallback 回调，监听其中的 STOP_SERVICE 消息，将即将 Destroy 的 Service 对象暂存起来（由于 ActivityThread.H 中没有 DESTROY_SERVICE 消息，所以不能直接监听到 onDestroy() 事件，需要第 2 步）</li>
-  <li>使用动态代理 Hook AMS 与 App 通信的的 IActivityManager Binder 对象，代理其中的 serviceDoneExecuting() 方法，视为 Service.onDestroy() 的执行时机，拿到暂存的 Service 对象交给 ObjectWatcher 监控</li>
-</ol>
-
-<pre><code class="language-TypeScript">override fun install() {
-  checkMainThread()
-  check(uninstallActivityThreadHandlerCallback == null) {
-    "ServiceWatcher already installed"
-  }
-  check(uninstallActivityManager == null) {
-    "ServiceWatcher already installed"
-  }
-  try {
-    swapActivityThreadHandlerCallback { mCallback -&gt;
-      uninstallActivityThreadHandlerCallback = {
-        swapActivityThreadHandlerCallback {
-          mCallback
-        }
-      }
-      Handler.Callback { msg -&gt;
-        // https://github.com/square/leakcanary/issues/2114
-        // On some Motorola devices (Moto E5 and G6), the msg.obj returns an ActivityClientRecord
-        // instead of an IBinder. This crashes on a ClassCastException. Adding a type check
-        // here to prevent the crash.
-        if (msg.obj !is IBinder) {
-          return@Callback false
-        }
-
-        if (msg.what == STOP_SERVICE) {
-          val key = msg.obj as IBinder
-          activityThreadServices[key]?.let {
-            onServicePreDestroy(key, it)
-          }
-        }
-        mCallback?.handleMessage(msg) ?: false
-      }
-    }
-    swapActivityManager { activityManagerInterface, activityManagerInstance -&gt;
-      uninstallActivityManager = {
-        swapActivityManager { _, _ -&gt;
-          activityManagerInstance
-        }
-      }
-      Proxy.newProxyInstance(
-        activityManagerInterface.classLoader, arrayOf(activityManagerInterface)
-      ) { _, method, args -&gt;
-        if (METHOD_SERVICE_DONE_EXECUTING == method.name) {
-          val token = args!![0] as IBinder
-          if (servicesToBeDestroyed.containsKey(token)) {
-            onServiceDestroyed(token)
-          }
-        }
-        try {
-          if (args == null) {
-            method.invoke(activityManagerInstance)
-          } else {
-            method.invoke(activityManagerInstance, *args)
-          }
-        } catch (invocationException: InvocationTargetException) {
-          throw invocationException.targetException
-        }
-      }
-    }
-  } catch (ignored: Throwable) {
-    SharkLog.d(ignored) { "Could not watch destroyed services" }
-  }
-}
-</code></pre>
+<p>最后一步，报告分析结果，包括：HeapAnalysisSuccess，HeapAnalysisFailure。</p>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/2022/11/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/" data-toggle="tooltip" data-placement="top" title="内存泄漏-KOOM库解析">
+                        <a href="/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/" data-toggle="tooltip" data-placement="top" title="内存泄漏治理-LeakCanary库解析">
                         Previous<br>
-                        <span>内存泄漏-KOOM库解析</span>
+                        <span>内存泄漏治理-LeakCanary库解析</span>
                         </a>
                     </li>
                     
                     
                     <li class="next">
-                        <a href="/2022/11/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/" data-toggle="tooltip" data-placement="top" title="内存泄漏-shark解析hprof文件">
+                        <a href="/2022/10/24/%E5%9F%BA%E4%BA%8Eatrace%E7%BB%9F%E8%AE%A1%E5%BA%94%E7%94%A8%E7%BB%98%E5%88%B6%E6%8E%89%E5%B8%A7/" data-toggle="tooltip" data-placement="top" title="基于atrace统计应用绘制掉帧">
                         Next<br>
-                        <span>内存泄漏-shark解析hprof文件</span>
+                        <span>基于atrace统计应用绘制掉帧</span>
                         </a>
                     </li>
                     
@@ -579,29 +588,29 @@
                 <a data-sort="0000" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="24">Android</a>
+                    rel="25">Android</a>
         
-                <a data-sort="0017" 
+                <a data-sort="0018" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="7">SystemUI</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="2">ANR</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="2">HotFix</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0023" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>
