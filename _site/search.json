@@ -57,6 +57,14 @@
     } ,
   
     {
+      "title"    : "Android应用内存基础",
+      "subtitle" : "",
+      "tags"     : "Android, Memory",
+      "url"      : "/2022/10/10/Android%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E5%9F%BA%E7%A1%80/",
+      "date"     : "2022-10-10 20:00:00 +0800"
+    } ,
+  
+    {
       "title"    : "内存泄漏治理shark解析hprof文件",
       "subtitle" : "",
       "tags"     : "Android, LeakCanary-shark",
@@ -169,14 +177,6 @@
     } ,
   
     {
-      "title"    : "Android应用内存基础",
-      "subtitle" : "",
-      "tags"     : "Android, Memory",
-      "url"      : "/2021/11/20/Android%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E5%9F%BA%E7%A1%80/",
-      "date"     : "2021-11-20 20:00:00 +0800"
-    } ,
-  
-    {
       "title"    : "JNI介绍",
       "subtitle" : "",
       "tags"     : "Android, JNI",
@@ -198,6 +198,14 @@
       "tags"     : "Android, HotFix, Rubust",
       "url"      : "/2021/10/19/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/",
       "date"     : "2021-10-19 20:00:00 +0800"
+    } ,
+  
+    {
+      "title"    : "Android热修复原理",
+      "subtitle" : "",
+      "tags"     : "Android, HotFix",
+      "url"      : "/2021/10/10/Android%E7%83%AD%E4%BF%AE%E5%A4%8D%E5%8E%9F%E7%90%86/",
+      "date"     : "2021-10-10 20:00:00 +0800"
     } 
   
 ]

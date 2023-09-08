@@ -248,6 +248,38 @@
       col-xs-12 postlist-container">
       
 <div class="post-preview">
+    <a href="/2022/09/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/">
+        <h2 class="post-title">
+            内存泄漏治理-KOOM库解析
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.KOOM介绍
+
+主要包括如下三大功能：
+
+1.Java Heap 泄漏监控
+
+koom-java-leak 模块用于 Java Heap 泄漏监控：它利用 Copy-on-write 机制 fork 子进程 dump Java Heap，解决了 dump 过程中 app 长时间冻结的问题。
+
+2.Native Heap 泄漏监控
+
+koom-native-leak 模块用于 Native...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on September 11, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/2022/08/30/ANR%E6%B2%BB%E7%90%86-%E4%B8%BB%E7%BA%BF%E7%A8%8B%E8%80%97%E6%97%B6%E6%B6%88%E6%81%AF%E7%BB%9F%E8%AE%A1/">
         <h2 class="post-title">
             ANR治理-主线程耗时消息统计
@@ -516,38 +548,6 @@ java_genrule {
 </div>
 <hr>
 
-<div class="post-preview">
-    <a href="/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
-        <h2 class="post-title">
-            SystemUI-功能介绍
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1. SystemUI介绍
-
-SystemUI正如其名，即系统的显示界面。它是一个常驻进程，独立于system_server进程。
-
-SystemUI内部包含一系列组件，在其启动的时候会初始化这些组件。
-
-SystemUI通过IStatusBar接口收到系统侧的回调，又通过一系列私有APIs与系统通信。
-
-2. SystemUI启动流程
-
-SystemUIService 继承于 Servic...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on March 4, 2022
-    </p>
-</div>
-<hr>
-
 
 <!-- Pager -->
 
@@ -586,29 +586,29 @@ SystemUIService 继承于 Servic...
                 <a data-sort="0000" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="25">Android</a>
+                    rel="26">Android</a>
         
-                <a data-sort="0018" 
+                <a data-sort="0019" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="7">SystemUI</a>
         
                 <a data-sort="0023" 
+                    href="/archive/?tag=HotFix"
+                    title="HotFix"
+                    rel="3">HotFix</a>
+        
+                <a data-sort="0024" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="2">ANR</a>
         
-                <a data-sort="0023" 
+                <a data-sort="0024" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0023" 
-                    href="/archive/?tag=HotFix"
-                    title="HotFix"
-                    rel="2">HotFix</a>
-        
-                <a data-sort="0023" 
+                <a data-sort="0024" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

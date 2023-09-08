@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Thu, 07 Sep 2023 23:02:27 +0800</pubDate>
-    <lastBuildDate>Thu, 07 Sep 2023 23:02:27 +0800</lastBuildDate>
+    <pubDate>Fri, 08 Sep 2023 22:06:43 +0800</pubDate>
+    <lastBuildDate>Fri, 08 Sep 2023 22:06:43 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -4339,6 +4339,208 @@ crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373
       </item>
     
       <item>
+        <title>Android应用内存基础</title>
+        <description>&lt;h1 id=&quot;1内存基础知识&quot;&gt;1.内存基础知识&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://developer.android.com/topic/performance/memory-overview&quot;&gt;内存管理概览&lt;/a&gt; &lt;br /&gt;
+&lt;a href=&quot;https://developer.android.com/topic/performance/memory-management&quot;&gt;进程间的内存分配 &lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://developer.android.com/topic/performance/memory&quot;&gt;管理应用内存 &lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://developer.android.com/studio/profile/memory-profiler&quot;&gt;使用内存性能分析器查看应用的内存使用情况 &lt;/a&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;2内存指标概念&quot;&gt;2.内存指标概念&lt;/h1&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt; &lt;/th&gt;
+      &lt;th&gt;全称&lt;/th&gt;
+      &lt;th&gt;含义&lt;/th&gt;
+      &lt;th&gt;等价&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;USS&lt;/td&gt;
+      &lt;td&gt;Unique Set Size&lt;/td&gt;
+      &lt;td&gt;物理内存&lt;/td&gt;
+      &lt;td&gt;进程独占的内存&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;PSS&lt;/td&gt;
+      &lt;td&gt;Proportional Set Size&lt;/td&gt;
+      &lt;td&gt;物理内存&lt;/td&gt;
+      &lt;td&gt;USS + 按比例包含共享库&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;RSS&lt;/td&gt;
+      &lt;td&gt;Resident Set Size&lt;/td&gt;
+      &lt;td&gt;物理内存&lt;/td&gt;
+      &lt;td&gt;USS + 包含共享库&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;VSS&lt;/td&gt;
+      &lt;td&gt;Virtual Set Size&lt;/td&gt;
+      &lt;td&gt;虚拟内存&lt;/td&gt;
+      &lt;td&gt;RSS + 未分配实际物理内存&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;内存大小关系：VSS &amp;gt;= RSS &amp;gt;= PSS &amp;gt;= USS&lt;/p&gt;
+
+&lt;h1 id=&quot;3查看应用内存占用&quot;&gt;3.查看应用内存占用&lt;/h1&gt;
+
+&lt;p&gt;在命令行下执行 adb shell dumpsys meminfo package_name 可以查看应用内存信息，其代码逻辑在ApplicationThread.dumpMemInfo()，对应字段的含义参考：&lt;/p&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://developer.android.google.cn/studio/command-line/dumpsys?hl=zh-cn#meminfo&quot;&gt;https://developer.android.google.cn/studio/command-line/dumpsys?hl=zh-cn#meminfo&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Java&lt;/strong&gt;：从 Java 或 Kotlin 代码分配的对象的内存。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Native&lt;/strong&gt;：从 C 或 C++ 代码分配的对象的内存。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Graphics&lt;/strong&gt;：图形缓冲区队列为向屏幕显示像素（包括 GL 表面、GL 纹理等等）所使用的内存。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Stack&lt;/strong&gt;：应用中的原生堆栈和 Java 堆栈使用的内存。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Code&lt;/strong&gt;：应用用于处理代码和资源（如 dex 字节码、经过优化或编译的 dex 代码、.so 库和字体）的内存。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Others&lt;/strong&gt;：应用使用的系统不确定如何分类的内存。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Allocated&lt;/strong&gt;：应用分配的 Java/Kotlin 对象数。此数字没有计入 C 或 C++ 中分配的对象。&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt; &lt;/th&gt;
+      &lt;th&gt;PSS&lt;/th&gt;
+      &lt;th&gt;RSS&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Java Heap&lt;/td&gt;
+      &lt;td&gt;dalvikPrivateDirty + getOtherPrivate(OTHER_ART)&lt;/td&gt;
+      &lt;td&gt;dalvikRss + getOtherRss(OTHER_ART)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Native Heap&lt;/td&gt;
+      &lt;td&gt;nativePrivateDirty&lt;/td&gt;
+      &lt;td&gt;nativeRss&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Code&lt;/td&gt;
+      &lt;td&gt;getOtherPrivate(OTHER_SO) + getOtherPrivate(OTHER_JAR) + getOtherPrivate(OTHER_APK) + getOtherPrivate(OTHER_TTF) + getOtherPrivate(OTHER_DEX) + getOtherPrivate(OTHER_OAT) + getOtherPrivate(OTHER_DALVIK_OTHER_ZYGOTE_CODE_CACHE) + getOtherPrivate(OTHER_DALVIK_OTHER_APP_CODE_CACHE)&lt;/td&gt;
+      &lt;td&gt;getOtherRss(OTHER_SO) + getOtherRss(OTHER_JAR) + getOtherRss(OTHER_APK) + getOtherRss(OTHER_TTF) + getOtherRss(OTHER_DEX) + getOtherRss(OTHER_OAT) + getOtherRss(OTHER_DALVIK_OTHER_ZYGOTE_CODE_CACHE) + getOtherRss(OTHER_DALVIK_OTHER_APP_CODE_CACHE)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Stack&lt;/td&gt;
+      &lt;td&gt;getOtherPrivateDirty(OTHER_STACK)&lt;/td&gt;
+      &lt;td&gt;getOtherRss(OTHER_STACK)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Graphics&lt;/td&gt;
+      &lt;td&gt;getOtherPrivate(OTHER_GL_DEV) + getOtherPrivate(OTHER_GRAPHICS) + getOtherPrivate(OTHER_GL)&lt;/td&gt;
+      &lt;td&gt;getOtherRss(OTHER_GL_DEV) + getOtherRss(OTHER_GRAPHICS) + getOtherRss(OTHER_GL)&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Private Other&lt;/td&gt;
+      &lt;td&gt;dalvikPrivateClean + nativePrivateClean + otherPrivateClean + dalvikPrivateDirty + nativePrivateDirty + otherPrivateDirty - Java Heap - Native Heap - Code - Stack - Graphics&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;System&lt;/td&gt;
+      &lt;td&gt;getTotalPss() - (dalvikPrivateClean + nativePrivateClean + otherPrivateClean) - (dalvikPrivateDirty + nativePrivateDirty + otherPrivateDirty)&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Unknown&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+      &lt;td&gt;getTotalRss() - Java Heap - Native Heap - Code - Stack - Graphics&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;TOTAL&lt;/td&gt;
+      &lt;td&gt;dalvikPss + nativePss + otherPss + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss&lt;/td&gt;
+      &lt;td&gt;dalvikRss + nativeRss + otherRss&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;USS = dalvikPrivateClean + dalvikPrivateDirty&lt;/p&gt;
+
+&lt;p&gt;​            + nativePrivateClean + nativePrivateDirty&lt;/p&gt;
+
+&lt;p&gt;​            + otherPrivateClean + otherPrivateDirty&lt;/p&gt;
+
+&lt;p&gt;PSS = dalvikPss + nativePss + otherPss&lt;/p&gt;
+
+&lt;p&gt;​            + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss&lt;/p&gt;
+
+&lt;p&gt;RSS = dalvikRss + nativeRss + otherRss&lt;/p&gt;
+
+&lt;p&gt;可以推导出：&lt;/p&gt;
+
+&lt;p&gt;USS = PSS - System&lt;/p&gt;
+
+&lt;p&gt;System = dalvikPss - dalvikPrivateClean - dalvikPrivateDirty&lt;/p&gt;
+
+&lt;p&gt;​                + nativePss - nativePrivateClean - nativePrivateDirty&lt;/p&gt;
+
+&lt;p&gt;​                + otherPss - otherPrivateClean - otherPrivateDirty&lt;/p&gt;
+
+&lt;p&gt;​                + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss&lt;/p&gt;
+
+&lt;h1 id=&quot;4查看应用内存相关命令&quot;&gt;4.查看应用内存相关命令&lt;/h1&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;命令&lt;/th&gt;
+      &lt;th&gt;功能&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;dumpsys meminfo&lt;/td&gt;
+      &lt;td&gt;1.Total PSS by process，Total PSS by OOM adjustment，Total PSS by category，整体情况 2.输出某个pid或package的进程信息&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;procrank&lt;/td&gt;
+      &lt;td&gt;获取所有进程的内存使用的排行榜，排行是以&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Pss&lt;/code&gt;的大小而排序。&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;procrank&lt;/code&gt;命令比&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dumpsys meminfo&lt;/code&gt;命令，能输出更详细的VSS/RSS/PSS/USS内存指标。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;cat /proc/meminfo&lt;/td&gt;
+      &lt;td&gt;查看更加详细的内存信息&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;free&lt;/td&gt;
+      &lt;td&gt;查看可用内存，缺省单位KB。该命令比较简单、轻量，专注于查看剩余内存情况。数据来源于/proc/meminfo。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;showmap&lt;/td&gt;
+      &lt;td&gt;用于查看虚拟地址区域的内存情况&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;vmstat&lt;/td&gt;
+      &lt;td&gt;不仅可以查看内存情况，还可以查看进程运行队列、系统切换、CPU时间占比等情况，另外该指令还是周期性地动态输出。&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h1 id=&quot;参考文档&quot;&gt;参考文档&lt;/h1&gt;
+&lt;p&gt;&lt;a href=&quot;http://gityuan.com/2016/01/02/memory-analysis-command/&quot;&gt;Android内存分析命令&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Mon, 10 Oct 2022 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2022/10/10/Android%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E5%9F%BA%E7%A1%80/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/10/10/Android%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E5%9F%BA%E7%A1%80/</guid>
+        
+        <category>Android</category>
+        
+        <category>Memory</category>
+        
+        
+      </item>
+    
+      <item>
         <title>内存泄漏治理shark解析hprof文件</title>
         <description>&lt;p&gt;解析hprof文件主要分为如下几个步骤，逐一来介绍。&lt;/p&gt;
 
@@ -4835,131 +5037,6 @@ crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373
         <category>MemoryLeak</category>
         
         <category>LeakCanary</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>内存泄漏治理-KOOM库解析</title>
-        <description>&lt;h1 id=&quot;1koom介绍&quot;&gt;1.KOOM介绍&lt;/h1&gt;
-
-&lt;p&gt;主要包括如下三大功能：&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;1.Java Heap 泄漏监控&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;koom-java-leak 模块用于 Java Heap 泄漏监控：它利用 Copy-on-write 机制 fork 子进程 dump Java Heap，解决了 dump 过程中 app 长时间冻结的问题。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;2.Native Heap 泄漏监控&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;koom-native-leak 模块用于 Native Heap 泄漏监控：它利用 Tracing garbage collection 机制分析整个 Native Heap，直接输出泄漏内存信息「大小、分配堆栈等』；极大的降低了业务同学分析、解决内存泄漏的成本。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;3.Thread 泄漏监控&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;koom-thread-leak 模块用于 Thread 泄漏监控：它会 hook 线程的生命周期函数，周期性的上报泄漏线程信息。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;4.FD泄漏监控&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;读取”/proc/self/fd”目录统计打开fd数量。&lt;/p&gt;
-
-&lt;h1 id=&quot;2fast-dump核心逻辑&quot;&gt;2.fast dump核心逻辑&lt;/h1&gt;
-
-&lt;p&gt;Fast dump的核心逻辑在 hprof_dump.cpp，是基于dlsym函数实现的，翻译过来代码如下：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-C%2B%2B&quot;&gt;void ForkDumpHeap(const char* filename, int fd, bool direct_to_ddms) NO_THREAD_SAFETY_ANALYSIS {
-  CHECK(filename != nullptr);
-  Thread* self = Thread::Current();
-  std::optional&amp;lt;gc::ScopedGCCriticalSection&amp;gt; gcs(std::in_place, self, gc::kGcCauseHprof, gc::kCollectorTypeHprof);
-  std::optional&amp;lt;ScopedSuspendAll&amp;gt; ssa(std::in_place, __FUNCTION__, true /* long suspend */);
-  Locks::mutator_lock_-&amp;gt;ExclusiveUnlock(self);
-  gcs.reset();
-
-  pid_t pid = fork();
-  if (pid == 0) {
-    // Set timeout for child process
-    alarm(60);
-    prctl(PR_SET_NAME, &quot;forked-dump-process&quot;);
-    DumpHeap(filename, fd, direct_to_ddms);
-    _exit(0);
-  } else if (pid &amp;gt; 0) {
-    Locks::mutator_lock_-&amp;gt;ExclusiveLock(self);
-    ssa.reset();
-    int status;
-    if (waitpid(pid, &amp;amp;status, 0) != -1 || errno != EINTR) {
-      if (!WIFEXITED(status)) {
-        LOG(INFO) &amp;lt;&amp;lt; &quot;Child process &quot; &amp;lt;&amp;lt; pid
-                  &amp;lt;&amp;lt; &quot; exited with status &quot; &amp;lt;&amp;lt; WEXITSTATUS(status)
-                  &amp;lt;&amp;lt; &quot;, terminated by signal &quot; &amp;lt;&amp;lt; WTERMSIG(status);
-      }
-    }
-  }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这里涉及了几个知识点，我们逐一介绍下。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;1.执行dumpHeap()发生了什么？&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;我们先来看原生art中的dumpHeap()逻辑：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-C%2B%2B&quot;&gt;void DumpHeap(const char* filename, int fd, bool direct_to_ddms) {
-  CHECK(filename != nullptr);
-  Thread* self = Thread::Current();
-  // Need to take a heap dump while GC isn&apos;t running. See the comment in Heap::VisitObjects().
-  // Also we need the critical section to avoid visiting the same object twice. See b/34967844
-  gc::ScopedGCCriticalSection gcs(self,
-                                  gc::kGcCauseHprof,
-                                  gc::kCollectorTypeHprof);
-  ScopedSuspendAll ssa(__FUNCTION__, true /* long suspend */);
-  Hprof hprof(filename, fd, direct_to_ddms);
-  hprof.Dump();
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;其中在ScopedGCCriticalSection类中执行了GC操作。&lt;/p&gt;
-
-&lt;p&gt;在ScopedSuspendAll中执行了停止所有线程操作，这也是导致“卡顿”原因。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;2.COW概述&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;来看下 https://en.wikipedia.org/wiki/Copy-on-write 的说明&lt;/p&gt;
-
-&lt;p&gt;Copy-on-write (COW), sometimes referred to as implicit sharing[1] or shadowing,[2] is a resource-management technique used in computer programming to efficiently implement a “duplicate” or “copy” operation on modifiable resources.[3] If a resource is duplicated but not modizhhified, it is not necessary to create a new resource; the resource can be shared between the copy and the original. Modifications must still create a copy, hence the technique: the copy operation is deferred to the first write. By sharing resources in this way, it is possible to significantly reduce the resource consumption of unmodified copies, while adding a small overhead to resource-modifying operations.&lt;/p&gt;
-
-&lt;p&gt;写入时复制（COW），有时也称为隐式共享，是一种计算机管理中用来有效地对可修改资源执行“复制”操作的资源管理技术。&lt;/p&gt;
-
-&lt;p&gt;如果资源重复但未修改，则无需创建新资源，资源可以在副本和原始副本之间共享。&lt;/p&gt;
-
-&lt;p&gt;修改仍然必须创建一个副本，因此使用COW，可以将复制操作推迟到第一次写入。&lt;/p&gt;
-
-&lt;p&gt;通过以这种方式共享资源，可以显着减少未修改副本的资源消耗，当然了资源修改操作的时候也会增加少量开销。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;3.fork()函数&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;fork是类Unix操作系统上创建进程的主要方法，用于创建子进程。&lt;/p&gt;
-
-&lt;p&gt;新的进程要通过老的进程复制自身得到，Linux下init进程是所有进程的父 。 Linux的进程都通过init进程或init的子进程fork(vfork)出来的。&lt;/p&gt;
-
-&lt;p&gt;fork 函数会有两次返回 1) 将子进程的PID返回给父进程，2) 0返回给子进程。(如果小于0，则说明创建子进程失败)。&lt;/p&gt;
-
-&lt;p&gt;当前进程调用fork()，会创建一个跟当前进程完全相同的子进程(除了pid)，所以子进程同样是会执行fork()之后的代码。&lt;/p&gt;
-
-&lt;p&gt;fork()之后，kernel把父进程中所有的内存页的权限都设为read-only，然后子进程的地址空间指向父进程。当父子进程都只读内存时，相安无事。当其中某个进程写内存时，CPU硬件检测到内存页是read-only的，于是触发页异常中断（page-fault），陷入kernel的一个中断例程。中断例程中，kernel就会把触发的异常的页复制一份，于是父子进程各自持有独立的一份。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;4.子进程回收&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;alarm()函数：在seconds秒之后向调用alarm()的进程发送一个SIGALRM信号。&lt;/p&gt;
-
-&lt;p&gt;waitpid()函数：当指定等待的子进程已经停止运行或结束了，则waitpid()会立即返回；但是如果子进程还没有停止运行或结束，则调用waitpid()函数的父进程则会被阻塞，暂停运行。&lt;/p&gt;
-</description>
-        <pubDate>Sun, 11 Sep 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/09/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/09/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/</guid>
-        
-        <category>Android</category>
-        
-        <category>MemoryLeak</category>
-        
-        <category>KOOM</category>
         
         
       </item>
