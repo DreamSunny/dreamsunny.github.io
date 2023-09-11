@@ -498,9 +498,9 @@ systrace：atrace数据分析工具，将atrace采集上来的数据，以图形
 <hr>
 
 <div class="post-preview">
-    <a href="/2022/10/10/Android%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E5%9F%BA%E7%A1%80/">
+    <a href="/2022/10/10/Android-meminfo%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3/">
         <h2 class="post-title">
-            Android应用内存基础
+            Android meminfo 字段详解
         </h2>
         
         <h3 class="post-subtitle">
@@ -509,33 +509,11 @@ systrace：atrace数据分析工具，将atrace采集上来的数据，以图形
         
         <div class="post-content-preview">
             
-                1.内存基础知识
+                对于Android内存的统计拆分，需要从系统到进程，再细分到内存分类。Android的内存通常被多个进程共享，一个进程占用的内存涉及到虚拟内存、物理内存、私有、共享、图形显存等等。想要详细统计一个进程的内存占用，就需要了解Android 的内存管理机制和对内存的分类拆解。
 
-内存管理概览 
-进程间的内存分配 
-管理应用内存 
-使用内存性能分析器查看应用的内存使用情况 
+1.Android 内存管理
 
-2.内存指标概念
-
-
-  
-    
-       
-      全称
-      含义
-      等价
-    
-  
-  
-    
-      USS
-      Unique Set Size
-      物理内存
-      进程独占的内存
-    
-    
- ...
+Android内存的管理核心是paging和memory-mapping（mmap）。...
             
         </div>
     </a>
@@ -641,29 +619,34 @@ hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/
                 <a data-sort="0000" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="26">Android</a>
+                    rel="27">Android</a>
         
-                <a data-sort="0019" 
+                <a data-sort="0020" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="7">SystemUI</a>
         
-                <a data-sort="0023" 
+                <a data-sort="0024" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0024" 
+                <a data-sort="0025" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="2">ANR</a>
         
-                <a data-sort="0024" 
+                <a data-sort="0025" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0024" 
+                <a data-sort="0025" 
+                    href="/archive/?tag=Memory"
+                    title="Memory"
+                    rel="2">Memory</a>
+        
+                <a data-sort="0025" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

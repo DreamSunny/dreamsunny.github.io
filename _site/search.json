@@ -57,10 +57,10 @@
     } ,
   
     {
-      "title"    : "Android应用内存基础",
+      "title"    : "Android meminfo 字段详解",
       "subtitle" : "",
       "tags"     : "Android, Memory",
-      "url"      : "/2022/10/10/Android%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E5%9F%BA%E7%A1%80/",
+      "url"      : "/2022/10/10/Android-meminfo%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3/",
       "date"     : "2022-10-10 20:00:00 +0800"
     } ,
   
@@ -169,22 +169,6 @@
     } ,
   
     {
-      "title"    : "Dagger2",
-      "subtitle" : "",
-      "tags"     : "Android, Dagger2",
-      "url"      : "/2021/12/05/Dagger2/",
-      "date"     : "2021-12-05 20:00:00 +0800"
-    } ,
-  
-    {
-      "title"    : "JNI介绍",
-      "subtitle" : "",
-      "tags"     : "Android, JNI",
-      "url"      : "/2021/11/04/JNI%E4%BB%8B%E7%BB%8D/",
-      "date"     : "2021-11-04 20:00:00 +0800"
-    } ,
-  
-    {
       "title"    : "微信Tinker热修复",
       "subtitle" : "",
       "tags"     : "Android, HotFix, Tinker",
@@ -206,6 +190,30 @@
       "tags"     : "Android, HotFix",
       "url"      : "/2021/10/10/Android%E7%83%AD%E4%BF%AE%E5%A4%8D%E5%8E%9F%E7%90%86/",
       "date"     : "2021-10-10 20:00:00 +0800"
+    } ,
+  
+    {
+      "title"    : "Android应用内存基础",
+      "subtitle" : "",
+      "tags"     : "Android, Memory",
+      "url"      : "/2021/09/10/meminfo%E4%BB%8B%E7%BB%8D/",
+      "date"     : "2021-09-10 20:00:00 +0800"
+    } ,
+  
+    {
+      "title"    : "Dagger2",
+      "subtitle" : "",
+      "tags"     : "Android, Dagger2",
+      "url"      : "/2021/09/05/Dagger2/",
+      "date"     : "2021-09-05 20:00:00 +0800"
+    } ,
+  
+    {
+      "title"    : "JNI介绍",
+      "subtitle" : "",
+      "tags"     : "Android, JNI",
+      "url"      : "/2021/09/04/JNI%E4%BB%8B%E7%BB%8D/",
+      "date"     : "2021-09-04 20:00:00 +0800"
     } 
   
 ]

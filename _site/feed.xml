@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Fri, 08 Sep 2023 22:06:43 +0800</pubDate>
-    <lastBuildDate>Fri, 08 Sep 2023 22:06:43 +0800</lastBuildDate>
+    <pubDate>Mon, 11 Sep 2023 22:58:22 +0800</pubDate>
+    <lastBuildDate>Mon, 11 Sep 2023 22:58:22 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -4339,199 +4339,237 @@ crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373
       </item>
     
       <item>
-        <title>Android应用内存基础</title>
-        <description>&lt;h1 id=&quot;1内存基础知识&quot;&gt;1.内存基础知识&lt;/h1&gt;
+        <title>Android meminfo 字段详解</title>
+        <description>&lt;p&gt;对于Android内存的统计拆分，需要从系统到进程，再细分到内存分类。Android的内存通常被多个进程共享，一个进程占用的内存涉及到虚拟内存、物理内存、私有、共享、图形显存等等。想要详细统计一个进程的内存占用，就需要了解Android 的内存管理机制和对内存的分类拆解。&lt;/p&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://developer.android.com/topic/performance/memory-overview&quot;&gt;内存管理概览&lt;/a&gt; &lt;br /&gt;
-&lt;a href=&quot;https://developer.android.com/topic/performance/memory-management&quot;&gt;进程间的内存分配 &lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://developer.android.com/topic/performance/memory&quot;&gt;管理应用内存 &lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://developer.android.com/studio/profile/memory-profiler&quot;&gt;使用内存性能分析器查看应用的内存使用情况 &lt;/a&gt;&lt;/p&gt;
+&lt;h1 id=&quot;1android-内存管理&quot;&gt;1.Android 内存管理&lt;/h1&gt;
 
-&lt;h1 id=&quot;2内存指标概念&quot;&gt;2.内存指标概念&lt;/h1&gt;
+&lt;p&gt;Android内存的管理核心是&lt;strong&gt;paging&lt;/strong&gt;和&lt;strong&gt;memory-mapping（mmap）&lt;/strong&gt;。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/memory/mmap.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;11-paging&quot;&gt;1.1 paging&lt;/h2&gt;
+
+&lt;p&gt;Andoid系统中使用虚拟内存地址来索引内存，虚拟内存被划分为固定大小的page页，典型的页大小为4K。内存分配最开始都是在虚拟内存上分配，当需要访问这段内存的时候，如果发现它没有存在于物理内存上（即MMU不能找到这个虚地址va对应的物理地址pa），即发生了缺页（page fault），缺页有几种可能：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;Bug，程序访问了它不应该访问的虚地址空间，android系统会触发访问不合法，kill掉进程。​&lt;/li&gt;
+  &lt;li&gt;Va是合法的，但是这块va对应的pa还从来没有被分配出来过（例如你mmap的一段内存空间，但是从来没用过，这时第一次在这块内存上写入），这叫做lazy-allocation，这时系统会真正分配一段物理内存给你用，然后在页表上对应好这段pa和va。注意第一次写入这里才算真正占用了物理内存，mmap的分配并不算。​&lt;/li&gt;
+  &lt;li&gt;Va是合法的，但是这va对应的pa内容当前并没有在物理内存上，而是被swap到一个backup的file上，这时系统会给这个page在pa上分配物理内存，然后将这块内容从文件读回到物理内存上（swap-in）。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/memory/page.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;12-swap--zram&quot;&gt;1.2 swap &amp;amp; zram&lt;/h2&gt;
+
+&lt;p&gt;典型的linux系统的虚拟内存都有swap操作，即一段物理内存在一段时间不用的时候，为了节省物理内存将他们备份到它的backup file上，一段时间后缺页时再换回。&lt;/p&gt;
+
+&lt;p&gt;但是在android上大多数情况是没有这套swap机制的，因为对于移动端的IO代价太大，所以大多数情况被映射到pa的page是不能被swap的。只有一种情况除外，即如果这段虚拟地址段具有backup file，并且当他被swap-in到pa后是只读的，那么它是有机会被swap-out回disk的，因为swap这种内存的代价很小，他们不会在物理内存上被更改，通常这类情况包括那些代码文件的mmap（如dex、so等）。&lt;/p&gt;
+
+&lt;p&gt;此外android上还使用了一种特殊的ZRAM机制来压缩一些物理内存上的page，但是并不把他们swap-out到disk上，而是仍然在ram中，这是一段被压缩了的page，系统会选择压缩一些page存储在内存中以腾出一些物理内存的占用。&lt;/p&gt;
+
+&lt;h2 id=&quot;13-mmap&quot;&gt;1.3 mmap&lt;/h2&gt;
+
+&lt;p&gt;Linux上一个重要的特性是memory mapping。如上面所述，va和pa之间通过mmu建立了一个对应关系，通过page fault来触发pa的分配，此外va还会对应一个backup file，作为swap-in/out时的备份存储。这个va和backup file之间的对应关系就叫做memory mapping，我们可以利用这个机制做文件读取。&lt;/p&gt;
+
+&lt;p&gt;第一种是映射文件到内存做读取， 这时提供一个文件句柄，然后将文件内容映射到一段虚拟内存地址空间，这样就做到了通过访问虚拟地址空间–造成缺页—swapin backup file的方式来根据需要读取文件。他相比传统的文件读取效率更高。&lt;/p&gt;
+
+&lt;p&gt;第二种是创建一个匿名映射，匿名映射没有backupfile，只是单纯分配一块虚拟内存空间，这其实是android上调用new一个对象做的事情，我们new一块int的数组，事实上在new后很可能是通过mmap分配了一块虚拟内存空间，而只有当第一次写入的时候才触发缺页而占用真正的物理内存，所以统计android的物理内存占用不是看new了多少，或者文件映射了多少，而是实际上虚拟内存缺页了多少。&lt;/p&gt;
+
+&lt;h1 id=&quot;2meminfo-数据详解&quot;&gt;2.meminfo 数据详解&lt;/h1&gt;
+
+&lt;p&gt;通过命令 dumpsys meminfo package_name|pid 查看指定进程的内存使用情况。通过输出的信息，可以看出来应用在内存哪里分配出现了问题，比如native heap分配高，就要查一下自己的native部分的代码哪里分配后没有及时释放。&lt;/p&gt;
+
+&lt;p&gt;下面是system_server进程的meminfo。
+&lt;img src=&quot;/img/memory/meminfo.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;这里面可以看到pss、privatedirty、privateclean、swapped diry这几个重要的指标。&lt;/p&gt;
 
 &lt;table&gt;
   &lt;thead&gt;
     &lt;tr&gt;
-      &lt;th&gt; &lt;/th&gt;
-      &lt;th&gt;全称&lt;/th&gt;
-      &lt;th&gt;含义&lt;/th&gt;
-      &lt;th&gt;等价&lt;/th&gt;
+      &lt;th&gt;&lt;strong&gt;PSS&lt;/strong&gt;&lt;br /&gt;&lt;em&gt;Proportional Set Size&lt;/em&gt;&lt;/th&gt;
+      &lt;th&gt;进程实际占用的物理内存大小，但是android内存涉及到在系统中同其他进程共享一部分库（可能是so，可能是字体文件等的mmap），所以这里面会考虑这个因素计算你的进程平摊的这部分共享库的大小，这里的proportional就意味着统计了这个平摊后的物理内存。这是衡量进程占用内存的最真实指标。&lt;/th&gt;
     &lt;/tr&gt;
   &lt;/thead&gt;
   &lt;tbody&gt;
     &lt;tr&gt;
-      &lt;td&gt;USS&lt;/td&gt;
-      &lt;td&gt;Unique Set Size&lt;/td&gt;
-      &lt;td&gt;物理内存&lt;/td&gt;
+      &lt;td&gt;&lt;strong&gt;RSS&lt;/strong&gt;&lt;br /&gt;&lt;em&gt;Resident Set Size&lt;/em&gt;&lt;/td&gt;
+      &lt;td&gt;常驻内存大小，是单个进程实际占用的内存大小；RSS 易被误导的原因在于， 它包括了该进程所使用的所有共享库的全部内存大小。对于单个共享库， 尽管无论多少个进程使用， 实际该共享库只会被装入内存一次。 对于单个进程的内存使用大小， RSS  不是一个精确的描述。&lt;br /&gt;Rss=Shared_Clean+Shared_Dirty+Private_Clean+Private_Dirty&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;USS&lt;/strong&gt;&lt;br /&gt;&lt;em&gt;Unique Set Size&lt;/em&gt;&lt;/td&gt;
       &lt;td&gt;进程独占的内存&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
-      &lt;td&gt;PSS&lt;/td&gt;
-      &lt;td&gt;Proportional Set Size&lt;/td&gt;
-      &lt;td&gt;物理内存&lt;/td&gt;
-      &lt;td&gt;USS + 按比例包含共享库&lt;/td&gt;
+      &lt;td&gt;&lt;strong&gt;VSS&lt;/strong&gt;&lt;br /&gt;&lt;em&gt;Virtual Set Size&lt;/em&gt;&lt;/td&gt;
+      &lt;td&gt;VSS= RSS+ 未分配实际物理内存&lt;br /&gt;内存的大小关系：VSS &amp;gt;= RSS &amp;gt;= PSS &amp;gt;= USS&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
-      &lt;td&gt;RSS&lt;/td&gt;
-      &lt;td&gt;Resident Set Size&lt;/td&gt;
-      &lt;td&gt;物理内存&lt;/td&gt;
-      &lt;td&gt;USS + 包含共享库&lt;/td&gt;
+      &lt;td&gt;&lt;strong&gt;swappablePss&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;能够被共享的内存。&lt;br /&gt;&lt;em&gt;sharing_proportion&lt;/em&gt; = (pss - uss) / (shared_clean + shared_dirty)&lt;br /&gt;&lt;em&gt;swapable_pss&lt;/em&gt; = (&lt;em&gt;sharing_proportion&lt;/em&gt; * shared_clean) + private_clean&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
-      &lt;td&gt;VSS&lt;/td&gt;
-      &lt;td&gt;Virtual Set Size&lt;/td&gt;
-      &lt;td&gt;虚拟内存&lt;/td&gt;
-      &lt;td&gt;RSS + 未分配实际物理内存&lt;/td&gt;
+      &lt;td&gt;&lt;strong&gt;privateDirty&lt;/strong&gt;&lt;br /&gt;&lt;strong&gt;privateClean&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;它们指的是每个进程独有的内存页面。PrivateDirty指的是进程独有的脏页面，即进程已经修改但尚未提交到磁盘的页面；PrivateClean指的是进程独有的干净页面，即进程已经提交到磁盘的页面。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;sharedDirty&lt;/strong&gt;&lt;br /&gt;&lt;strong&gt;sharedClean&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;指的是进程和别的进程共享的内存页面。sharedDirty是该过程和至少一个其他过程所引用的映射中的页面，并且由这些过程中的至少一个过程写入的页面；sharedClean是指该进程和至少一个其他进程已引用但未由任何进程修改的映射中的页面。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;&lt;strong&gt;Swapped Dirty&lt;/strong&gt;&lt;/td&gt;
+      &lt;td&gt;指的并不是被swap-out出去的内存，而是android系统中zram机制压缩掉的部分Private Dirty部分的不常用物理内存，这个重要度等同于Private Dirty，因为哪些Private Dirty会被压缩不能被控制，所以这部分多通常也是Private Dirty 的。&lt;/td&gt;
     &lt;/tr&gt;
   &lt;/tbody&gt;
 &lt;/table&gt;
 
-&lt;p&gt;内存大小关系：VSS &amp;gt;= RSS &amp;gt;= PSS &amp;gt;= USS&lt;/p&gt;
+&lt;p&gt;因为PSS中已经包含了Private Dirty和Private Clean，但是没包含swapped dity，所以最终衡量你的进程对物理内存的占用应该是取PSS+Swapped Dirty。&lt;/p&gt;
 
-&lt;h1 id=&quot;3查看应用内存占用&quot;&gt;3.查看应用内存占用&lt;/h1&gt;
+&lt;p&gt;这里统计的所有值都是物理内存大小，即缺页的那些虚拟内存的大小，而不是真正虚拟内存的大小，注意这里看到的所有内存大小都是真真实实占着你的物理内存的。比如，new 1个int[1024]，在对这块内存写入之前它都不会占用物理内存并体现在这里。&lt;/p&gt;
 
-&lt;p&gt;在命令行下执行 adb shell dumpsys meminfo package_name 可以查看应用内存信息，其代码逻辑在ApplicationThread.dumpMemInfo()，对应字段的含义参考：&lt;/p&gt;
+&lt;h2 id=&quot;21-数据来源&quot;&gt;2.1 数据来源&lt;/h2&gt;
 
-&lt;p&gt;&lt;a href=&quot;https://developer.android.google.cn/studio/command-line/dumpsys?hl=zh-cn#meminfo&quot;&gt;https://developer.android.google.cn/studio/command-line/dumpsys?hl=zh-cn#meminfo&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;根据属性的不同，进程的虚拟地址空间被划分成若干个vma，每一个vma通过vm_next和vm_prev组成双向链表，链表头位于进程的task-&amp;gt;mm-&amp;gt;mmap。通过cat proc/&lt;pid&gt;/maps可以得到该进程的maps数据如下。每一行的vma对应着起始地址、结束地址、属性、偏移地址、主从设备号、inode编号和文件名。当通过proc接口读取进程的smaps文件时，内核会首先找到该进程的vma链表头，遍历链表中的每一个vma， 通过walk_page_vma统计这块vma的使用情况,最后显示出来。&lt;/pid&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Java&lt;/strong&gt;：从 Java 或 Kotlin 代码分配的对象的内存。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/memory/vma.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Native&lt;/strong&gt;：从 C 或 C++ 代码分配的对象的内存。&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;smaps&lt;/strong&gt; 文件是基于maps 的扩展，它展示了一个进程的内存消耗，比同一目录下的maps文件更为详细。如下是maps中一条vma的详细数据，全部数据可通过cat /proc/&lt;pid&gt;/smaps获取。&lt;/pid&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Graphics&lt;/strong&gt;：图形缓冲区队列为向屏幕显示像素（包括 GL 表面、GL 纹理等等）所使用的内存。&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;7fce3a5000-7fceba4000 rw-p 00000000 00:00 0                            [stack]&lt;br /&gt;
+Size:               8188 kB&lt;br /&gt;
+KernelPageSize:        4 kB&lt;br /&gt;
+MMUPageSize:           4 kB&lt;br /&gt;
+Rss:                 156 kB&lt;br /&gt;
+Pss:                 152 kB&lt;br /&gt;
+Shared_Clean:          0 kB&lt;br /&gt;
+Shared_Dirty:          4 kB&lt;br /&gt;
+Private_Clean:         0 kB&lt;br /&gt;
+Private_Dirty:       152 kB&lt;br /&gt;
+Referenced:          156 kB&lt;br /&gt;
+Anonymous:           156 kB&lt;br /&gt;
+LazyFree:              0 kB&lt;br /&gt;
+AnonHugePages:         0 kB&lt;br /&gt;
+ShmemPmdMapped:        0 kB&lt;br /&gt;
+FilePmdMapped:         0 kB&lt;br /&gt;
+Shared_Hugetlb:        0 kB&lt;br /&gt;
+Private_Hugetlb:       0 kB&lt;br /&gt;
+Swap:                  0 kB&lt;br /&gt;
+SwapPss:               0 kB&lt;br /&gt;
+Locked:                0 kB&lt;br /&gt;
+THPeligible:    0&lt;br /&gt;
+VmFlags: rd wr mr mw me gd ac &lt;br /&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
 
-&lt;p&gt;&lt;strong&gt;Stack&lt;/strong&gt;：应用中的原生堆栈和 Java 堆栈使用的内存。&lt;/p&gt;
+&lt;p&gt;AMS中dump meminfo功能最终也是通过JNI调用libmeminfo读取进程smaps的节点。&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Code&lt;/strong&gt;：应用用于处理代码和资源（如 dex 字节码、经过优化或编译的 dex 代码、.so 库和字体）的内存。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/memory/smaps.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Others&lt;/strong&gt;：应用使用的系统不确定如何分类的内存。&lt;/p&gt;
+&lt;p&gt;&lt;img src=&quot;/img/memory/libmeminfo.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
 
-&lt;p&gt;&lt;strong&gt;Allocated&lt;/strong&gt;：应用分配的 Java/Kotlin 对象数。此数字没有计入 C 或 C++ 中分配的对象。&lt;/p&gt;
+&lt;h2 id=&quot;22-内存分类&quot;&gt;2.2 内存分类&lt;/h2&gt;
+
+&lt;p&gt;&lt;strong&gt;Native Heap&lt;/strong&gt;：C/C++层直接通过malloc分配的内存。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Dalvik Heap/other&lt;/strong&gt;：Java堆分配的内存。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Stack&lt;/strong&gt;：栈分配的内存。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Ashmem&lt;/strong&gt;：进程的匿名共享内存 Anonymous Shared Memory。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;GFX dev&lt;/strong&gt;：通俗来说是显存，Android 显存和内存在同样的物理设备上，所以统计的总内存是包括显存的，至于adb如何知道哪些是显存，是因为gles和egl的so库在分配显存的时候也是使用的带backup文件的mmap，adb只是简单的统计了所有gles和egl的mmap将其视为显存，这部分通常就是在gpu上的资源，gpu上的资源由很多种，占比较多的就是texture，buffer，shader programe，通常是游戏应用。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Other dev&lt;/strong&gt;：除显卡外所有其他硬件设备的mmap后的物理内存，可能包括声卡等，通常不多。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;.so mmap&lt;/strong&gt;：这个就是so库本身文件mmap占用的物理内存，随着程序运行会逐渐的读取so文件，造成和缺页的部分就是在物理内存产生占用，这部分大就是so库太大了，但是这部分因为有很多是readonly的mmap，所以有更大的机会被swap-out出去。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;.apk .dex oat .art mmap&lt;/strong&gt;：这些都是android 程序文件本身被mmap占用的内存，和so的性质差不多。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Other mmap&lt;/strong&gt;：是所有除了上面的之外其他的所有非匿名方式的mmap。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Unkonwn&lt;/strong&gt;：在meminf中它指除了部分已知的有名字的匿名映射（以anon:为前缀，例如”[anon:dalvik-“）之外的所有的匿名mmap，还有其他的未命名的vma（name字段不显示），因为无法分辨来源，就统计在unkown中。例如，看到anon:dalvik-*，那它一般是dalvik 虚拟机的分配，这个最终会被统计到meminfo的dalvik里。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;anon&lt;/strong&gt;：这个就是匿名mmap映射，除了部分已知的匿名映射如”[anon:dalvik-“, “[anon:stack_and_tls:”等，其他匿名映射所占用的内存最终会被统计到meminfo的unkown里。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;anon:libc_malloc&lt;/strong&gt; ：这个是通过malloc方法进入的mmap，即所有的new，malloc调用。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Kgsl-3d&lt;/strong&gt;：则是gles对显存硬件的虚拟内存映射，换句话说就是显存，meminf正是统计这个标签来获取gfx的大小。&lt;/p&gt;
+
+&lt;p&gt;更详细的拆解在&lt;a href=&quot;https://android.googlesource.com/platform/frameworks/base/+/master/core/jni/android_os_Debug.cpp&quot;&gt;android_os_Debug.cpp&lt;/a&gt;中。&lt;/p&gt;
+
+&lt;h2 id=&quot;23-unknown&quot;&gt;2.3 Unknown&lt;/h2&gt;
+
+&lt;p&gt;根据&lt;a href=&quot;https://android.googlesource.com/platform/frameworks/base/+/master/core/jni/android_os_Debug.cpp&quot;&gt;android_os_Debug.cpp&lt;/a&gt;中对smaps的分类，当前meminfo中对内存的统计，匿名映射除了下面这几个字段前缀的可以被统计以外，其他有名的匿名映射和没有名字的vma则被统计到Unknown字段中。&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;“[anon:dalvik-“, “[anon:stack_and_tls:”, “[anon:libc_malloc]”,&lt;/p&gt;
+
+  &lt;p&gt;“[anon:scudo:”, “[anon:GWP-ASan”&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;24-alloc-内存&quot;&gt;2.4 Alloc 内存&lt;/h2&gt;
+
+&lt;p&gt;在数据面板右侧可以看到对已分配和释放内存的累计记录，包括native和dalvik分配（alloc）和释放（free）内存的统计。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/memory/alloc.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;25-total&quot;&gt;2.5 Total&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/memory/total.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;TOTAL是对每一列的汇总求和，其中Pss列有所不同，Pss列的TOTAL值是Pss Total和SwapPss两列之和。&lt;/p&gt;
+
+&lt;h2 id=&quot;26-app-summary&quot;&gt;2.6 App Summary&lt;/h2&gt;
+
+&lt;p&gt;App Summary部分是对上述细分领域的聚合，提供更直观的统计数据。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Java Heap&lt;/strong&gt;：（Dalvik Heap 的 Private Dirty 数据) + （ .art mmap 部分的 Private Dirty 和 Private Clean 数据) + getOtherPrivate ( OTHER_ART ) 。这里的 .art 是应用的 dex 文件预编译后的 art 文件，所以也是属于该应用的 JavaHeap。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Native Heap&lt;/strong&gt;：Native Heap 的 Private Dirty 数据。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Code&lt;/strong&gt;：.so .jar .apk .ttf .dex .oat 等资源加总。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Stack&lt;/strong&gt;：getOtherPrivateDirty ( OTHER_STACK )。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Graphics&lt;/strong&gt;：gl，gfx，egl 的数据加总。&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Private Other&lt;/strong&gt;：Native Heap + Dalvik Heap - 其他的 Private Dirty + Private Clean&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;System&lt;/strong&gt;：Total Pss  -  Private Dirty - Private Clean。主要是系统占用的内存，如共享的字体、图像资源等。&lt;/p&gt;
+
+&lt;h1 id=&quot;3graphics-memory&quot;&gt;3.Graphics memory&lt;/h1&gt;
 
 &lt;table&gt;
   &lt;thead&gt;
     &lt;tr&gt;
-      &lt;th&gt; &lt;/th&gt;
-      &lt;th&gt;PSS&lt;/th&gt;
-      &lt;th&gt;RSS&lt;/th&gt;
+      &lt;th&gt;&lt;strong&gt;name&lt;/strong&gt;&lt;/th&gt;
+      &lt;th&gt;&lt;strong&gt;description&lt;/strong&gt;&lt;/th&gt;
     &lt;/tr&gt;
   &lt;/thead&gt;
   &lt;tbody&gt;
     &lt;tr&gt;
-      &lt;td&gt;Java Heap&lt;/td&gt;
-      &lt;td&gt;dalvikPrivateDirty + getOtherPrivate(OTHER_ART)&lt;/td&gt;
-      &lt;td&gt;dalvikRss + getOtherRss(OTHER_ART)&lt;/td&gt;
+      &lt;td&gt;EGL mtrack&lt;/td&gt;
+      &lt;td&gt;这个部分是gralloc的内存使用。主要是SurfaceView和TextureView的总和。它也包括了帧缓冲区，因此大小也会取决于framebuffers的尺寸。支持的屏幕分辨率越高，EGL mtrack的数目越高。在这个测试中，帧缓冲区的分辨率被降低了来确保比较好的性能。降低帧缓存的大小也会降低这些缓存需要的内存量。&lt;/td&gt;
     &lt;/tr&gt;
     &lt;tr&gt;
-      &lt;td&gt;Native Heap&lt;/td&gt;
-      &lt;td&gt;nativePrivateDirty&lt;/td&gt;
-      &lt;td&gt;nativeRss&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;Code&lt;/td&gt;
-      &lt;td&gt;getOtherPrivate(OTHER_SO) + getOtherPrivate(OTHER_JAR) + getOtherPrivate(OTHER_APK) + getOtherPrivate(OTHER_TTF) + getOtherPrivate(OTHER_DEX) + getOtherPrivate(OTHER_OAT) + getOtherPrivate(OTHER_DALVIK_OTHER_ZYGOTE_CODE_CACHE) + getOtherPrivate(OTHER_DALVIK_OTHER_APP_CODE_CACHE)&lt;/td&gt;
-      &lt;td&gt;getOtherRss(OTHER_SO) + getOtherRss(OTHER_JAR) + getOtherRss(OTHER_APK) + getOtherRss(OTHER_TTF) + getOtherRss(OTHER_DEX) + getOtherRss(OTHER_OAT) + getOtherRss(OTHER_DALVIK_OTHER_ZYGOTE_CODE_CACHE) + getOtherRss(OTHER_DALVIK_OTHER_APP_CODE_CACHE)&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;Stack&lt;/td&gt;
-      &lt;td&gt;getOtherPrivateDirty(OTHER_STACK)&lt;/td&gt;
-      &lt;td&gt;getOtherRss(OTHER_STACK)&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;Graphics&lt;/td&gt;
-      &lt;td&gt;getOtherPrivate(OTHER_GL_DEV) + getOtherPrivate(OTHER_GRAPHICS) + getOtherPrivate(OTHER_GL)&lt;/td&gt;
-      &lt;td&gt;getOtherRss(OTHER_GL_DEV) + getOtherRss(OTHER_GRAPHICS) + getOtherRss(OTHER_GL)&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;Private Other&lt;/td&gt;
-      &lt;td&gt;dalvikPrivateClean + nativePrivateClean + otherPrivateClean + dalvikPrivateDirty + nativePrivateDirty + otherPrivateDirty - Java Heap - Native Heap - Code - Stack - Graphics&lt;/td&gt;
-      &lt;td&gt; &lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;System&lt;/td&gt;
-      &lt;td&gt;getTotalPss() - (dalvikPrivateClean + nativePrivateClean + otherPrivateClean) - (dalvikPrivateDirty + nativePrivateDirty + otherPrivateDirty)&lt;/td&gt;
-      &lt;td&gt; &lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;Unknown&lt;/td&gt;
-      &lt;td&gt; &lt;/td&gt;
-      &lt;td&gt;getTotalRss() - Java Heap - Native Heap - Code - Stack - Graphics&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;TOTAL&lt;/td&gt;
-      &lt;td&gt;dalvikPss + nativePss + otherPss + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss&lt;/td&gt;
-      &lt;td&gt;dalvikRss + nativeRss + otherRss&lt;/td&gt;
+      &lt;td&gt;GL mtrack   &amp;amp; Gfx dev&lt;/td&gt;
+      &lt;td&gt;GL和Gfx是驱动反馈的GPU内存，主要是GL纹理大小的总和，GL命令缓冲区，固定的全局驱动RAM消耗以及Shader。注意：客户空间驱动和内核空间驱动共享同一个内存空间。在某些Android版本上，这个部分会被重复计算两次，因此Gfx dev要比实际上使用的数值更大。&lt;/td&gt;
     &lt;/tr&gt;
   &lt;/tbody&gt;
 &lt;/table&gt;
 
-&lt;p&gt;USS = dalvikPrivateClean + dalvikPrivateDirty&lt;/p&gt;
+&lt;h2 id=&quot;31-gfx-dev&quot;&gt;3.1 Gfx dev&lt;/h2&gt;
 
-&lt;p&gt;​            + nativePrivateClean + nativePrivateDirty&lt;/p&gt;
+&lt;p&gt;Gfx dev的值是从/sys/class/kgsl/kgsl/proc/&lt;pid&gt;/gpumem_mapped下读取的，这里主要为/dev/kgsl-3d0占用的空间，gpu使用的内存。smaps中所有kgsl-3d0内存加起来等于gpumem_mapped中读到的内存。&lt;/pid&gt;&lt;/p&gt;
 
-&lt;p&gt;​            + otherPrivateClean + otherPrivateDirty&lt;/p&gt;
+&lt;h2 id=&quot;32-egl-mtrack&quot;&gt;3.2 EGL mtrack&lt;/h2&gt;
 
-&lt;p&gt;PSS = dalvikPss + nativePss + otherPss&lt;/p&gt;
-
-&lt;p&gt;​            + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss&lt;/p&gt;
-
-&lt;p&gt;RSS = dalvikRss + nativeRss + otherRss&lt;/p&gt;
-
-&lt;p&gt;可以推导出：&lt;/p&gt;
-
-&lt;p&gt;USS = PSS - System&lt;/p&gt;
-
-&lt;p&gt;System = dalvikPss - dalvikPrivateClean - dalvikPrivateDirty&lt;/p&gt;
-
-&lt;p&gt;​                + nativePss - nativePrivateClean - nativePrivateDirty&lt;/p&gt;
-
-&lt;p&gt;​                + otherPss - otherPrivateClean - otherPrivateDirty&lt;/p&gt;
-
-&lt;p&gt;​                + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss&lt;/p&gt;
-
-&lt;h1 id=&quot;4查看应用内存相关命令&quot;&gt;4.查看应用内存相关命令&lt;/h1&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;命令&lt;/th&gt;
-      &lt;th&gt;功能&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;dumpsys meminfo&lt;/td&gt;
-      &lt;td&gt;1.Total PSS by process，Total PSS by OOM adjustment，Total PSS by category，整体情况 2.输出某个pid或package的进程信息&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;procrank&lt;/td&gt;
-      &lt;td&gt;获取所有进程的内存使用的排行榜，排行是以&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;Pss&lt;/code&gt;的大小而排序。&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;procrank&lt;/code&gt;命令比&lt;code class=&quot;language-plaintext highlighter-rouge&quot;&gt;dumpsys meminfo&lt;/code&gt;命令，能输出更详细的VSS/RSS/PSS/USS内存指标。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;cat /proc/meminfo&lt;/td&gt;
-      &lt;td&gt;查看更加详细的内存信息&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;free&lt;/td&gt;
-      &lt;td&gt;查看可用内存，缺省单位KB。该命令比较简单、轻量，专注于查看剩余内存情况。数据来源于/proc/meminfo。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;showmap&lt;/td&gt;
-      &lt;td&gt;用于查看虚拟地址区域的内存情况&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;vmstat&lt;/td&gt;
-      &lt;td&gt;不仅可以查看内存情况，还可以查看进程运行队列、系统切换、CPU时间占比等情况，另外该指令还是周期性地动态输出。&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;h1 id=&quot;参考文档&quot;&gt;参考文档&lt;/h1&gt;
-&lt;p&gt;&lt;a href=&quot;http://gityuan.com/2016/01/02/memory-analysis-command/&quot;&gt;Android内存分析命令&lt;/a&gt;&lt;/p&gt;
+&lt;p&gt;主要是APP eglWindowSurface，包括normal HWUI based app windowsurface，SurfaceView，TextureView。这部分内存是从SurfaceFlinger 分配的，可以跟 dumpsys SurfaceFlingher 的 Alloated buffers 可以对应上。&lt;/p&gt;
 </description>
         <pubDate>Mon, 10 Oct 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/10/10/Android%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E5%9F%BA%E7%A1%80/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/10/10/Android%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E5%9F%BA%E7%A1%80/</guid>
+        <link>http://localhost:4000/2022/10/10/Android-meminfo%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3/</link>
+        <guid isPermaLink="true">http://localhost:4000/2022/10/10/Android-meminfo%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3/</guid>
         
         <category>Android</category>
         
