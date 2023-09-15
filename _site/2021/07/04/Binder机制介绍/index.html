@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Android学习笔记">
+    <meta name="keywords" content="Android, 博客, 互联网">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Open Graph -->
+    <meta property="og:title"
+        content="Binder机制介绍 - Android学习笔记 | Yaku Blog">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="Android 接口定义语言 (AIDL)
+">
+    
+    <meta property="article:published_time" content=" 2021-07-04T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Android">
+    
+    <meta property="article:tag" content="Binder">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
+    <meta property="og:url" content="http://localhost:4000/2021/07/04/Binder%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
+    <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
+
+    <title>Binder机制介绍 - Android学习笔记 | Yaku Blog</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/2021/07/04/Binder%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href=" /css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href=" /css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet"
+        type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+
+    <!-- Google AdSense -->
+    <script data-ad-client="ca-pub-6487568398225121" async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">Android学习笔记</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/img/post-bg-2015.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+
+
+
+<header class="intro-header" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
+                        
+                        <a class="tag" href="/archive/?tag=Binder" title="Binder">Binder</a>
+                        
+                    </div>
+                    <h1>Binder机制介绍</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on July 4, 2021</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<p><a href="https://developer.android.com/guide/components/aidl?hl=zh-cn#Create">Android 接口定义语言 (AIDL)</a></p>
+
+<h1 id="1背景知识">1.背景知识</h1>
+
+<h2 id="11-进程隔离">1.1 <strong>进程隔离</strong></h2>
+
+<p>进程隔离是为保护操作系统中进程互不干扰而设计的一组不同硬件和软件的技术。这个技术是为了避免进程A写入进程B的情况发生。 进程的隔离实现，使用了虚拟地址空间。进程A的虚拟地址和进程B的虚拟地址不同，这样就防止进程A将数据信息写入进程B。</p>
+
+<h2 id="12-用户空间内核空间">1.2 <strong>用户空间/内核空间</strong></h2>
+
+<p>Linux Kernel是操作系统的核心，独立于普通的应用程序，可以访问受保护的内存空间，也有访问底层硬件设备的所有权限。</p>
+
+<p>对于Kernel这么一个高安全级别的东西，显然是不容许其它的应用程序随便调用或访问的，所以需要对Kernel提供一定的保护机制，这个保护机制用来告诉那些应用程序，你只可以访问某些许可的资源，不许可的资源是拒绝被访问的，于是就把Kernel和上层的应用程序抽像的隔离开，分别称之为Kernel Space和User Space。</p>
+
+<h2 id="13-系统调用内核态用户态">1.3 系统调用/内核态/用户态</h2>
+
+<p>用户空间访问内核空间的唯一方式就是<strong>系统调用</strong>；通过这个统一入口接口，所有的资源访问都是在内核的控制下执行，以免导致对用户程序对系统资源的越权访问，从而保障了系统的安全和稳定。</p>
+
+<p>当一个任务（进程）执行系统调用而陷入内核代码中执行时，我们就称进程处于内核运行态（或简称为<strong>内核态</strong>），此时处理器处于特权级最高的（0级）内核代码中执行。当进程在执行用户自己的代码时，则称其处于用户运行态（<strong>用户态</strong>），此时处理器在特权级最低的（3级）用户代码中运行。处理器在特权等级高的时候才能执行那些特权CPU指令。</p>
+
+<h2 id="14-内核模块驱动">1.4 内核模块/驱动</h2>
+
+<p>进程之间互相通信，Linux操作系统内核支持的机制有管道（pipe）、信号（signal）、消息队列、共享内存、信号量、套接字（socket)。</p>
+
+<p>此外，Linux的动态可加载内核模块（Loadable Kernel Module，LKM）提供了访问内核空间的能力。模块是具有独立功能的程序，它可以被单独编译，但不能独立运行。它在运行时被链接到内核作为内核的一部分在内核空间运行。这样，Android系统可以通过添加一个内核模块运行在内核空间，用户进程之间的通过这个模块作为桥梁，就可以完成通信了。</p>
+
+<p>在Android系统中，这个运行在内核空间的，负责各个用户进程通过Binder通信的内核模块叫做<strong>Binder</strong><strong>驱动</strong><strong>：</strong></p>
+
+<blockquote>
+  <p>驱动程序一般指的是设备驱动程序（Device Driver），是一种可以使计算机和设备通信的特殊程序。相当于硬件的接口，操作系统只有通过这个接口，才能控制硬件设备的工作；</p>
+</blockquote>
+
+<p>驱动就是操作硬件的接口，为了支持Binder通信过程，Binder使用了一种“硬件”，因此这个模块被称之为驱动。</p>
+
+<h2 id="15-为什么使用binder">1.5 为什么使用Binder？</h2>
+
+<p>主要有两点：性能和安全。Binder相对于传统的通信方式，更加高效；此外，传统的进程通信方式对于通信双方的身份并没有做出严格的验证，只有在上层协议上进行架设，而Binder机制从协议本身就支持对通信双方做身份校检，因而大大提升了安全性。这个也是Android权限模型的基础。</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>IPC</th>
+      <th>数据拷贝次数</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>共享内存</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <td>Binder</td>
+      <td>1</td>
+    </tr>
+    <tr>
+      <td>Socket/管道/消息队列</td>
+      <td>2</td>
+    </tr>
+  </tbody>
+</table>
+
+<h1 id="2binder通信模型">2.Binder通信模型</h1>
+
+<p>Binder框架定义了四个角色：Server、Client、ServiceManager以及Binder驱动。这四个角色的关系和互联网类似：Server是服务器，Client是客户端，ServiceManager是域名服务器（DNS），驱动是路由器。</p>
+
+<p><img src="/img/binder/binder1.png" alt="img" /></p>
+
+<ol>
+  <li>Client、Server和ServiceManager运行在用户空间中，Binder驱动程序运行在内核空间中。</li>
+  <li>Binder驱动程序和ServiceManager在Android平台中已经实现，开发者只需要在用户空间实现自己的Client和Server。</li>
+  <li>Binder驱动程序提供设备文件/dev/binder与用户空间交互，Client、Server和ServiceManager通过open()和ioctl()文件操作函数与Binder驱动程序进行通信。</li>
+  <li>Client和Server之间的进程间通信通过Binder驱动程序间接实现。</li>
+  <li>ServiceManager是一个守护进程，用来管理Server，并向Client提供查询Server接口的能力。</li>
+</ol>
+
+<h2 id="21-binder驱动">2.1 Binder驱动</h2>
+
+<p>和路由器一样，Binder驱动虽然默默无闻，却是通信的核心。尽管名叫“驱动”，实际上有别于硬件的驱动，只是实现方式和设备驱动程序一样：它工作在内核态，提供open()、mmap()、poll()、ioctl()等标准文件操作，以字符驱动设备中的misc设备（杂项设备）注册在设备目录/dev下，用户通过 /dev/binder 访问它。驱动负责进程间Binder通信的建立、Binder在进程间传递、Binder引用计数管理、数据包在进程间的传递和交互等一系列底层支持。驱动和应用程序之间定义了一套接口协议，主要功能由ioctl()接口实现，不提供read()、write()接口，因为ioctl()灵活方便，且能够一次调用实现先写后读以满足同步交互，而不必分别调用write()和read()。Binder驱动的代码位于linux目录的drivers/misc/binder.c中。</p>
+
+<h2 id="22-servicemanager与实名binder">2.2 ServiceManager与实名Binder</h2>
+
+<p>和DNS类似，ServiceManager的作用是将字符形式的Binder名字转换成Client中对该Binder的引用，使得Client能通过Binder名字获得对Server中Binder实体的引用。注册了名字的Binder叫实名Binder，就像每个网站除了有IP地址外还有自己的网址（域名）。Server创建了Binder实体，为其取了一个字符形式可读易记的名字，将这个Binder连同名字以数据包的形式通过Binder驱动发送给ServiceManager，驱动为这个穿过进程边界的Binder创建位于内核中的实体节点以及一个对这个实体的引用，将名字及新建的引用打包传递给ServiceManager，ServiceManager收到数据包后，从中取出名字和引用填入一张表中。</p>
+
+<p>Server向ServiceManager注册同样采用Binder通信，此时ServiceManager作为Server端，而Server作为Client端。ServiceManager提供的Binder实体比较特殊（对应的handle值为0），它既没有名字也不需要注册，当一个进程使用BINDER_SET_CONTEXT_MGR命令将自己注册成ServiceManager时，Binder驱动会为他创建Binder实体节点。这个实体节点与Server向ServiceManager发起注册请求时Binder驱动为它创建的实体节点一样，只是创建的过程不一样，ServiceManager的节点是由BINDER_SET_CONTEXT_MGR命令创造，其它Server的节点是发起注册时创造。</p>
+
+<h2 id="23-client获得实名binder的引用">2.3 Client获得实名Binder的引用</h2>
+
+<p>Server向ServiceManager注册了“名字”和对应的Binder实体后，Client也通过0号引用向ServiceManager请求指定名字对应的Binder引用。ServiceManager收到这个链接请求，从请求数据包获得Binder的名字，在注册表中找到该名字对应的条目，再从条目中取出Binder的引用，将该引用作为回复发送给Client。从面向对象的角度看，这个Server的Binder对象现在有了两个引用，一个位于ServiceManager中，另一个位于发起请求的Client中，如果接下来有更多的Client请求该Binder，系统中就会有更多的引用指向该Binder，就像Java里的一个对象存在多个引用一样。而且类似的这些指向Binder的引用是强类型的，从而确保只要有引用指向Binder对象，这个对象就不会被释放掉。</p>
+
+<h2 id="24-匿名binder">2.4 匿名Binder</h2>
+
+<p>并不是所有Binder都需要注册给ServiceManager，Server端可以通过已经建立的Binder连接将创建的Binder实体传给Client，当然这条已经建立的Binder连接必须是通过实名Binder建立的。由于这个后创建的Binder没有在ServiceManager注册名字，所以是个匿名Binder。Client将会收到这个匿名Binder的引用，通过这个匿名Binder引用向位于Server中的Binder实体发送请求。</p>
+
+<h1 id="3binder相关概念">3.Binder相关概念</h1>
+
+<h2 id="31-binder是什么">3.1 Binder是什么</h2>
+
+<ul>
+  <li>通常意义下，Binder指的是一种通信机制；我们说AIDL使用Binder进行通信，指的就是Binder这种IPC机制。</li>
+  <li>对于Server进程来说，Binder指的是Binder本地对象。</li>
+  <li>对于Client来说，Binder指的是Binder代理对象，它只是Binder本地对象的一个远程代理；对这个Binder代理对象的操作，会通过驱动最终转发到Binder本地对象上去完成；对于一个拥有Binder对象的使用者而言，它无须关心这是一个Binder代理对象还是Binder本地对象；对于代理对象的操作和对本地对象的操作对它来说没有区别。</li>
+  <li>对于传输过程而言，Binder是可以进行跨进程传递的对象；Binder驱动会对具有跨进程传递能力的对象做特殊处理：自动完成代理对象和本地对象的转换。</li>
+</ul>
+
+<h2 id="32-驱动里面的binder">3.2 驱动里面的Binder</h2>
+
+<ul>
+  <li>Server进程里面的Binder对象指的是Binder本地对象，Client里面的对象值得是Binder代理对象。在Binder对象进行跨进程传递的时候，Binder驱动会自动完成这两种类型的转换。</li>
+  <li>Binder驱动保存了每一个跨越进程的Binder对象的相关信息；在Binder驱动中，Binder本地对象使用binder_node数据结构保存，Binder代理对象使用binder_ref数据结构保存。</li>
+  <li>有的地方把Binder本地对象直接称作Binder实体，把Binder代理对象直接称作Binder引用（句柄），其实指的是Binder对象在驱动里面的表现形式。</li>
+</ul>
+
+<h2 id="33-java层的binder">3.3 Java层的Binder</h2>
+
+<ul>
+  <li>IBinder是一个接口，它代表了一种跨进程传输数据的能力；只要实现了这个接口，就能将这个对象进行跨进程传递；这是驱动底层支持的；在跨进程数据流经驱动的时候，驱动会识别IBinder类型的数据，从而自动完成不同进程Binder本地对象以及Binder代理对象的转换。</li>
+  <li>IInterface代表的是远程Server对象具备的能力，具体来说就是aidl里面的接口。</li>
+  <li>Java层的Binder类，代表的其实就是Binder本地对象。BinderProxy类是Binder类的一个内部类，它代表远程Server的Binder对象的本地代理；这两个类都继承自IBinder，因而都具有跨进程传输的能力；实际上，在跨进程的时候，Binder驱动会自动完成这两个对象的转换。</li>
+  <li>在使用AIDL的时候，编译工具会给我们生成一个Stub的静态内部类，这个类继承了Binder，说明它是一个Binder本地对象，它实现了IInterface接口，表明它具有远程Server承诺给Client的能力；Stub是一个抽象类，具体的IInterface的相关实现需要我们手动完成，这里使用了策略模式。</li>
+</ul>
+
+<h1 id="4aidl过程分析">4.AIDL过程分析</h1>
+
+<p>首先定一个简单的aidl接口：</p>
+
+<pre><code class="language-Java">// ICompute.aidl
+interface ICompute {
+    int add(int a, int b);
+}
+</code></pre>
+
+<p>编译之后得到对应的ICompute.java类，查看生成的代码：</p>
+
+<pre><code class="language-Java">public interface ICompute extends android.os.IInterface {
+    /**
+     * Default implementation for ICompute.
+     */
+    public static class Default implements com.example.test.ICompute {
+        @Override
+        public int add(int a, int b) throws android.os.RemoteException {
+            return 0;
+        }
+
+        @Override
+        public android.os.IBinder asBinder() {
+            return null;
+        }
+    }
+
+    /**
+     * Local-side IPC implementation stub class.
+     */
+    public static abstract class Stub extends android.os.Binder implements com.example.test.ICompute {
+        /**
+         * Construct the stub at attach it to the interface.
+         */
+        public Stub() {
+            this.attachInterface(this, DESCRIPTOR);
+        }
+
+        /**
+         * Cast an IBinder object into an com.example.test.ICompute interface,
+         * generating a proxy if needed.
+         */
+        public static com.example.test.ICompute asInterface(android.os.IBinder obj) {
+            if ((obj == null)) {
+                return null;
+            }
+            android.os.IInterface iin = obj.queryLocalInterface(DESCRIPTOR);
+            if (((iin != null) &amp;&amp; (iin instanceof com.example.test.ICompute))) {
+                return ((com.example.test.ICompute) iin);
+            }
+            return new com.example.test.ICompute.Stub.Proxy(obj);
+        }
+
+        @Override
+        public android.os.IBinder asBinder() {
+            return this;
+        }
+
+        @Override
+        public boolean onTransact(int code, android.os.Parcel data, android.os.Parcel reply, int flags) throws android.os.RemoteException {
+            java.lang.String descriptor = DESCRIPTOR;
+            if (code &gt;= android.os.IBinder.FIRST_CALL_TRANSACTION &amp;&amp; code &lt;= android.os.IBinder.LAST_CALL_TRANSACTION) {
+                data.enforceInterface(descriptor);
+            }
+            switch (code) {
+                case INTERFACE_TRANSACTION: {
+                    reply.writeString(descriptor);
+                    return true;
+                }
+            }
+            switch (code) {
+                case TRANSACTION_add: {
+                    int _arg0;
+                    _arg0 = data.readInt();
+                    int _arg1;
+                    _arg1 = data.readInt();
+                    int _result = this.add(_arg0, _arg1);
+                    reply.writeNoException();
+                    reply.writeInt(_result);
+                    break;
+                }
+                default: {
+                    return super.onTransact(code, data, reply, flags);
+                }
+            }
+            return true;
+        }
+
+        private static class Proxy implements com.example.test.ICompute {
+            private android.os.IBinder mRemote;
+
+            Proxy(android.os.IBinder remote) {
+                mRemote = remote;
+            }
+
+            @Override
+            public android.os.IBinder asBinder() {
+                return mRemote;
+            }
+
+            public java.lang.String getInterfaceDescriptor() {
+                return DESCRIPTOR;
+            }
+
+            @Override
+            public int add(int a, int b) throws android.os.RemoteException {
+                android.os.Parcel _data = android.os.Parcel.obtain();
+                android.os.Parcel _reply = android.os.Parcel.obtain();
+                int _result;
+                try {
+                    _data.writeInterfaceToken(DESCRIPTOR);
+                    _data.writeInt(a);
+                    _data.writeInt(b);
+                    boolean _status = mRemote.transact(Stub.TRANSACTION_add, _data, _reply, 0);
+                    _reply.readException();
+                    _result = _reply.readInt();
+                } finally {
+                    _reply.recycle();
+                    _data.recycle();
+                }
+                return _result;
+            }
+        }
+
+        static final int TRANSACTION_add = (android.os.IBinder.FIRST_CALL_TRANSACTION + 0);
+    }
+
+    public static final java.lang.String DESCRIPTOR = "com.example.test.ICompute";
+
+    public int add(int a, int b) throws android.os.RemoteException;
+}
+</code></pre>
+
+<p>Server端继承ICompute.Stub抽象类，实现接口方法：</p>
+
+<pre><code class="language-Java">public class MyService extends Service {
+    public MyService() {
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return new ICompute.Stub() {
+            @Override
+            public int add(int a, int b) throws RemoteException {
+                return a + b;
+            }
+        };
+    }
+}
+</code></pre>
+
+<p>Client端通过IInterface接口<em>asInterface()方法</em>，将Server的Binder对象的本地代理转换为接口：</p>
+
+<pre><code class="language-Java">protected void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+    setContentView(R.layout.activity_main);
+
+    Intent intent = new Intent(this, MyService.class);
+    bindService(intent, new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            try {
+                ICompute compute = ICompute.Stub.asInterface(service);
+                int sum = compute.add(1, 2);
+                Log.d("MainActivity", "sum is " + sum);
+            } catch (RemoteException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+
+        }
+    }, Context.BIND_AUTO_CREATE);
+}
+</code></pre>
+
+<p>asInterface()方法的参数IBinder类型的obj，这个对象是驱动给我们的，如果是Binder本地对象，那么它就是Binder类型，如果是Binder代理对象，那就是BinderProxy类型；asInterface()方法先会试着查找Binder本地对象，如果找到，说明Client和Server都在同一个进程，这个参数直接就是本地对象，直接强制类型转换然后返回，如果找不到，说明是远程对象（处于另外一个进程）那么就需要创建一个Binde代理对象，让这个Binder代理实现对于远程对象的访问。</p>
+
+<p>Binder代理对象的实现类是Proxy类，实现了定义的接口，在方法中首先用Parcel把数据序列化了，然后调用了mRemote的transact()方法；这里的mRemote实际类型是BinderProxy，查看其transact()方法实现：</p>
+
+<pre><code class="language-Java">public native boolean transact(int code, Parcel data, Parcel reply,
+            int flags) throws RemoteException;
+</code></pre>
+
+<p>这是一个本地方法；它的实现在native层，具体来说在frameworks/base/core/jni/android_util_Binder.cpp文件，里面进行了一系列的函数调用，最终调用到了talkWithDriver函数；看这个函数的名字就知道，通信过程要交给驱动完成了；这个函数最后通过ioctl系统调用，Client进程陷入内核态，调用add方法的线程挂起等待返回；驱动完成一系列的操作之后唤醒Server进程，调用了Server进程本地对象的onTransact()方法（实际上由Server端线程池完成），即Stub类中的onTransact()方法。</p>
+
+<p>在Server进程里面，onTransact()方法根据调用号（每个AIDL函数都有一个编号，在跨进程的时候，不会传递函数，而是传递编号指明调用哪个函数）调用对应函数；在这个例子里面，调用了Binder本地对象的add方法；这个方法将结果返回给驱动，驱动唤醒挂起的Client进程里面的线程并将结果返回。于是一次跨进程调用就完成了。</p>
+
+<p><img src="/img/binder/binder2.png" alt="img" /></p>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    
+                    <li class="next">
+                        <a href="/2021/08/08/ASM%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="ASM介绍">
+                        Next<br>
+                        <span>ASM介绍</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0001" 
+                    href="/archive/?tag=Android"
+                    title="Android"
+                    rel="27">Android</a>
+        
+                <a data-sort="0022" 
+                    href="/archive/?tag=SystemUI"
+                    title="SystemUI"
+                    rel="6">SystemUI</a>
+        
+                <a data-sort="0025" 
+                    href="/archive/?tag=HotFix"
+                    title="HotFix"
+                    rel="3">HotFix</a>
+        
+                <a data-sort="0026" 
+                    href="/archive/?tag=ANR"
+                    title="ANR"
+                    rel="2">ANR</a>
+        
+                <a data-sort="0026" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="2">Activity</a>
+        
+                <a data-sort="0026" 
+                    href="/archive/?tag=Binder"
+                    title="Binder"
+                    rel="2">Binder</a>
+        
+                <a data-sort="0026" 
+                    href="/archive/?tag=Memory"
+                    title="Memory"
+                    rel="2">Memory</a>
+        
+                <a data-sort="0026" 
+                    href="/archive/?tag=MemoryLeak"
+                    title="MemoryLeak"
+                    rel="2">MemoryLeak</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+  <li><a href="https://weishu.me/">weishu</a></li>
+  
+  <li><a href="https://androidperformance.com/">Gracker</a></li>
+  
+  <li><a href="http://gityuan.com/">Gityuan</a></li>
+  
+  <li><a href="https://juejin.cn/user/149189312913511/posts">芦半山</a></li>
+  
+</ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; Android学习笔记 2023
+                    <br>
+                    Powered by <a href="http://huangxuan.me">Hux Blog</a> |
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0" width="100px"
+                        height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=huxpro&repo=huxpro.github.io&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/js/snackbar.js "></script>
+<script src="/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4aa6afabf05ffd2ce6f459088368d4a3';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function () {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?" + _baId;
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2><h3 class="post-subtitle">{subtitle}</h3><hr></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false,
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        templateMiddleware: function (prop, value, template) {
+            if (prop === 'subtitle' || prop === 'title') {
+                if (value.indexOf("code")) {
+                    return htmlDecode(value);
+                } else {
+                    return value;
+                }
+            }
+        }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+<!-- Image to hack wechat -->
+<img src="/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

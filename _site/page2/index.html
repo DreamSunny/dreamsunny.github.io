@@ -395,6 +395,34 @@ Soong是为Android编译...
 <hr>
 
 <div class="post-preview">
+    <a href="/2022/05/07/SystemUI-%E4%BD%BF%E7%94%A8GarbageMonitor/">
+        <h2 class="post-title">
+            SystemUI-使用GarbageMonitor
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.简介
+
+GarbageMonitor 用于定期监测 SystemUI 堆内存，提供了一个自定义快捷开关方便生成 hprof 文件。
+
+目前仅支持 UserDebug 版本中使用，其核心功能是在内部 Service 中启动的，且有一定的条件限制，需要手动写入 Settings 值或 SystemProperties 值：
+
+public static final boolean LEAK_...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on May 7, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/2022/04/30/SystemUI-%E6%8F%92%E4%BB%B6%E6%9C%BA%E5%88%B6/">
         <h2 class="post-title">
             SystemUI-插件机制
@@ -464,63 +492,6 @@ NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNE
 <hr>
 
 <div class="post-preview">
-    <a href="/2022/04/07/SystemUI-%E4%BD%BF%E7%94%A8GarbageMonitor/">
-        <h2 class="post-title">
-            SystemUI-使用GarbageMonitor
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1.简介
-
-GarbageMonitor 用于定期监测 SystemUI 堆内存，提供了一个自定义快捷开关方便生成 hprof 文件。
-
-目前仅支持 UserDebug 版本中使用，其核心功能是在内部 Service 中启动的，且有一定的条件限制，需要手动写入 Settings 值或 SystemProperties 值：
-
-public static final boolean LEAK_...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on April 7, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/03/28/SystemUI-%E5%AD%97%E8%8A%82%E7%A0%81%E6%8F%92%E6%A1%A9/">
-        <h2 class="post-title">
-            SystemUI-字节码插桩
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1.java_genrule介绍
-
-在阅读系统源码时，发现了一个有意思的工具lockedregioncodeinjection，从命名来看是对锁处理的地方做代码插桩，其使用的代码如下：
-
-java_genrule {
-    name: "services.core.priorityboosted",
-    srcs: [":services.core.unboosted"],
-    t...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on March 28, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
     <a href="/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/">
         <h2 class="post-title">
             SystemUI-支持gradle编译
@@ -544,6 +515,38 @@ java_genrule {
     </a>
     <p class="post-meta">
         Posted by Yaku on March 20, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
+        <h2 class="post-title">
+            SystemUI-功能介绍
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1. SystemUI介绍
+
+SystemUI正如其名，即系统的显示界面。它是一个常驻进程，独立于system_server进程。
+
+SystemUI内部包含一系列组件，在其启动的时候会初始化这些组件。
+
+SystemUI通过IStatusBar接口收到系统侧的回调，又通过一系列私有APIs与系统通信。
+
+2. SystemUI启动流程
+
+SystemUIService 继承于 Servic...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on March 4, 2022
     </p>
 </div>
 <hr>
@@ -583,37 +586,42 @@ java_genrule {
         
         
         
-                <a data-sort="0000" 
+                <a data-sort="0001" 
                     href="/archive/?tag=Android"
                     title="Android"
                     rel="27">Android</a>
         
-                <a data-sort="0020" 
+                <a data-sort="0022" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
-                    rel="7">SystemUI</a>
+                    rel="6">SystemUI</a>
         
-                <a data-sort="0024" 
+                <a data-sort="0025" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0025" 
+                <a data-sort="0026" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="2">ANR</a>
         
-                <a data-sort="0025" 
+                <a data-sort="0026" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0025" 
+                <a data-sort="0026" 
+                    href="/archive/?tag=Binder"
+                    title="Binder"
+                    rel="2">Binder</a>
+        
+                <a data-sort="0026" 
                     href="/archive/?tag=Memory"
                     title="Memory"
                     rel="2">Memory</a>
         
-                <a data-sort="0025" 
+                <a data-sort="0026" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

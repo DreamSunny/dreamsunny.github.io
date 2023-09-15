@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="google-site-verification" content="xBT4GhYoi5qRD5tr338pgPM5OWHHIDR6mNg1a3euekI" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="Android学习笔记">
+    <meta name="keywords" content="Android, 博客, 互联网">
+    <meta name="theme-color" content="#000000">
+
+    <!-- Open Graph -->
+    <meta property="og:title"
+        content="ASM介绍 - Android学习笔记 | Yaku Blog">
+    
+    <meta property="og:type" content="article">
+    <meta property="og:description" content="1.class文件格式
+">
+    
+    <meta property="article:published_time" content=" 2021-08-08T20:00:00Z">
+    
+    
+    <meta property="article:author" content="Yaku">
+    
+    
+    <meta property="article:tag" content="Java">
+    
+    <meta property="article:tag" content="ASM">
+    
+    
+    <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
+    <meta property="og:url" content="http://localhost:4000/2021/08/08/ASM%E4%BB%8B%E7%BB%8D/">
+    <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
+
+    <title>ASM介绍 - Android学习笔记 | Yaku Blog</title>
+
+    <!-- Web App Manifest -->
+    <link rel="manifest" href="/pwa/manifest.json">
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="/img/favicon.ico">
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="http://localhost:4000/2021/08/08/ASM%E4%BB%8B%E7%BB%8D/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href=" /css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href=" /css/hux-blog.min.css">
+
+    <!-- Custom Fonts -->
+    <!-- <link href="http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css"> -->
+    <!-- Hux change font-awesome CDN to qiniu -->
+    <link href="//cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet"
+        type="text/css">
+
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <!-- ga & ba script hoook -->
+    <script></script>
+
+    <!-- Google AdSense -->
+    <script data-ad-client="ca-pub-6487568398225121" async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+</head>
+
+
+<!-- hack iOS CSS :active style -->
+<body ontouchstart="">
+
+    <!-- Navigation -->
+
+    <nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+        
+        <div class="container-fluid">
+            <!-- Brand and toggle get grouped for better mobile display -->
+            <div class="navbar-header page-scroll">
+                <button type="button" class="navbar-toggle">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/">Android学习笔记</a>
+            </div>
+
+            <!-- Collect the nav links, forms, and other content for toggling -->
+            <div id="huxblog_navbar">
+                <div class="navbar-collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li>
+                            <a href="/">Home</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        <li>
+                            <a href="/about/">About</a>
+                        </li>
+                        
+                        
+                        
+                        <li>
+                            <a href="/archive/">Archive</a>
+                        </li>
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        <li class="search-icon">
+                            <a href="javascript:void(0)">
+                                <i class="fa fa-search"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <!-- /.navbar-collapse -->
+        </div>
+        <!-- /.container -->
+    </nav>
+
+    <script>
+        // Drop Bootstarp low-performance Navbar
+        // Use customize navbar with high-quality material design animation
+        // in high-perf jank-free CSS3 implementation
+        var $body = document.body;
+        var $toggle = document.querySelector('.navbar-toggle');
+        var $navbar = document.querySelector('#huxblog_navbar');
+        var $collapse = document.querySelector('.navbar-collapse');
+
+        var __HuxNav__ = {
+            close: function () {
+                $navbar.className = " ";
+                // wait until animation end.
+                setTimeout(function () {
+                    // prevent frequently toggle
+                    if ($navbar.className.indexOf('in') < 0) {
+                        $collapse.style.height = "0px"
+                    }
+                }, 400)
+            },
+            open: function () {
+                $collapse.style.height = "auto"
+                $navbar.className += " in";
+            }
+        }
+
+        // Bind Event
+        $toggle.addEventListener('click', function (e) {
+            if ($navbar.className.indexOf('in') > 0) {
+                __HuxNav__.close()
+            } else {
+                __HuxNav__.open()
+            }
+        })
+
+        /**
+         * Since Fastclick is used to delegate 'touchstart' globally
+         * to hack 300ms delay in iOS by performing a fake 'click',
+         * Using 'e.stopPropagation' to stop 'touchstart' event from 
+         * $toggle/$collapse will break global delegation.
+         * 
+         * Instead, we use a 'e.target' filter to prevent handler
+         * added to document close HuxNav.  
+         *
+         * Also, we use 'click' instead of 'touchstart' as compromise
+         */
+        document.addEventListener('click', function (e) {
+            if (e.target == $toggle) return;
+            if (e.target.className == 'icon-bar') return;
+            __HuxNav__.close();
+        })
+    </script>
+    <!-- Search -->
+<div class="search-page">
+  <div class="search-icon-close-container">
+    <span class="search-icon-close">
+      <i class="fa fa-chevron-down"></i>
+    </span>
+  </div>
+  <div class="search-main container">
+    <div class="row">
+      <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+        <form></form>
+        <input type="text" id="search-input" placeholder="$ grep...">
+        </form>
+        <div id="search-results" class="mini-post-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    <!-- Image to hack wechat -->
+<!-- <img src="/img/icon_wechat.png" width="0" height="0"> -->
+<!-- <img src="/img/post-bg-2015.jpg" width="0" height="0"> -->
+
+<!-- Post Header -->
+
+
+
+<style type="text/css">
+    header.intro-header{
+        position: relative;
+        background-image: url('/img/post-bg-2015.jpg');
+        background: ;
+    }
+
+    
+</style>
+
+
+
+
+<header class="intro-header" >
+
+    <div class="header-mask"></div>
+    
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <div class="tags">
+                        
+                        <a class="tag" href="/archive/?tag=Java" title="Java">Java</a>
+                        
+                        <a class="tag" href="/archive/?tag=ASM" title="ASM">ASM</a>
+                        
+                    </div>
+                    <h1>ASM介绍</h1>
+                    
+                    <h2 class="subheading"></h2>
+                    <span class="meta">Posted by Yaku on August 8, 2021</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+
+
+
+
+
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+
+    <!-- Post Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                post-container">
+
+                <!-- Multi-Lingual -->
+                
+
+				<h1 id="1class文件格式">1.class文件格式</h1>
+
+<p>官方文档：https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html</p>
+
+<pre><code class="language-Plain">ClassFile {
+    u4             magic; // 魔数，CAFEBABE
+    u2             minor_version; // 副版本号
+    u2             major_version; // 主版本号
+    u2             constant_pool_count; // 常量池
+    cp_info        constant_pool[constant_pool_count-1];
+    u2             access_flags; // 类访问标记
+    u2             this_class; // 类索引
+    u2             super_class; // 父类索引
+    u2             interfaces_count; // 实现接口数量
+    u2             interfaces[interfaces_count]; // 接口索引
+    u2             fields_count; // 成员变量
+    field_info     fields[fields_count];
+    u2             methods_count; // 方法
+    method_info    methods[methods_count];
+    u2             attributes_count; // 属性
+    attribute_info attributes[attributes_count];
+}
+</code></pre>
+
+<h2 id="11-常量池">1.1 常量池</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>Constant Type</strong></th>
+      <th><strong>Value</strong></th>
+      <th><strong>cp_info</strong></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>CONSTANT_Class</td>
+      <td>7</td>
+      <td>CONSTANT_Class_info {    u1 tag;    u2 name_index; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_Fieldref</td>
+      <td>9</td>
+      <td>CONSTANT_Fieldref_info {    u1 tag;    u2 class_index;    u2 name_and_type_index; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_Methodref</td>
+      <td>10</td>
+      <td>CONSTANT_Methodref_info {    u1 tag;    u2 class_index;    u2 name_and_type_index; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_InterfaceMethodref</td>
+      <td>11</td>
+      <td>CONSTANT_InterfaceMethodref_info {    u1 tag;    u2 class_index;    u2 name_and_type_index; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_String</td>
+      <td>8</td>
+      <td>CONSTANT_String_info {    u1 tag;    u2 string_index; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_Integer</td>
+      <td>3</td>
+      <td>CONSTANT_Integer_info {    u1 tag;    u4 bytes; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_Float</td>
+      <td>4</td>
+      <td>CONSTANT_Float_info {    u1 tag;    u4 bytes; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_Long</td>
+      <td>5</td>
+      <td>CONSTANT_Long_info {    u1 tag;    u4 high_bytes;    u4 low_bytes; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_Double</td>
+      <td>6</td>
+      <td>CONSTANT_Double_info {    u1 tag;    u4 high_bytes;    u4 low_bytes; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_NameAndType</td>
+      <td>12</td>
+      <td>CONSTANT_NameAndType_info {    u1 tag;    u2 name_index;    u2 descriptor_index; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_Utf8</td>
+      <td>1</td>
+      <td>CONSTANT_Utf8_info {    u1 tag;    u2 length;    u1 bytes[length]; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_MethodHandle</td>
+      <td>15</td>
+      <td>CONSTANT_MethodHandle_info {    u1 tag;    u1 reference_kind;    u2 reference_index; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_MethodType</td>
+      <td>16</td>
+      <td>CONSTANT_MethodType_info {    u1 tag;    u2 descriptor_index; }</td>
+    </tr>
+    <tr>
+      <td>CONSTANT_InvokeDynamic</td>
+      <td>18</td>
+      <td>CONSTANT_InvokeDynamic_info {    u1 tag;    u2 bootstrap_method_attr_index;    u2 name_and_type_index; }</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="12-成员变量">1.2 成员变量</h2>
+
+<pre><code class="language-Plain">field_info {
+    u2             access_flags;
+    u2             name_index;
+    u2             descriptor_index;
+    u2             attributes_count;
+    attribute_info attributes[attributes_count];
+}
+</code></pre>
+
+<p>access_flags常量：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>Flag Name</strong></th>
+      <th><strong>Value</strong></th>
+      <th><strong>Interpretation</strong></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ACC_PUBLIC</td>
+      <td>0x0001</td>
+      <td>Declared public; may be accessed from outside its package.</td>
+    </tr>
+    <tr>
+      <td>ACC_PRIVATE</td>
+      <td>0x0002</td>
+      <td>Declared private; usable only within the defining class.</td>
+    </tr>
+    <tr>
+      <td>ACC_PROTECTED</td>
+      <td>0x0004</td>
+      <td>Declared protected; may be accessed within subclasses.</td>
+    </tr>
+    <tr>
+      <td>ACC_STATIC</td>
+      <td>0x0008</td>
+      <td>Declared static.</td>
+    </tr>
+    <tr>
+      <td>ACC_FINAL</td>
+      <td>0x0010</td>
+      <td>Declared final; never directly assigned to after object construction (JLS §17.5).</td>
+    </tr>
+    <tr>
+      <td>ACC_VOLATILE</td>
+      <td>0x0040</td>
+      <td>Declared volatile; cannot be cached.</td>
+    </tr>
+    <tr>
+      <td>ACC_TRANSIENT</td>
+      <td>0x0080</td>
+      <td>Declared transient; not written or read by a persistent object manager.</td>
+    </tr>
+    <tr>
+      <td>ACC_SYNTHETIC</td>
+      <td>0x1000</td>
+      <td>Declared synthetic; not present in the source code.</td>
+    </tr>
+    <tr>
+      <td>ACC_ENUM</td>
+      <td>0x4000</td>
+      <td>Declared as an element of an enum.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="13-方法">1.3 方法</h2>
+
+<pre><code class="language-Plain">method_info {
+    u2             access_flags;
+    u2             name_index;
+    u2             descriptor_index;
+    u2             attributes_count;
+    attribute_info attributes[attributes_count];
+}
+</code></pre>
+
+<p>access_flags常量：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>Flag Name</strong></th>
+      <th><strong>Value</strong></th>
+      <th><strong>Interpretation</strong></th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ACC_PUBLIC</td>
+      <td>0x0001</td>
+      <td>Declared public; may be accessed from outside its package.</td>
+    </tr>
+    <tr>
+      <td>ACC_PRIVATE</td>
+      <td>0x0002</td>
+      <td>Declared private; accessible only within the defining class.</td>
+    </tr>
+    <tr>
+      <td>ACC_PROTECTED</td>
+      <td>0x0004</td>
+      <td>Declared protected; may be accessed within subclasses.</td>
+    </tr>
+    <tr>
+      <td>ACC_STATIC</td>
+      <td>0x0008</td>
+      <td>Declared static.</td>
+    </tr>
+    <tr>
+      <td>ACC_FINAL</td>
+      <td>0x0010</td>
+      <td>Declared final; must not be overridden (<a href="https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-5.html#jvms-5.4.5">§5.4.5</a>).</td>
+    </tr>
+    <tr>
+      <td>ACC_SYNCHRONIZED</td>
+      <td>0x0020</td>
+      <td>Declared synchronized; invocation is wrapped by a monitor use.</td>
+    </tr>
+    <tr>
+      <td>ACC_BRIDGE</td>
+      <td>0x0040</td>
+      <td>A bridge method, generated by the compiler.</td>
+    </tr>
+    <tr>
+      <td>ACC_VARARGS</td>
+      <td>0x0080</td>
+      <td>Declared with variable number of arguments.</td>
+    </tr>
+    <tr>
+      <td>ACC_NATIVE</td>
+      <td>0x0100</td>
+      <td>Declared native; implemented in a language other than Java.</td>
+    </tr>
+    <tr>
+      <td>ACC_ABSTRACT</td>
+      <td>0x0400</td>
+      <td>Declared abstract; no implementation is provided.</td>
+    </tr>
+    <tr>
+      <td>ACC_STRICT</td>
+      <td>0x0800</td>
+      <td>Declared strictfp; floating-point mode is FP-strict.</td>
+    </tr>
+    <tr>
+      <td>ACC_SYNTHETIC</td>
+      <td>0x1000</td>
+      <td>Declared synthetic; not present in the source code.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="14-属性">1.4 属性</h2>
+
+<pre><code class="language-Plain">attribute_info {
+    u2 attribute_name_index;
+    u4 attribute_length;
+    u1 info[attribute_length];
+}
+</code></pre>
+
+<table>
+  <thead>
+    <tr>
+      <th><strong>Attribute</strong></th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ConstantValue</td>
+      <td>ConstantValue_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 constantvalue_index; }</td>
+    </tr>
+    <tr>
+      <td>Code</td>
+      <td>Code_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 max_stack;    u2 max_locals;    u4 code_length;    u1 code[code_length];    u2 exception_table_length;    {   u2 start_pc;        u2 end_pc;        u2 handler_pc;        u2 catch_type;    } exception_table[exception_table_length];    u2 attributes_count;    attribute_info attributes[attributes_count]; }</td>
+    </tr>
+    <tr>
+      <td>StackMapTable</td>
+      <td>StackMapTable_attribute {    u2              attribute_name_index;    u4              attribute_length;    u2              number_of_entries;    stack_map_frame entries[number_of_entries]; }union stack_map_frame {    same_frame;    same_locals_1_stack_item_frame;    same_locals_1_stack_item_frame_extended;    chop_frame;    same_frame_extended;    append_frame;    full_frame; }</td>
+    </tr>
+    <tr>
+      <td>Exceptions</td>
+      <td>Exceptions_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 number_of_exceptions;    u2 exception_index_table[number_of_exceptions]; }</td>
+    </tr>
+    <tr>
+      <td>InnerClasses</td>
+      <td>InnerClasses_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 number_of_classes;    {   u2 inner_class_info_index;        u2 outer_class_info_index;        u2 inner_name_index;        u2 inner_class_access_flags;    } classes[number_of_classes]; }</td>
+    </tr>
+    <tr>
+      <td>EnclosingMethod</td>
+      <td>EnclosingMethod_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 class_index;    u2 method_index; }</td>
+    </tr>
+    <tr>
+      <td>Synthetic</td>
+      <td>Synthetic_attribute {    u2 attribute_name_index;    u4 attribute_length; }</td>
+    </tr>
+    <tr>
+      <td>Signature</td>
+      <td>Signature_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 signature_index; }</td>
+    </tr>
+    <tr>
+      <td>SourceFile</td>
+      <td>SourceFile_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 sourcefile_index; }</td>
+    </tr>
+    <tr>
+      <td>SourceDebugExtension</td>
+      <td>SourceDebugExtension_attribute {    u2 attribute_name_index;    u4 attribute_length;    u1 debug_extension[attribute_length]; }</td>
+    </tr>
+    <tr>
+      <td>LineNumberTable</td>
+      <td>LineNumberTable_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 line_number_table_length;    {   u2 start_pc;        u2 line_number;            } line_number_table[line_number_table_length]; }</td>
+    </tr>
+    <tr>
+      <td>LocalVariableTable</td>
+      <td>LocalVariableTable_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 local_variable_table_length;    {   u2 start_pc;        u2 length;        u2 name_index;        u2 descriptor_index;        u2 index;    } local_variable_table[local_variable_table_length]; }</td>
+    </tr>
+    <tr>
+      <td>LocalVariableTypeTable</td>
+      <td>LocalVariableTypeTable_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 local_variable_type_table_length;    {   u2 start_pc;        u2 length;        u2 name_index;        u2 signature_index;        u2 index;    } local_variable_type_table[local_variable_type_table_length]; }</td>
+    </tr>
+    <tr>
+      <td>Deprecated</td>
+      <td>Deprecated_attribute {    u2 attribute_name_index;    u4 attribute_length; }</td>
+    </tr>
+    <tr>
+      <td>RuntimeVisibleAnnotations</td>
+      <td>RuntimeVisibleAnnotations_attribute {    u2         attribute_name_index;    u4         attribute_length;    u2         num_annotations;    annotation annotations[num_annotations]; }</td>
+    </tr>
+    <tr>
+      <td>RuntimeInvisibleAnnotations</td>
+      <td>RuntimeVisibleParameterAnnotations_attribute {    u2 attribute_name_index;    u4 attribute_length;    u1 num_parameters;    {   u2         num_annotations;        annotation annotations[num_annotations];    } parameter_annotations[num_parameters]; }</td>
+    </tr>
+    <tr>
+      <td>RuntimeVisibleParameterAnnotations</td>
+      <td>RuntimeInvisibleParameterAnnotations_attribute {    u2 attribute_name_index;    u4 attribute_length;    u1 num_parameters;    {   u2         num_annotations;        annotation annotations[num_annotations];    } parameter_annotations[num_parameters]; }</td>
+    </tr>
+    <tr>
+      <td>RuntimeInvisibleParameterAnnotations</td>
+      <td>RuntimeVisibleTypeAnnotations_attribute {    u2              attribute_name_index;    u4              attribute_length;    u2              num_annotations;    type_annotation annotations[num_annotations]; }</td>
+    </tr>
+    <tr>
+      <td>RuntimeVisibleTypeAnnotations</td>
+      <td>RuntimeVisibleTypeAnnotations_attribute {    u2              attribute_name_index;    u4              attribute_length;    u2              num_annotations;    type_annotation annotations[num_annotations]; }</td>
+    </tr>
+    <tr>
+      <td>RuntimeInvisibleTypeAnnotations</td>
+      <td>RuntimeInvisibleTypeAnnotations_attribute {    u2              attribute_name_index;    u4              attribute_length;    u2              num_annotations;    type_annotation annotations[num_annotations]; }</td>
+    </tr>
+    <tr>
+      <td>AnnotationDefault</td>
+      <td>AnnotationDefault_attribute {    u2            attribute_name_index;    u4            attribute_length;    element_value default_value; }</td>
+    </tr>
+    <tr>
+      <td>BootstrapMethods</td>
+      <td>BootstrapMethods_attribute {    u2 attribute_name_index;    u4 attribute_length;    u2 num_bootstrap_methods;    {   u2 bootstrap_method_ref;        u2 num_bootstrap_arguments;        u2 bootstrap_arguments[num_bootstrap_arguments];    } bootstrap_methods[num_bootstrap_methods]; }</td>
+    </tr>
+    <tr>
+      <td>MethodParameters</td>
+      <td>MethodParameters_attribute {    u2 attribute_name_index;    u4 attribute_length;    u1 parameters_count;    {   u2 name_index;        u2 access_flags;    } parameters[parameters_count]; }</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="15-示例">1.5 示例</h2>
+
+<p>编译Java Source文件：javac HelloWorld.java</p>
+
+<pre><code class="language-Java">public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("hello world!");
+    }
+}
+</code></pre>
+
+<p>查看生成的HelloWorld.class：javap -v HelloWorld.class</p>
+
+<pre><code class="language-Shell">Classfile HelloWorld.class
+  Last modified xxxx年xx月xx日; size 426 bytes
+  SHA-256 checksum 8b43cff4f88db3935ba70c5fc84b6a3e5247bcd669f82e64654424a1c1251ef1
+  Compiled from "HelloWorld.java"
+public class HelloWorld
+  minor version: 0
+  major version: 61
+  flags: (0x0021) ACC_PUBLIC, ACC_SUPER
+  this_class: #21                         // HelloWorld
+  super_class: #2                         // java/lang/Object
+  interfaces: 0, fields: 0, methods: 2, attributes: 1
+Constant pool:
+   #1 = Methodref          #2.#3          // java/lang/Object."&lt;init&gt;":()V
+   #2 = Class              #4             // java/lang/Object
+   #3 = NameAndType        #5:#6          // "&lt;init&gt;":()V
+   #4 = Utf8               java/lang/Object
+   #5 = Utf8               &lt;init&gt;
+   #6 = Utf8               ()V
+   #7 = Fieldref           #8.#9          // java/lang/System.out:Ljava/io/PrintStream;
+   #8 = Class              #10            // java/lang/System
+   #9 = NameAndType        #11:#12        // out:Ljava/io/PrintStream;
+  #10 = Utf8               java/lang/System
+  #11 = Utf8               out
+  #12 = Utf8               Ljava/io/PrintStream;
+  #13 = String             #14            // hello world!
+  #14 = Utf8               hello world!
+  #15 = Methodref          #16.#17        // java/io/PrintStream.println:(Ljava/lang/String;)V
+  #16 = Class              #18            // java/io/PrintStream
+  #17 = NameAndType        #19:#20        // println:(Ljava/lang/String;)V
+  #18 = Utf8               java/io/PrintStream
+  #19 = Utf8               println
+  #20 = Utf8               (Ljava/lang/String;)V
+  #21 = Class              #22            // HelloWorld
+  #22 = Utf8               HelloWorld
+  #23 = Utf8               Code
+  #24 = Utf8               LineNumberTable
+  #25 = Utf8               main
+  #26 = Utf8               ([Ljava/lang/String;)V
+  #27 = Utf8               SourceFile
+  #28 = Utf8               HelloWorld.java
+{
+  public HelloWorld();
+    descriptor: ()V
+    flags: (0x0001) ACC_PUBLIC
+    Code:
+      stack=1, locals=1, args_size=1
+         0: aload_0
+         1: invokespecial #1                  // Method java/lang/Object."&lt;init&gt;":()V
+         4: return
+      LineNumberTable:
+        line 1: 0
+
+  public static void main(java.lang.String[]);
+    descriptor: ([Ljava/lang/String;)V
+    flags: (0x0009) ACC_PUBLIC, ACC_STATIC
+    Code:
+      stack=2, locals=1, args_size=1
+         0: getstatic     #7                  // Field java/lang/System.out:Ljava/io/PrintStream;
+         3: ldc           #13                 // String hello world!
+         5: invokevirtual #15                 // Method java/io/PrintStream.println:(Ljava/lang/String;)V
+         8: return
+      LineNumberTable:
+        line 3: 0
+        line 4: 8
+}
+SourceFile: "HelloWorld.java"
+</code></pre>
+
+<h1 id="2字节码指令">2.字节码指令</h1>
+
+<p>Java虚拟机采用基于栈的架构，其指令由操作码和操作数组成。</p>
+
+<ul>
+  <li>操作码：一个字节长度(0~255)，意味着指令集的操作码个数不能操作256条。</li>
+  <li>
+    <table>
+      <tbody>
+        <tr>
+          <td>操作数：一条指令可以有零或者多个操作数，且操作数可以是1个或者多个字节。编译后的代码没有采用操作数长度对齐方式，比如16位无符号整数需使用两个字节储存(假设为byte1和byte2)，那么真实值是 (byte1 « 8)</td>
+          <td>byte2。</td>
+        </tr>
+      </tbody>
+    </table>
+  </li>
+</ul>
+
+<p>大多数指令包含了其操作所对应的数据类型信息，比如iload，表示从局部变量表中加载int型的数据到操作数栈；而fload表示加载float型数据到操作数栈。由于操作码长度只有1Byte，因此Java虚拟机的指令集对于特定操作只提供有限的类型相关指令，并非为每一种数据类型都有相应的操作指令。必要时，有些指令可用于将不支持的类型转换为可被支持的类型。</p>
+
+<h2 id="21-栈操作相关指令">2.1 栈操作相关指令</h2>
+
+<h3 id="xload和xstore-x可为ilfda">xload和xstore (x可为i,l,f,d,a)</h3>
+
+<ul>
+  <li>load 命令：用于将局部变量表的指定位置的相应类型变量加载到栈顶；</li>
+  <li>store命令：用于将栈顶的相应类型数据保入局部变量表的指定位置；</li>
+</ul>
+
+<h3 id="xconstxpush和ldc-x可为ilfda">xconst、xpush和ldc (x可为i,l,f,d,a)</h3>
+
+<ul>
+  <li>const、push：将相应类型的常量放入栈顶</li>
+  <li>ldc:则是从常量池中将常量</li>
+</ul>
+
+<h3 id="pop和dup">pop和dup</h3>
+
+<ul>
+  <li>pop用于栈顶数值出栈操作；</li>
+  <li>dup用于赋值栈顶的指定个数的数值，并将其压入栈顶指定次数；</li>
+</ul>
+
+<h2 id="22-对象相关">2.2 对象相关</h2>
+
+<h3 id="字段调用">字段调用</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>字段调用</th>
+      <th>含义</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>getstatic</td>
+      <td>获取类的静态字段，将其值压入栈顶</td>
+    </tr>
+    <tr>
+      <td>putstatic</td>
+      <td>给类的静态字段赋值</td>
+    </tr>
+    <tr>
+      <td>getfield</td>
+      <td>获取对象的字段，将其值压入栈顶</td>
+    </tr>
+    <tr>
+      <td>putfield</td>
+      <td>给对象的字段赋值</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="方法调用">方法调用</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>方法调用</th>
+      <th>作用</th>
+      <th>解释</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>invokevirtual</td>
+      <td>调用实例方法</td>
+      <td>虚方法分派</td>
+    </tr>
+    <tr>
+      <td>invokestatic</td>
+      <td>调用类方法</td>
+      <td>static方法</td>
+    </tr>
+    <tr>
+      <td>invokeinterface</td>
+      <td>调用接口方法</td>
+      <td>运行时搜索合适方法调用</td>
+    </tr>
+    <tr>
+      <td>invokespecial</td>
+      <td>调用特殊实例方法</td>
+      <td>包括实例初始化方法、父类方法</td>
+    </tr>
+    <tr>
+      <td>invokedynamic</td>
+      <td>由用户引导方法决定</td>
+      <td>运行时动态解析出调用点限定符所引用方法</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="方法返回">方法返回</h3>
+
+<table>
+  <thead>
+    <tr>
+      <th>方法返回</th>
+      <th>含义</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ireturn</td>
+      <td>当前方法返回int</td>
+    </tr>
+    <tr>
+      <td>lreturn</td>
+      <td>当前方法返回long</td>
+    </tr>
+    <tr>
+      <td>freturn</td>
+      <td>当前方法返回float</td>
+    </tr>
+    <tr>
+      <td>dreturn</td>
+      <td>当前方法返回double</td>
+    </tr>
+    <tr>
+      <td>areturn</td>
+      <td>当前方法返回ref</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3 id="对象和数组">对象和数组</h3>
+
+<ul>
+  <li>创建类实例： new</li>
+  <li>创建数组：newarray、anewarray、multianewarray</li>
+  <li>数组元素 加载到 操作数栈：xaload (x可为i,l,f,d,a,b,c,s)</li>
+  <li>操作数栈的值 存储到数组元素： xastore (x可为i,l,f,d,a,b,c,s)</li>
+  <li>数组长度：arraylength</li>
+  <li>类实例类型：instanceof、checkcast</li>
+</ul>
+
+<h2 id="23-运算指令">2.3 运算指令</h2>
+
+<p>运算指令是用于对操作数栈上的两个数值进行某种运算，并把结果重新存入到操作栈顶。Java虚拟机只支持整型和浮点型两类数据的运算指令，所有指令如下：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>运算</th>
+      <th>int</th>
+      <th>long</th>
+      <th>float</th>
+      <th>double</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>加法</td>
+      <td>iadd</td>
+      <td>ladd</td>
+      <td>fadd</td>
+      <td>dadd</td>
+    </tr>
+    <tr>
+      <td>减法</td>
+      <td>isub</td>
+      <td>lsub</td>
+      <td>fsub</td>
+      <td>dsub</td>
+    </tr>
+    <tr>
+      <td>乘法</td>
+      <td>imul</td>
+      <td>lmul</td>
+      <td>fmul</td>
+      <td>dmul</td>
+    </tr>
+    <tr>
+      <td>除法</td>
+      <td>idiv</td>
+      <td>ldiv</td>
+      <td>fdiv</td>
+      <td>ddiv</td>
+    </tr>
+    <tr>
+      <td>求余</td>
+      <td>irem</td>
+      <td>lrem</td>
+      <td>frem</td>
+      <td>drem</td>
+    </tr>
+    <tr>
+      <td>取反</td>
+      <td>ineg</td>
+      <td>lneg</td>
+      <td>fneg</td>
+      <td>dneg</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>其他运算：</p>
+
+<ul>
+  <li>位移：ishl,ishr,iushr,lshl,lshr,lushr</li>
+  <li>按位或： ior,lor</li>
+  <li>按位与： iand, land</li>
+  <li>按位异或： ixor, lxor</li>
+  <li>自增：iin</li>
+  <li>比较：dcmpg,dcmpl,fcmpg,fcmpl,lcmp</li>
+</ul>
+
+<h2 id="24-类型转换">2.4 类型转换</h2>
+
+<p>类型转换用于将两种不同类型的数值进行转换。</p>
+
+<ol>
+  <li>对于宽化类型转换(小范围向大范围转换)，无需显式的转换指令，并且是安全的操作。各种范围从小到大依次排序： int, long, float, double。</li>
+  <li>对于窄化类型转换，必须显式地调用类型转换指令，并且该过程很可能导致精度丢失。转换规则中需要特别注意的是当浮点值为NaN, 则转换结果为int或long的0。虽然窄化运算可能会发生上/下限溢出和精度丢失等情况，但虚拟机规范明确规定窄化转换U不可能导致虚拟机抛出异常。</li>
+</ol>
+
+<p>类型转换指令：i2b, i2c,f2i等等。</p>
+
+<h2 id="25-流程控制">2.5 流程控制</h2>
+
+<p>控制指令是指有条件或无条件地修改PC寄存器的值，从而达到控制流程的目标</p>
+
+<ul>
+  <li>条件分支：ifeq、iflt、ifnull、ifnonnull等</li>
+  <li>复合分支：tableswitch、lookupswitch</li>
+  <li>无条件分支：goto、goto_w、jsr、jsr_w、ret</li>
+</ul>
+
+<h2 id="26-同步与异常">2.6 同步与异常</h2>
+
+<ul>
+  <li>异常</li>
+</ul>
+
+<p>Java程序显式抛出异常： athrow指令。在Java虚拟机中，处理异常(catch语句)不是由字节码指令来实现，而是采用异常表来完成。</p>
+
+<ul>
+  <li>同步</li>
+</ul>
+
+<p>方法级的同步和方法内部分代码的同步，都是依靠管程(Monitor)来实现的。</p>
+
+<p>Java语言使用synchronized语句块，那么Java虚拟机的指令集中通过monitorenter和monitorexit两条指令来完成synchronized的功能。为了保证monitorenter和monitorexit指令一定能成对的调用（不管方法正常结束还是异常结束），编译器会自动生成一个异常处理器，该异常处理器的主要目的是用于执行monitorexit指令。</p>
+
+<h1 id="3asm介绍">3.ASM介绍</h1>
+
+<p>ASM 库提供了两个用于生成和转换已编译class的 API：</p>
+
+<ul>
+  <li>核心 API，以基于事件的形式来表示类</li>
+  <li>树 API，以基于对象的形式来表示类。</li>
+</ul>
+
+<table>
+  <thead>
+    <tr>
+      <th>包名</th>
+      <th>功能</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>org.objectweb.asm</td>
+      <td>基于事件的 API，提供 ClassReader 和 ClassWriter 类读写Java字节码文件。</td>
+    </tr>
+    <tr>
+      <td>org.objectweb.asm.signature</td>
+      <td>读写泛型签名。</td>
+    </tr>
+    <tr>
+      <td>org.objectweb.asm.tree</td>
+      <td>基于对象的 API，提供了一些工具，用于在基于事件和基于对象的表示方法之间进行转换。</td>
+    </tr>
+    <tr>
+      <td>org.objectweb.asm.tree.analysis</td>
+      <td>以树 API 为基础，提供了一个类分析框架和几个预定义的类分析器。</td>
+    </tr>
+    <tr>
+      <td>org.objectweb.asm.commons</td>
+      <td>提供了一些很有用的基于核心包和tree包的预定义adapters。</td>
+    </tr>
+    <tr>
+      <td>org.objectweb.asm.util</td>
+      <td>提供各种基于核心 API 的工具，可以在开发和调试 ASM 应用程序时使用。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="31-核心api">3.1 核心API</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>类</th>
+      <th>说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ClassReader</td>
+      <td>解析class文件，调用ClassVisitor中对应的visit成员变量、方法和字节码指令方法。</td>
+    </tr>
+    <tr>
+      <td>ClassVisitor</td>
+      <td>方法调用顺序：visit [ visitSource ] [ visitModule ][ visitNestHost ][ visitOuterClass ] ( visitAnnotation | visitTypeAnnotation | visitAttribute )* ( visitNestMember | [ * visitPermittedSubclass ] | visitInnerClass | visitRecordComponent | visitField | visitMethod )* visitEnd.</td>
+    </tr>
+    <tr>
+      <td>ClassWriter</td>
+      <td>继承自ClassVisitor，生成class文件。</td>
+    </tr>
+    <tr>
+      <td>FieldVisitor</td>
+      <td>方法调用顺序： ( visitAnnotation | visitTypeAnnotation | visitAttribute )* visitEnd.</td>
+    </tr>
+    <tr>
+      <td>FieldWriter</td>
+      <td>继承自FieldVisitor。</td>
+    </tr>
+    <tr>
+      <td>MethodVisitor</td>
+      <td>方法调用顺序： ( visitParameter )* [ visitAnnotationDefault ] ( visitAnnotation | visitAnnotableParameterCount | visitParameterAnnotation visitTypeAnnotation | visitAttribute )* [ visitCode ( visitFrame | visit<i>X</i>Insn | visitLabel | visitInsnAnnotation | visitTryCatchBlock | visitTryCatchAnnotation | visitLocalVariable | visitLocalVariableAnnotation | visitLineNumber )* visitMaxs ] visitEnd.</td>
+    </tr>
+    <tr>
+      <td>MethodWriter</td>
+      <td>继承自MethodVisitor</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="32-树api">3.2 树API</h2>
+
+<p>AbstractInsnNode是一个抽象类，表示字节码指令的节点。其子类有：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>节点</th>
+      <th>opcode</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>FieldInsnNode</td>
+      <td>GETSTATIC, PUTSTATIC, GETFIELD or PUTFIELD.</td>
+    </tr>
+    <tr>
+      <td>FrameNode</td>
+      <td>-1</td>
+    </tr>
+    <tr>
+      <td>IincInsnNode</td>
+      <td>IINC</td>
+    </tr>
+    <tr>
+      <td>InsnNode</td>
+      <td>NOP, ACONST_NULL, ICONST_M1, ICONST_0, ICONST_1, ICONST_2, ICONST_3, ICONST_4, ICONST_5, LCONST_0, LCONST_1, FCONST_0, FCONST_1, FCONST_2, DCONST_0, DCONST_1, IALOAD, LALOAD, FALOAD, DALOAD, AALOAD, BALOAD, CALOAD, SALOAD, IASTORE, LASTORE, FASTORE, DASTORE, AASTORE, BASTORE, CASTORE, SASTORE, POP, POP2, DUP, DUP_X1, DUP_X2, DUP2, DUP2_X1, DUP2_X2, SWAP, IADD, LADD, FADD, DADD, ISUB, LSUB, FSUB, DSUB, IMUL, LMUL, FMUL, DMUL, IDIV, LDIV, FDIV, DDIV, IREM, LREM, FREM, DREM, INEG, LNEG, FNEG, DNEG, ISHL, LSHL, ISHR, LSHR, IUSHR, LUSHR, IAND, LAND, IOR, LOR, IXOR, LXOR, I2L, I2F, I2D, L2I, L2F, L2D, F2I, F2L, F2D, D2I, D2L, D2F, I2B, I2C, I2S, LCMP, FCMPL, FCMPG, DCMPL, DCMPG, IRETURN, LRETURN, FRETURN, DRETURN, ARETURN, RETURN, ARRAYLENGTH, ATHROW, MONITORENTER, or MONITOREXIT.</td>
+    </tr>
+    <tr>
+      <td>IntInsnNode</td>
+      <td>BIPUSH, SIPUSH or NEWARRAY.</td>
+    </tr>
+    <tr>
+      <td>InvokeDynamicInsnNode</td>
+      <td>INVOKEDYNAMIC</td>
+    </tr>
+    <tr>
+      <td>JumpInsnNode</td>
+      <td>IFEQ, IFNE, IFLT, IFGE, IFGT, IFLE, IF_ICMPEQ, IF_ICMPNE, IF_ICMPLT, IF_ICMPGE, IF_ICMPGT, IF_ICMPLE, IF_ACMPEQ, IF_ACMPNE, GOTO, JSR, IFNULL or IFNONNULL.</td>
+    </tr>
+    <tr>
+      <td>LabelNode</td>
+      <td>-1</td>
+    </tr>
+    <tr>
+      <td>LdcInsnNode</td>
+      <td>LDC</td>
+    </tr>
+    <tr>
+      <td>LineNumberNode</td>
+      <td>-1</td>
+    </tr>
+    <tr>
+      <td>LookupSwitchInsnNode</td>
+      <td>LOOKUPSWITCH</td>
+    </tr>
+    <tr>
+      <td>MethodInsnNode</td>
+      <td>INVOKEVIRTUAL, INVOKESPECIAL, INVOKESTATIC or INVOKEINTERFACE.</td>
+    </tr>
+    <tr>
+      <td>MultiANewArrayInsnNode</td>
+      <td>MULTIANEWARRAY</td>
+    </tr>
+    <tr>
+      <td>TableSwitchInsnNode</td>
+      <td>TABLESWITCH</td>
+    </tr>
+    <tr>
+      <td>TypeInsnNode</td>
+      <td>NEW, ANEWARRAY, CHECKCAST or INSTANCEOF.</td>
+    </tr>
+    <tr>
+      <td>VarInsnNode</td>
+      <td>ILOAD, LLOAD, FLOAD, DLOAD, ALOAD, ISTORE, LSTORE, FSTORE, DSTORE, ASTORE or RET.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>其他节点：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>节点</th>
+      <th> </th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>AnnotationNode</td>
+      <td>继承自AnnotationVisitor，注解节点。</td>
+    </tr>
+    <tr>
+      <td>ClassNode</td>
+      <td>继承自ClassVisitor，类节点。</td>
+    </tr>
+    <tr>
+      <td>FieldNode</td>
+      <td>继承自FieldVisitor，类成员变量节点。</td>
+    </tr>
+    <tr>
+      <td>InnerClassNode</td>
+      <td>内部类节点。</td>
+    </tr>
+    <tr>
+      <td>LocalVariableAnnotationNode</td>
+      <td>继承自TypeAnnotationNode。</td>
+    </tr>
+    <tr>
+      <td>LocalVariableNode</td>
+      <td>局部变量声明节点。</td>
+    </tr>
+    <tr>
+      <td>MethodNode</td>
+      <td>方法节点。</td>
+    </tr>
+    <tr>
+      <td>ParameterNode</td>
+      <td>方法参数节点。</td>
+    </tr>
+    <tr>
+      <td>RecordComponentNode</td>
+      <td>继承自RecordComponentVisitor。</td>
+    </tr>
+    <tr>
+      <td>TryCatchBlockNode</td>
+      <td>try-catch代码块节点。</td>
+    </tr>
+    <tr>
+      <td>TypeAnnotationNode</td>
+      <td>继承自TypeAnnotationNode</td>
+    </tr>
+  </tbody>
+</table>
+
+
+                <hr style="visibility: hidden;">
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2021/07/04/Binder%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="Binder机制介绍">
+                        Previous<br>
+                        <span>Binder机制介绍</span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2021/09/04/JNI%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="JNI介绍">
+                        Next<br>
+                        <span>JNI介绍</span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <hr style="visibility: hidden;">
+
+                
+
+                
+            </div>  
+
+    <!-- Side Catalog Container -->
+        
+            <div class="
+                col-lg-2 col-lg-offset-0
+                visible-lg-block
+                sidebar-container
+                catalog-container">
+                <div class="side-catalog">
+                    <hr class="hidden-sm hidden-xs">
+                    <h5>
+                        <a class="catalog-toggle" href="#">CATALOG</a>
+                    </h5>
+                    <ul class="catalog-body"></ul>
+                </div>
+            </div>
+        
+
+    <!-- Sidebar Container -->
+            <div class="
+                col-lg-8 col-lg-offset-2
+                col-md-10 col-md-offset-1
+                sidebar-container">
+
+                <!-- Featured Tags -->
+                
+
+
+<section>
+    
+        <hr class="hidden-sm hidden-xs">
+    
+    <h5><a href="/archive/">FEATURED TAGS</a></h5>
+    <div class="tags">
+        
+        
+        
+        
+        
+        
+                <a data-sort="0001" 
+                    href="/archive/?tag=Android"
+                    title="Android"
+                    rel="27">Android</a>
+        
+                <a data-sort="0022" 
+                    href="/archive/?tag=SystemUI"
+                    title="SystemUI"
+                    rel="6">SystemUI</a>
+        
+                <a data-sort="0025" 
+                    href="/archive/?tag=HotFix"
+                    title="HotFix"
+                    rel="3">HotFix</a>
+        
+                <a data-sort="0026" 
+                    href="/archive/?tag=ANR"
+                    title="ANR"
+                    rel="2">ANR</a>
+        
+                <a data-sort="0026" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="2">Activity</a>
+        
+                <a data-sort="0026" 
+                    href="/archive/?tag=Binder"
+                    title="Binder"
+                    rel="2">Binder</a>
+        
+                <a data-sort="0026" 
+                    href="/archive/?tag=Memory"
+                    title="Memory"
+                    rel="2">Memory</a>
+        
+                <a data-sort="0026" 
+                    href="/archive/?tag=MemoryLeak"
+                    title="MemoryLeak"
+                    rel="2">MemoryLeak</a>
+    </div>
+</section>
+
+
+                <!-- Friends Blog -->
+                
+<hr>
+<h5>FRIENDS</h5>
+<ul class="list-inline">
+  
+  <li><a href="https://weishu.me/">weishu</a></li>
+  
+  <li><a href="https://androidperformance.com/">Gracker</a></li>
+  
+  <li><a href="http://gityuan.com/">Gityuan</a></li>
+  
+  <li><a href="https://juejin.cn/user/149189312913511/posts">芦半山</a></li>
+  
+</ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<!-- add support for mathjax by voleking-->
+
+
+
+
+
+
+
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+      var d = document, t = 'script',
+          o = d.createElement(t),
+          s = d.getElementsByTagName(t)[0];
+      o.src = u;
+      if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+      s.parentNode.insertBefore(o, s);
+    }
+</script>
+<!-- anchor-js, Doc:http://bryanbraun.github.io/anchorjs/ -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/anchor-js/1.1.1/anchor.min.js",function(){
+        anchors.options = {
+          visible: 'hover',
+          placement: 'right',
+          // icon: '#'
+        };
+        anchors.add().remove('.intro-header h1').remove('.subheading').remove('.sidebar-container h5');
+    })
+</script>
+<style>
+    /* place left on bigger screen */
+    @media all and (min-width: 800px) {
+        .anchorjs-link{
+            position: absolute;
+            left: -0.75em;
+            font-size: 1.1em;
+            margin-top : -0.1em;
+        }
+    }
+</style>
+
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <!-- SNS Link -->
+                
+
+
+<ul class="list-inline text-center">
+
+
+  
+  
+  
+  
+  
+  
+  
+</ul>
+
+                <p class="copyright text-muted">
+                    Copyright &copy; Android学习笔记 2023
+                    <br>
+                    Powered by <a href="http://huangxuan.me">Hux Blog</a> |
+                    <iframe style="margin-left: 2px; margin-bottom:-5px;" frameborder="0" scrolling="0" width="100px"
+                        height="20px"
+                        src="https://ghbtns.com/github-btn.html?user=huxpro&repo=huxpro.github.io&type=star&count=true">
+                    </iframe>
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<!-- Currently, only navbar scroll-down effect at desktop still depends on this -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/hux-blog.min.js "></script>
+
+<!-- Simple Jekyll Search -->
+<script src="/js/simple-jekyll-search.min.js"></script>
+
+<!-- Service Worker -->
+
+<script src="/js/snackbar.js "></script>
+<script src="/js/sw-registration.js "></script>
+
+
+<!-- async load function -->
+<script>
+    function async(u, c) {
+        var d = document, t = 'script',
+            o = d.createElement(t),
+            s = d.getElementsByTagName(t)[0];
+        o.src = u;
+        if (c) { o.addEventListener('load', function (e) { c(null, e); }, false); }
+        s.parentNode.insertBefore(o, s);
+    }
+</script>
+
+<!--
+     Because of the native support for backtick-style fenced code blocks
+     right within the Markdown is landed in Github Pages,
+     From V1.6, There is no need for Highlight.js,
+     so Huxblog drops it officially.
+
+     - https://github.com/blog/2100-github-pages-now-faster-and-simpler-with-jekyll-3-0
+     - https://help.github.com/articles/creating-and-highlighting-code-blocks/
+     - https://github.com/jneen/rouge/wiki/list-of-supported-languages-and-lexers
+-->
+<!--
+    <script>
+        async("http://cdn.bootcss.com/highlight.js/8.6/highlight.min.js", function(){
+            hljs.initHighlightingOnLoad();
+        })
+    </script>
+    <link href="http://cdn.bootcss.com/highlight.js/8.6/styles/github.min.css" rel="stylesheet">
+-->
+
+
+
+
+
+
+
+<!--fastClick.js -->
+<script>
+    async("//cdnjs.cloudflare.com/ajax/libs/fastclick/1.0.6/fastclick.min.js", function () {
+        var $nav = document.querySelector("nav");
+        if ($nav) FastClick.attach($nav);
+    })
+</script>
+
+
+<!-- Google Analytics -->
+
+
+
+<!-- Baidu Tongji -->
+
+<script>
+    // dynamic User by Hux
+    var _baId = '4aa6afabf05ffd2ce6f459088368d4a3';
+
+    // Originial
+    var _hmt = _hmt || [];
+    (function () {
+        var hm = document.createElement("script");
+        hm.src = "//hm.baidu.com/hm.js?" + _baId;
+        var s = document.getElementsByTagName("script")[0];
+        s.parentNode.insertBefore(hm, s);
+    })();
+</script>
+
+
+
+<!-- Side Catalog -->
+
+<script type="text/javascript">
+    function generateCatalog(selector) {
+
+        // interop with multilangual 
+        if ('' == 'true') {
+            _containerSelector = 'div.post-container.active'
+        } else {
+            _containerSelector = 'div.post-container'
+        }
+
+        // init
+        var P = $(_containerSelector), a, n, t, l, i, c;
+        a = P.find('h1,h2,h3,h4,h5,h6');
+
+        // clean
+        $(selector).html('')
+
+        // appending
+        a.each(function () {
+            n = $(this).prop('tagName').toLowerCase();
+            i = "#" + $(this).prop('id');
+            t = $(this).text();
+            c = $('<a href="' + i + '" rel="nofollow">' + t + '</a>');
+            l = $('<li class="' + n + '_nav"></li>').append(c);
+            $(selector).append(l);
+        });
+        return true;
+    }
+
+    generateCatalog(".catalog-body");
+
+    // toggle side catalog
+    $(".catalog-toggle").click((function (e) {
+        e.preventDefault();
+        $('.side-catalog').toggleClass("fold")
+    }))
+
+    /*
+     * Doc: https://github.com/davist11/jQuery-One-Page-Nav
+     * Fork by Hux to support padding
+     */
+    async("/js/jquery.nav.js", function () {
+        $('.catalog-body').onePageNav({
+            currentClass: "active",
+            changeHash: !1,
+            easing: "swing",
+            filter: "",
+            scrollSpeed: 700,
+            scrollOffset: 0,
+            scrollThreshold: .2,
+            begin: null,
+            end: null,
+            scrollChange: null,
+            padding: 80
+        });
+    });
+</script>
+
+
+
+<!-- Multi-Lingual -->
+
+
+<!-- Simple Jekyll Search -->
+<script>
+    // https://stackoverflow.com/questions/1912501/unescape-html-entities-in-javascript
+    function htmlDecode(input) {
+        var e = document.createElement('textarea');
+        e.innerHTML = input;
+        // handle case of empty input
+        return e.childNodes.length === 0 ? "" : e.childNodes[0].nodeValue;
+    }
+
+    SimpleJekyllSearch({
+        searchInput: document.getElementById('search-input'),
+        resultsContainer: document.getElementById('search-results'),
+        json: '/search.json',
+        searchResultTemplate: '<div class="post-preview item"><a href="{url}"><h2 class="post-title">{title}</h2><h3 class="post-subtitle">{subtitle}</h3><hr></a></div>',
+        noResultsText: 'No results',
+        limit: 50,
+        fuzzy: false,
+        // a hack to get escaped subtitle unescaped. for some reason, 
+        // post.subtitle w/o escape filter nuke entire search.
+        templateMiddleware: function (prop, value, template) {
+            if (prop === 'subtitle' || prop === 'title') {
+                if (value.indexOf("code")) {
+                    return htmlDecode(value);
+                } else {
+                    return value;
+                }
+            }
+        }
+    });
+
+    $(document).ready(function () {
+        var $searchPage = $('.search-page');
+        var $searchOpen = $('.search-icon');
+        var $searchClose = $('.search-icon-close');
+        var $searchInput = $('#search-input');
+        var $body = $('body');
+
+        $searchOpen.on('click', function (e) {
+            e.preventDefault();
+            $searchPage.toggleClass('search-active');
+            var prevClasses = $body.attr('class') || '';
+            setTimeout(function () {
+                $body.addClass('no-scroll');
+            }, 400)
+
+            if ($searchPage.hasClass('search-active')) {
+                $searchClose.on('click', function (e) {
+                    e.preventDefault();
+                    $searchPage.removeClass('search-active');
+                    $body.attr('class', prevClasses);  // from closure 
+                });
+                $searchInput.focus();
+            }
+        });
+    });
+</script>
+
+
+<!-- Image to hack wechat -->
+<img src="/img/icon_wechat.png" width="0" height="0" />
+<!-- Migrate from head to bottom, no longer block render and still work -->
+
+</body>
+
+</html>

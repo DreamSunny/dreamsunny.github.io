@@ -248,38 +248,6 @@
       col-xs-12 postlist-container">
       
 <div class="post-preview">
-    <a href="/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
-        <h2 class="post-title">
-            SystemUI-功能介绍
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1. SystemUI介绍
-
-SystemUI正如其名，即系统的显示界面。它是一个常驻进程，独立于system_server进程。
-
-SystemUI内部包含一系列组件，在其启动的时候会初始化这些组件。
-
-SystemUI通过IStatusBar接口收到系统侧的回调，又通过一系列私有APIs与系统通信。
-
-2. SystemUI启动流程
-
-SystemUIService 继承于 Servic...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on March 4, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
     <a href="/2021/10/29/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/">
         <h2 class="post-title">
             微信Tinker热修复
@@ -498,6 +466,67 @@ JNI 定义了两个关键数据结构，即“JavaVM”和“JNIEnv”，两者�
 </div>
 <hr>
 
+<div class="post-preview">
+    <a href="/2021/08/08/ASM%E4%BB%8B%E7%BB%8D/">
+        <h2 class="post-title">
+            ASM介绍
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.class文件格式
+
+官方文档：https://docs.oracle.com/javase/specs/jvms/se8/html/jvms-4.html
+
+ClassFile {
+    u4             magic; // 魔数，CAFEBABE
+    u2             minor_version; // 副版本号
+    u2             m...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on August 8, 2021
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2021/07/04/Binder%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
+        <h2 class="post-title">
+            Binder机制介绍
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                Android 接口定义语言 (AIDL)
+
+1.背景知识
+
+1.1 进程隔离
+
+进程隔离是为保护操作系统中进程互不干扰而设计的一组不同硬件和软件的技术。这个技术是为了避免进程A写入进程B的情况发生。 进程的隔离实现，使用了虚拟地址空间。进程A的虚拟地址和进程B的虚拟地址不同，这样就防止进程A将数据信息写入进程B。
+
+1.2 用户空间/内核空间
+
+Linux Kernel是操作系统的核心，独...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on July 4, 2021
+    </p>
+</div>
+<hr>
+
 
 <!-- Pager -->
 
@@ -529,37 +558,42 @@ JNI 定义了两个关键数据结构，即“JavaVM”和“JNIEnv”，两者�
         
         
         
-                <a data-sort="0000" 
+                <a data-sort="0001" 
                     href="/archive/?tag=Android"
                     title="Android"
                     rel="27">Android</a>
         
-                <a data-sort="0020" 
+                <a data-sort="0022" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
-                    rel="7">SystemUI</a>
+                    rel="6">SystemUI</a>
         
-                <a data-sort="0024" 
+                <a data-sort="0025" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0025" 
+                <a data-sort="0026" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="2">ANR</a>
         
-                <a data-sort="0025" 
+                <a data-sort="0026" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0025" 
+                <a data-sort="0026" 
+                    href="/archive/?tag=Binder"
+                    title="Binder"
+                    rel="2">Binder</a>
+        
+                <a data-sort="0026" 
                     href="/archive/?tag=Memory"
                     title="Memory"
                     rel="2">Memory</a>
         
-                <a data-sort="0025" 
+                <a data-sort="0026" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>
