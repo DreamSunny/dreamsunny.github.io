@@ -12,13 +12,13 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="Android应用内存基础 - Android学习笔记 | Yaku Blog">
+        content="MVC,MVP,MVVM - Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="1.内存基础知识
+    <meta property="og:description" content="1.MVC（Model-View-Controller）
 ">
     
-    <meta property="article:published_time" content=" 2021-09-10T20:00:00Z">
+    <meta property="article:published_time" content=" 2021-08-20T20:00:00Z">
     
     
     <meta property="article:author" content="Yaku">
@@ -26,14 +26,18 @@
     
     <meta property="article:tag" content="Android">
     
-    <meta property="article:tag" content="Memory">
+    <meta property="article:tag" content="MVC">
+    
+    <meta property="article:tag" content="MVP">
+    
+    <meta property="article:tag" content="MVVM">
     
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/2021/09/10/meminfo%E4%BB%8B%E7%BB%8D/">
+    <meta property="og:url" content="http://localhost:4000/2021/08/20/MVP,MVP,MVVM/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>Android应用内存基础 - Android学习笔记 | Yaku Blog</title>
+    <title>MVC,MVP,MVVM - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -42,7 +46,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/2021/09/10/meminfo%E4%BB%8B%E7%BB%8D/">
+    <link rel="canonical" href="http://localhost:4000/2021/08/20/MVP,MVP,MVVM/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -112,6 +116,8 @@
                         <li>
                             <a href="/archive/">Archive</a>
                         </li>
+                        
+                        
                         
                         
                         
@@ -243,13 +249,17 @@
                         
                         <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
                         
-                        <a class="tag" href="/archive/?tag=Memory" title="Memory">Memory</a>
+                        <a class="tag" href="/archive/?tag=MVC" title="MVC">MVC</a>
+                        
+                        <a class="tag" href="/archive/?tag=MVP" title="MVP">MVP</a>
+                        
+                        <a class="tag" href="/archive/?tag=MVVM" title="MVVM">MVVM</a>
                         
                     </div>
-                    <h1>Android应用内存基础</h1>
+                    <h1>MVC,MVP,MVVM</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">Posted by Yaku on September 10, 2021</span>
+                    <span class="meta">Posted by Yaku on August 20, 2021</span>
                 </div>
             </div>
         </div>
@@ -276,211 +286,393 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="1内存基础知识">1.内存基础知识</h1>
+				<h1 id="1mvcmodel-view-controller">1.MVC（Model-View-Controller）</h1>
 
-<p><a href="https://developer.android.com/topic/performance/memory-overview">内存管理概览</a> <br />
-<a href="https://developer.android.com/topic/performance/memory-management">进程间的内存分配 </a><br />
-<a href="https://developer.android.com/topic/performance/memory">管理应用内存 </a><br />
-<a href="https://developer.android.com/studio/profile/memory-profiler">使用内存性能分析器查看应用的内存使用情况 </a></p>
+<p><img src="/img/others/mvc.png" alt="img" /></p>
 
-<h1 id="2内存指标概念">2.内存指标概念</h1>
+<ul>
+  <li>模型层(Model) 负责存储、检索、操纵来自数据库或者网络的数据</li>
+  <li>视图层(View) 用户界面，一般采用XML文件进行界面的描述</li>
+  <li>控制层(Controller) 业务逻辑处理</li>
+</ul>
 
-<table>
-  <thead>
-    <tr>
-      <th> </th>
-      <th>全称</th>
-      <th>含义</th>
-      <th>等价</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>USS</td>
-      <td>Unique Set Size</td>
-      <td>物理内存</td>
-      <td>进程独占的内存</td>
-    </tr>
-    <tr>
-      <td>PSS</td>
-      <td>Proportional Set Size</td>
-      <td>物理内存</td>
-      <td>USS + 按比例包含共享库</td>
-    </tr>
-    <tr>
-      <td>RSS</td>
-      <td>Resident Set Size</td>
-      <td>物理内存</td>
-      <td>USS + 包含共享库</td>
-    </tr>
-    <tr>
-      <td>VSS</td>
-      <td>Virtual Set Size</td>
-      <td>虚拟内存</td>
-      <td>RSS + 未分配实际物理内存</td>
-    </tr>
-  </tbody>
-</table>
+<p><strong>1.工作原理</strong></p>
 
-<p>内存大小关系：VSS &gt;= RSS &gt;= PSS &gt;= USS</p>
+<ol>
+  <li>当用户出发事件的时候，view层会发送指令到controller层，自己不执行业务逻辑。</li>
+  <li>Controller执行业务逻辑并且操作Model，但不会直接操作View，可以说它是对View无知的。</li>
+  <li>model层更新完数据然后对视图进行更新，用户得到反馈。</li>
+</ol>
 
-<h1 id="3查看应用内存占用">3.查看应用内存占用</h1>
+<p><strong>2.MVC代码实例</strong></p>
 
-<p>在命令行下执行 adb shell dumpsys meminfo package_name 可以查看应用内存信息，其代码逻辑在ApplicationThread.dumpMemInfo()，对应字段的含义参考：</p>
+<p>1.先实现一个 model，需要有通知View更新的能力，当model加载成功，模拟从网络或者本地获取数据，需要告知View更新：</p>
 
-<p><a href="https://developer.android.google.cn/studio/command-line/dumpsys?hl=zh-cn#meminfo">https://developer.android.google.cn/studio/command-line/dumpsys?hl=zh-cn#meminfo</a></p>
+<pre><code class="language-Java">public class MvcModel {
+    String mId;
+    MvcActivity mActivity;
 
-<p><strong>Java</strong>：从 Java 或 Kotlin 代码分配的对象的内存。</p>
+    public MvcModel (MvcActivity activity) {
+        this.mActivity = activity;
+    }
+    public void loadModel (){
+        //模拟从网络或者本地获取数据
+        mId = "20170923";
+        mActivity.updateUI(this);
+    }
+}
+</code></pre>
 
-<p><strong>Native</strong>：从 C 或 C++ 代码分配的对象的内存。</p>
+<p>2.View需要发出点击事件，并且传递Controller，同时需要根据Model更新UI：</p>
 
-<p><strong>Graphics</strong>：图形缓冲区队列为向屏幕显示像素（包括 GL 表面、GL 纹理等等）所使用的内存。</p>
+<pre><code class="language-Java">public class MvcActivity extends AppCompatActivity {
 
-<p><strong>Stack</strong>：应用中的原生堆栈和 Java 堆栈使用的内存。</p>
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+       //省略
+        final MvcController controller = new MvcController(this);
+        mFindBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                controller.loadData();
+            }
+        });
+    }
 
-<p><strong>Code</strong>：应用用于处理代码和资源（如 dex 字节码、经过优化或编译的 dex 代码、.so 库和字体）的内存。</p>
+    public void updateUI (MvcModel model) {
+        mID.setText(model.mId);
+    }
+}
+</code></pre>
 
-<p><strong>Others</strong>：应用使用的系统不确定如何分类的内存。</p>
+<p>3.Controller：有时候我们的Activity既充当View也充当Controller，这里为了更好的理解MVC，将Activity进行了拆解：</p>
 
-<p><strong>Allocated</strong>：应用分配的 Java/Kotlin 对象数。此数字没有计入 C 或 C++ 中分配的对象。</p>
+<pre><code class="language-Java">public class MvcController {
+    MvcActivity mActivity;
+    MvcModel mModel;
 
-<table>
-  <thead>
-    <tr>
-      <th> </th>
-      <th>PSS</th>
-      <th>RSS</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>Java Heap</td>
-      <td>dalvikPrivateDirty + getOtherPrivate(OTHER_ART)</td>
-      <td>dalvikRss + getOtherRss(OTHER_ART)</td>
-    </tr>
-    <tr>
-      <td>Native Heap</td>
-      <td>nativePrivateDirty</td>
-      <td>nativeRss</td>
-    </tr>
-    <tr>
-      <td>Code</td>
-      <td>getOtherPrivate(OTHER_SO) + getOtherPrivate(OTHER_JAR) + getOtherPrivate(OTHER_APK) + getOtherPrivate(OTHER_TTF) + getOtherPrivate(OTHER_DEX) + getOtherPrivate(OTHER_OAT) + getOtherPrivate(OTHER_DALVIK_OTHER_ZYGOTE_CODE_CACHE) + getOtherPrivate(OTHER_DALVIK_OTHER_APP_CODE_CACHE)</td>
-      <td>getOtherRss(OTHER_SO) + getOtherRss(OTHER_JAR) + getOtherRss(OTHER_APK) + getOtherRss(OTHER_TTF) + getOtherRss(OTHER_DEX) + getOtherRss(OTHER_OAT) + getOtherRss(OTHER_DALVIK_OTHER_ZYGOTE_CODE_CACHE) + getOtherRss(OTHER_DALVIK_OTHER_APP_CODE_CACHE)</td>
-    </tr>
-    <tr>
-      <td>Stack</td>
-      <td>getOtherPrivateDirty(OTHER_STACK)</td>
-      <td>getOtherRss(OTHER_STACK)</td>
-    </tr>
-    <tr>
-      <td>Graphics</td>
-      <td>getOtherPrivate(OTHER_GL_DEV) + getOtherPrivate(OTHER_GRAPHICS) + getOtherPrivate(OTHER_GL)</td>
-      <td>getOtherRss(OTHER_GL_DEV) + getOtherRss(OTHER_GRAPHICS) + getOtherRss(OTHER_GL)</td>
-    </tr>
-    <tr>
-      <td>Private Other</td>
-      <td>dalvikPrivateClean + nativePrivateClean + otherPrivateClean + dalvikPrivateDirty + nativePrivateDirty + otherPrivateDirty - Java Heap - Native Heap - Code - Stack - Graphics</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>System</td>
-      <td>getTotalPss() - (dalvikPrivateClean + nativePrivateClean + otherPrivateClean) - (dalvikPrivateDirty + nativePrivateDirty + otherPrivateDirty)</td>
-      <td> </td>
-    </tr>
-    <tr>
-      <td>Unknown</td>
-      <td> </td>
-      <td>getTotalRss() - Java Heap - Native Heap - Code - Stack - Graphics</td>
-    </tr>
-    <tr>
-      <td>TOTAL</td>
-      <td>dalvikPss + nativePss + otherPss + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss</td>
-      <td>dalvikRss + nativeRss + otherRss</td>
-    </tr>
-  </tbody>
-</table>
+    MvcController (MvcActivity activity) {
+        this.mActivity = activity;
+    }
 
-<p>USS = dalvikPrivateClean + dalvikPrivateDirty</p>
+    public void loadData (){
+        mModel = new MvcModel(mActivity);
+        mModel.loadModel();
+    }
+}
+</code></pre>
 
-<p>​            + nativePrivateClean + nativePrivateDirty</p>
+<p><strong>3.MVC调用链</strong></p>
 
-<p>​            + otherPrivateClean + otherPrivateDirty</p>
+<p>View.OnClick -&gt; Controller.loadData -&gt; Model.loadModel -&gt; View.updateUI</p>
 
-<p>PSS = dalvikPss + nativePss + otherPss</p>
+<p><strong>4.MVC优缺点</strong></p>
 
-<p>​            + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss</p>
+<p><strong>优点：</strong></p>
+<ol>
+  <li>把业务逻辑全部分离到Controller中，模块化程度高。当业务逻辑变更的时候，不需要变更View和Model，只需要Controller换成另外一个Controller就行了。</li>
+</ol>
 
-<p>RSS = dalvikRss + nativeRss + otherRss</p>
+<p><strong>缺点：</strong></p>
 
-<p>可以推导出：</p>
+<ol>
+  <li>
+    <p>Controller测试困难。因为视图同步操作是由View自己执行，而View只能在有UI的环境下运行。在没有UI环境下对Controller进行单元测试的时候，Controller业务逻辑的正确性是无法验证的：Controller更新Model的时候，无法对View的更新操作进行断言。</p>
+  </li>
+  <li>
+    <p>xml作为view层，控制能力实在太弱，Activity基本上都是View和Controller的合体，既要负责视图的显示又要加入控制逻辑，承担的功能很多，导致代码量很大。如想去动态的改变一个页面的背景，或者动态的隐藏/显示一个按钮，这些都没办法在xml中做，只能把代码写在activity中，造成了activity既是controller层。</p>
+  </li>
+  <li>
+    <p>view层和model层之间存在耦合。</p>
+  </li>
+</ol>
 
-<p>USS = PSS - System</p>
+<h1 id="2mvpmodel-view-presenter">2.MVP（Model-View-Presenter）</h1>
 
-<p>System = dalvikPss - dalvikPrivateClean - dalvikPrivateDirty</p>
+<p><img src="/img/others/mvp.png" alt="img" /></p>
 
-<p>​                + nativePss - nativePrivateClean - nativePrivateDirty</p>
+<ul>
+  <li>模型层(Model) 负责存储、检索、操纵来自数据库或者网络的数据。</li>
+  <li>视图层(View) 用户界面，一般采用XML文件进行界面的描述。</li>
+  <li>逻辑处理层（Presenter） 作为View与Model交互的中间纽带，处理与用户交互的负责逻辑。</li>
+</ul>
 
-<p>​                + otherPss - otherPrivateClean - otherPrivateDirty</p>
+<p><strong>1.工作原理</strong></p>
 
-<p>​                + dalvikSwappedOutPss + nativeSwappedOutPss + otherSwappedOutPss</p>
+<ol>
+  <li>View接受用户请求</li>
+  <li>View传递请求给Presenter</li>
+  <li>Presenter做逻辑处理，修改Model</li>
+  <li>Model通知Presenter数据变化</li>
+  <li>Presenter更新View</li>
+</ol>
 
-<h1 id="4查看应用内存相关命令">4.查看应用内存相关命令</h1>
+<p><strong>2.MVP代码实例</strong></p>
 
-<table>
-  <thead>
-    <tr>
-      <th>命令</th>
-      <th>功能</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>dumpsys meminfo</td>
-      <td>1.Total PSS by process，Total PSS by OOM adjustment，Total PSS by category，整体情况 2.输出某个pid或package的进程信息</td>
-    </tr>
-    <tr>
-      <td>procrank</td>
-      <td>获取所有进程的内存使用的排行榜，排行是以<code class="language-plaintext highlighter-rouge">Pss</code>的大小而排序。<code class="language-plaintext highlighter-rouge">procrank</code>命令比<code class="language-plaintext highlighter-rouge">dumpsys meminfo</code>命令，能输出更详细的VSS/RSS/PSS/USS内存指标。</td>
-    </tr>
-    <tr>
-      <td>cat /proc/meminfo</td>
-      <td>查看更加详细的内存信息</td>
-    </tr>
-    <tr>
-      <td>free</td>
-      <td>查看可用内存，缺省单位KB。该命令比较简单、轻量，专注于查看剩余内存情况。数据来源于/proc/meminfo。</td>
-    </tr>
-    <tr>
-      <td>showmap</td>
-      <td>用于查看虚拟地址区域的内存情况</td>
-    </tr>
-    <tr>
-      <td>vmstat</td>
-      <td>不仅可以查看内存情况，还可以查看进程运行队列、系统切换、CPU时间占比等情况，另外该指令还是周期性地动态输出。</td>
-    </tr>
-  </tbody>
-</table>
+<p>1.MVP中Model、View、Presenter中的联系件：</p>
 
-<h1 id="参考文档">参考文档</h1>
-<p><a href="http://gityuan.com/2016/01/02/memory-analysis-command/">Android内存分析命令</a></p>
+<pre><code class="language-Java">public interface MvpContract {
+    interface View {
+        void updateUI();
+    }
+
+    interface Model {
+        void loadModel();
+    }
+
+    interface Presenter {
+        void loadData ();
+    }
+}
+</code></pre>
+
+<p>2.还在MVC的例子上变动，需要先对Model进行封装，当loadModel后，不直接通知View更新，而是通知Presenter。</p>
+
+<pre><code class="language-Java">public class MvpModel implements MvpContract.Model{
+    String mId;
+    OnGetListener mListener;
+
+    public MvpModel (OnGetListener listener) {
+        this.mListener = listener;
+    }
+   @Override
+    public void loadModel (){
+        //模拟从网络或者本地获取数据
+        mId = "20170923";
+        if (mListener != null) {
+            mListener.onSuccess(this);
+        }
+    }
+    interface OnGetListener {
+        void onSuccess (MvpModel model);
+    }
+}
+</code></pre>
+
+<p>3.View需要发出点击事件，并且传递给Presenter ，最后也由Presenter去通知View更新UI：</p>
+
+<pre><code class="language-Plaintext">public class MvpActivity extends AppCompatActivity implements MvpContract.View {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+       //省略
+        final MvpPresenter presenter = new MvpPresenter(this);
+        mFindBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                presenter.loadData();
+            }
+        });
+    }
+    @Override
+    public void updateUI (MvpModel model) {
+        mID.setText(model.mId);
+    }
+}
+</code></pre>
+
+<p>4.Presenter，接收到来自View的操作命令后，进行逻辑处理，处理Model，修改完成后 通知View进行修改。</p>
+
+<pre><code class="language-Plaintext">public class MvpPresenter implements MvpContract.Presenter  {
+    MvpContract.View  mView;
+    MvpContract.Model mModel;
+
+    MvpPresenter (MvpContract.View view) {
+        this.mView= view;
+    }
+    @Override
+    public void loadData (){
+        mModel = new MvpModel(new MvpModel.OnGetListener() {
+            @Override
+            public void onSuccess(MvpModel model) {
+                mView.updateUI(model);
+            }
+        });
+        mModel.loadModel ();
+    }
+}
+</code></pre>
+
+<p><strong>3.MVP调用链</strong></p>
+
+<p>View:OnClick -&gt; Presenter:loadData -&gt; Model:loadModel -&gt; Presenter:onSuccess -&gt; View:updateUI</p>
+
+<p><strong>4.MVP优缺点</strong></p>
+
+<p><strong>优点：</strong></p>
+
+<ol>
+  <li>
+    <p>便于测试。Presenter对View是通过接口进行，在对Presenter进行不依赖UI环境的单元测试的时候。可以通过Mock一个View对象，这个对象只需要实现了View的接口即可。然后依赖注入到Presenter中，单元测试的时候就可以完整的测试Presenter业务逻辑的正确性。</p>
+  </li>
+  <li>
+    <p>避免了传统开发模式中View和Model耦合的情况，提高了代码可扩展性、组件复用能力、团队协作的效率。</p>
+  </li>
+</ol>
+
+<p><strong>缺点：</strong></p>
+
+<ol>
+  <li>
+    <p>View(Activity)需要持有Presenter的引用，同时，Presenter也需要持有View(Activity)的引用，增加了控制的复杂度；</p>
+  </li>
+  <li>
+    <p>MVC中Activity的代码很臃肿，转移到MVP的Presenter中，同样造成了Presenter在业务逻辑复杂时的代码臃肿。</p>
+  </li>
+</ol>
+
+<h1 id="3mvvmmodel-view-viewmodel">3.MVVM（Model-View-ViewModel）</h1>
+
+<p><img src="/img/others/mvvm.png" alt="img" /></p>
+
+<ul>
+  <li>模型层(Model) 负责存储、检索、操纵来自数据库或者网络的数据</li>
+  <li>视图层(View) 用户界面，一般采用XML文件进行界面的描述</li>
+  <li>视图-模型层(ViewModel) 负责View和Model之间的通信，以此分离视图和数据。</li>
+</ul>
+
+<p><strong>1. 工作原理</strong></p>
+
+<ol>
+  <li>View接收用户交互请求</li>
+  <li>View将请求转交给ViewModel</li>
+  <li>ViewModel操作Model数据更新</li>
+  <li>Model更新完数据，通知ViewModel数据发生变化</li>
+  <li>ViewModel更新View数据</li>
+</ol>
+
+<p><strong>2. MVVM代码实例</strong></p>
+
+<p>1.Model</p>
+
+<pre><code class="language-Plaintext">public class MvvmModel {
+    String mId;
+    OnGetListener mListener;
+
+    public MvvmModel(OnGetListener listener) {
+        this.mListener = listener;
+    }
+    public void loadModel() {
+        //模拟从网络或者本地获取数据
+        mId = "20170923";
+        if (mListener != null) {
+            mListener.onSuccess(this);
+        }
+    }
+    interface OnGetListener {
+        void onSuccess (MvvmModel model);
+    }
+}
+</code></pre>
+
+<p>2.ViewModel</p>
+
+<pre><code class="language-Plaintext">public class MvvmViewModel extends BaseObservable {
+    public ObservableField&lt;String&gt; mId = new ObservableField&lt;&gt;();
+    public MvvmViewModel() {
+
+    }
+    public void doGetId(View view) {
+        loadData();
+    }
+    public void loadData() {
+        MvvmModel model = new MvvmModel(new MvvmModel.OnGetListener() {
+            @Override
+            public void onSuccess(MvvmModel model) {
+                mId.set(model.mId);
+            }
+        });
+        model.loadModel();
+    }
+}
+</code></pre>
+
+<p>3.接着使用databinding语法 对 xml 进行数据绑定,我们将 Click事件、输出结果都绑定到ViewModel上。</p>
+
+<pre><code class="language-Plaintext">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;layout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"&gt;
+    &lt;data&gt;
+        &lt;variable name="viewModel" type="com.liujc.mvvm.MvvmViewModel"/&gt;
+    &lt;/data&gt;
+    &lt;LinearLayout   
+        &lt;TextView
+                android:id="@+id/id"
+                android:layout_width="match_parent"
+                android:layout_height="20dp"
+                android:text="@{viewModel.mId}"/&gt;
+          &lt;Button
+                android:id="@+id/findBtn"
+                android:onClick="@{viewModel.doGetId}"
+                android:text="获取Id"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/&gt;
+    &lt;/LinearLayout&gt;
+&lt;/layout&gt;
+</code></pre>
+
+<p>4.最后在View(Activity)中引入ViewModel：</p>
+
+<pre><code class="language-Plaintext">public class MvvmActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        ActivityMvvmBinding binding =   DataBindingUtil.setContentView(this,R.layout.activity_mvvm);
+
+        final MvvmViewModel viewModel = new MvvmViewModel();
+        binding.setViewModel(viewModel);
+    }
+
+}
+</code></pre>
+
+<p><strong>3.MVVM优缺点</strong></p>
+
+<p><strong>优点：</strong></p>
+
+<ol>
+  <li>低耦合。View可以独立于Model变化和修改，一个ViewModel可以绑定到不同的”View”上，当View变化的时候Model可以不变，当Model变化的时候View也可以不变。</li>
+  <li>可重用性。你可以把一些视图逻辑放在一个ViewModel里面，让很多view重用这段视图逻辑。</li>
+  <li>独立开发。开发人员可以专注于业务逻辑和数据的开发（ViewModel），设计人员可以专注于页面设计，生成xml代码。</li>
+  <li>ViewModel解决MVP中View(Activity)和Presenter相互持有对方应用的问题，界面由数据进行驱动，响应界面操作无需由View(Activity)传递，数据的变化也无需Presenter调用View(Activity)实现，使得数据传递的过程更加简洁，高效。</li>
+</ol>
+
+<p><strong>缺点：</strong></p>
+
+<ol>
+  <li>ViewModel中存在对Model的依赖。</li>
+  <li>数据绑定使得 Bug 很难被调试。你看到界面异常了，有可能是你 View 的代码有 Bug，也可能是 Model 的代码有问题。</li>
+  <li>IDE不够完善（修改ViewModel的名称对应的xml文件中不会自动修改等）。</li>
+</ol>
+
+<p><strong>DataBinding</strong></p>
+
+<p>DataBinding是2015年谷歌 I/O大会上介绍了一个数据绑定框架，以前我们可能需要在每个Activity里写很多的findViewById，不仅麻烦，还增加了代码的耦合性，如果我们使用DataBinding，就可以抛弃那么多的findViewById，省时省力。</p>
+
+<p>双向绑定的概念让传统的布局文件由被动转为主动，数据驱动UI，而且View与ViewModel实现了完美的解耦，这也解决了MVP模式下的缺点。</p>
+
+<h1 id="小结">小结</h1>
+
+<ul>
+  <li>从MVC、MVP到MVVM，实际上是模型和视图的分离过程。MVC中模型和视图没有完全分离，造成Activity代码臃肿，MVP中通过Presenter来进行中转，模型和视图彻底分离，但由于V和P互相引用，代码不够优雅。ViewModel通过Data Binding实现了视图和数据的绑定，解决了这种MVP的缺陷。</li>
+  <li>可参考一套Android App基础框架 架构设计：从MVC、MVP到MVVM 网络访问：支持REST、HTTPS及SPDY的Retrofit+Okhttp 响应式编程：RxJava/RxAndroid解决方案 依赖注入：Dagger2和ButterKnife使用</li>
+  <li>框架的选择 任何的项目框架，都是为项目服务的。没有绝对的好坏之分，只有更合适的选择。在项目进展的不同阶段，做出最合适的调整，才是是更适合团队项目发展的框架。谨记任何的项目设计，都是要围绕项目发展阶段，团队成员规模，和团队整体能力而定的。切莫为了设计而设计，为了框架而框架。快速，高效的配合整个团队进展项目，才是最合适的架构。</li>
+</ul>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/2021/09/05/Dagger2/" data-toggle="tooltip" data-placement="top" title="Dagger2">
+                        <a href="/2021/08/08/ASM%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="ASM介绍">
                         Previous<br>
-                        <span>Dagger2</span>
+                        <span>ASM介绍</span>
                         </a>
                     </li>
                     
                     
                     <li class="next">
-                        <a href="/2021/10/10/Android%E7%83%AD%E4%BF%AE%E5%A4%8D%E5%8E%9F%E7%90%86/" data-toggle="tooltip" data-placement="top" title="Android热修复原理">
+                        <a href="/2021/09/04/JNI%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="JNI介绍">
                         Next<br>
-                        <span>Android热修复原理</span>
+                        <span>JNI介绍</span>
                         </a>
                     </li>
                     
@@ -534,39 +726,39 @@
                 <a data-sort="0001" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="27">Android</a>
+                    rel="31">Android</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0026" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="6">SystemUI</a>
         
-                <a data-sort="0025" 
+                <a data-sort="0029" 
+                    href="/archive/?tag=ANR"
+                    title="ANR"
+                    rel="3">ANR</a>
+        
+                <a data-sort="0029" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0026" 
-                    href="/archive/?tag=ANR"
-                    title="ANR"
-                    rel="2">ANR</a>
-        
-                <a data-sort="0026" 
+                <a data-sort="0030" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0026" 
+                <a data-sort="0030" 
                     href="/archive/?tag=Binder"
                     title="Binder"
                     rel="2">Binder</a>
         
-                <a data-sort="0026" 
+                <a data-sort="0030" 
                     href="/archive/?tag=Memory"
                     title="Memory"
                     rel="2">Memory</a>
         
-                <a data-sort="0026" 
+                <a data-sort="0030" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

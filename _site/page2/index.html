@@ -115,6 +115,8 @@
                         
                         
                         
+                        
+                        
                         <li class="search-icon">
                             <a href="javascript:void(0)">
                                 <i class="fa fa-search"></i>
@@ -341,6 +343,32 @@ adb shell am trace-ipc stop –dump-file /data/local/tmp/systemui.tra...
 <hr>
 
 <div class="post-preview">
+    <a href="/2022/08/10/ANR%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/">
+        <h2 class="post-title">
+            ANR问题分析
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.ANR设计原理
+
+ANR 全称 Applicatipon No Response；Android 设计 ANR 的用意，是系统通过与之交互的组件(Activity，Service，Receiver，Provider)以及用户交互(InputEvent)进行超时监控，以判断应用进程(主线程)是否存在卡死或响应过慢的问题，通俗来说就是很多系统中看门狗(watchdog)的设计思想。
+
+1.1...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on August 10, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/2022/05/29/Recovery%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/">
         <h2 class="post-title">
             Recovery机制介绍
@@ -519,38 +547,6 @@ NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNE
 </div>
 <hr>
 
-<div class="post-preview">
-    <a href="/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
-        <h2 class="post-title">
-            SystemUI-功能介绍
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1. SystemUI介绍
-
-SystemUI正如其名，即系统的显示界面。它是一个常驻进程，独立于system_server进程。
-
-SystemUI内部包含一系列组件，在其启动的时候会初始化这些组件。
-
-SystemUI通过IStatusBar接口收到系统侧的回调，又通过一系列私有APIs与系统通信。
-
-2. SystemUI启动流程
-
-SystemUIService 继承于 Servic...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on March 4, 2022
-    </p>
-</div>
-<hr>
-
 
 <!-- Pager -->
 
@@ -589,39 +585,39 @@ SystemUIService 继承于 Servic...
                 <a data-sort="0001" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="27">Android</a>
+                    rel="31">Android</a>
         
-                <a data-sort="0022" 
+                <a data-sort="0026" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="6">SystemUI</a>
         
-                <a data-sort="0025" 
+                <a data-sort="0029" 
+                    href="/archive/?tag=ANR"
+                    title="ANR"
+                    rel="3">ANR</a>
+        
+                <a data-sort="0029" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0026" 
-                    href="/archive/?tag=ANR"
-                    title="ANR"
-                    rel="2">ANR</a>
-        
-                <a data-sort="0026" 
+                <a data-sort="0030" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0026" 
+                <a data-sort="0030" 
                     href="/archive/?tag=Binder"
                     title="Binder"
                     rel="2">Binder</a>
         
-                <a data-sort="0026" 
+                <a data-sort="0030" 
                     href="/archive/?tag=Memory"
                     title="Memory"
                     rel="2">Memory</a>
         
-                <a data-sort="0026" 
+                <a data-sort="0030" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

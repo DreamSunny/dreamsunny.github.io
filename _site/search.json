@@ -105,6 +105,14 @@
     } ,
   
     {
+      "title"    : "ANR问题分析",
+      "subtitle" : "",
+      "tags"     : "Android, ANR",
+      "url"      : "/2022/08/10/ANR%E9%97%AE%E9%A2%98%E5%88%86%E6%9E%90/",
+      "date"     : "2022-08-10 20:00:00 +0800"
+    } ,
+  
+    {
       "title"    : "Recovery机制介绍",
       "subtitle" : "",
       "tags"     : "Android, SystemUI, Recovery",
@@ -185,18 +193,26 @@
     } ,
   
     {
-      "title"    : "Android应用内存基础",
+      "title"    : "Broadcast介绍",
+      "subtitle" : "",
+      "tags"     : "Android, Broadcast",
+      "url"      : "/2021/09/20/Broadcast%E4%BB%8B%E7%BB%8D/",
+      "date"     : "2021-09-20 20:00:00 +0800"
+    } ,
+  
+    {
+      "title"    : "应用内存介绍",
       "subtitle" : "",
       "tags"     : "Android, Memory",
-      "url"      : "/2021/09/10/meminfo%E4%BB%8B%E7%BB%8D/",
+      "url"      : "/2021/09/10/%E5%BA%94%E7%94%A8%E5%86%85%E5%AD%98%E4%BB%8B%E7%BB%8D/",
       "date"     : "2021-09-10 20:00:00 +0800"
     } ,
   
     {
-      "title"    : "Dagger2",
+      "title"    : "Dagger2介绍",
       "subtitle" : "",
       "tags"     : "Android, Dagger2",
-      "url"      : "/2021/09/05/Dagger2/",
+      "url"      : "/2021/09/05/Dagger2%E4%BB%8B%E7%BB%8D/",
       "date"     : "2021-09-05 20:00:00 +0800"
     } ,
   
@@ -206,6 +222,14 @@
       "tags"     : "Android, JNI",
       "url"      : "/2021/09/04/JNI%E4%BB%8B%E7%BB%8D/",
       "date"     : "2021-09-04 20:00:00 +0800"
+    } ,
+  
+    {
+      "title"    : "MVC,MVP,MVVM",
+      "subtitle" : "",
+      "tags"     : "Android, MVC, MVP, MVVM",
+      "url"      : "/2021/08/20/MVP,MVP,MVVM/",
+      "date"     : "2021-08-20 20:00:00 +0800"
     } ,
   
     {
@@ -222,6 +246,14 @@
       "tags"     : "Android, Binder",
       "url"      : "/2021/07/04/Binder%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/",
       "date"     : "2021-07-04 20:00:00 +0800"
+    } ,
+  
+    {
+      "title"    : "Handler机制介绍",
+      "subtitle" : "",
+      "tags"     : "Android, Handler",
+      "url"      : "/2021/06/18/Handler%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/",
+      "date"     : "2021-06-18 20:00:00 +0800"
     } 
   
 ]
