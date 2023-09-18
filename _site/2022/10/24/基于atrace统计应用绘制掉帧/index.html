@@ -286,7 +286,7 @@
 
 <p>systrace：atrace数据分析工具，将atrace采集上来的数据，以图形化的方式展现出来。</p>
 
-<p>抓取trace方式：</p>
+<p><strong>抓取trace方式：</strong></p>
 
 <ol>
   <li>开发者选项-系统跟踪，文件后缀为.perfetto-trace，二进制格式。</li>
@@ -299,9 +299,7 @@
 
 <p>命令：python2.7 systrace -a com.android.systemui am wm disk memreclaim mmc res sched freq binder_driver binder_lock dalvik pagecache database pm bionic rs gfx input view sm aidl sched freq idle</p>
 
-<ol>
-  <li>atrace命令</li>
-</ol>
+<p><strong>atrace命令</strong></p>
 
 <p>//开始</p>
 
@@ -708,9 +706,7 @@ void atrace_int64_body(const char* name, int64_t value)
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
-3
 </pre></td><td class="rouge-code"><pre>app-1786  ( 1049) [002] d..4 14425.778934: sched_wakeup: comm=com.miui.home pid=3022 prio=98 target_cpu=005
-
 &lt;idle&gt;-0     (-----) [005] d..2 14425.778938: sched_switch: prev_comm=swapper/5 prev_pid=0 prev_prio=120 prev_state=R ==&gt; next_comm=com.miui.home next_pid=3022 next_prio=98
 </pre></td></tr></tbody></table></code></pre></div></div>
 
@@ -721,18 +717,10 @@ void atrace_int64_body(const char* name, int64_t value)
 3
 4
 5
-6
-7
-8
-9
 </pre></td><td class="rouge-code"><pre>&lt;...&gt;-3022  ( 3022) [005] .... 14425.779000: tracing_mark_write: B|3022|Choreographer#doFrame
-
 &lt;...&gt;-3022  ( 3022) [005] .... 14425.779010: tracing_mark_write: B|3022|animation
-
 &lt;...&gt;-3022  ( 3022) [005] .... 14425.779599: tracing_mark_write: B|3022|traversal
-
 &lt;...&gt;-3022  ( 3022) [005] .... 14425.779695: tracing_mark_write: B|3022|draw
-
 &lt;...&gt;-3022  ( 3022) [005] .... 14425.779745: tracing_mark_write: B|3022|syncAndDrawFrame
 </pre></td></tr></tbody></table></code></pre></div></div>
 
@@ -751,24 +739,12 @@ void atrace_int64_body(const char* name, int64_t value)
 5
 6
 7
-8
-9
-10
-11
-12
-13
 </pre></td><td class="rouge-code"><pre>&lt;...&gt;-3253  ( 3022) [006] .... 14425.779787: tracing_mark_write: B|3022|DrawFrame
-
 &lt;...&gt;-3253  ( 3022) [004] .... 14425.780064: tracing_mark_write: B|3022|syncFrameState
-
 &lt;...&gt;-3253  ( 3022) [004] .... 14425.780294: tracing_mark_write: B|3022|beginFrame
-
 &lt;...&gt;-3253  ( 3022) [004] .... 14425.780336: tracing_mark_write: B|3022|dequeueBuffer
-
 &lt;...&gt;-3253  ( 3022) [004] .... 14425.780615: tracing_mark_write: B|3022|renderFrame
-
 &lt;...&gt;-3253  ( 3022) [004] .... 14425.782260: tracing_mark_write: B|3022|eglSwapBuffersWithDamageKHR
-
 &lt;...&gt;-3253  ( 3022) [004] .... 14425.782401: tracing_mark_write: B|3022|queueBuffer
 </pre></td></tr></tbody></table></code></pre></div></div>
 
@@ -776,9 +752,7 @@ void atrace_int64_body(const char* name, int64_t value)
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
-3
 </pre></td><td class="rouge-code"><pre>&lt;...&gt;-3253  ( 3022) [004] .... 14425.782772: tracing_mark_write: C|3022|GPU completion|1
-
 &lt;...&gt;-3299  ( 1049) [001] .... 14425.782498: tracing_mark_write: C|1049|com.miui.home/com.miui.home.launcher.Launcher#0|1
 </pre></td></tr></tbody></table></code></pre></div></div>
 
@@ -787,12 +761,8 @@ void atrace_int64_body(const char* name, int64_t value)
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
 3
-4
-5
 </pre></td><td class="rouge-code"><pre>surfaceflinger-1049  ( 1049) [000] .... 14425.778852: tracing_mark_write: B|1049|onMessageReceived
-
 surfaceflinger-1049  ( 1049) [000] .... 14425.778856: tracing_mark_write: B|1049|onMessageInvalidate
-
 surfaceflinger-1049  ( 1049) [000] .... 14425.778918: tracing_mark_write: B|1049|handleMessageInvalidate
 </pre></td></tr></tbody></table></code></pre></div></div>
 
@@ -800,9 +770,7 @@ surfaceflinger-1049  ( 1049) [000] .... 14425.778918: tracing_mark_write: B|1049
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
-3
 </pre></td><td class="rouge-code"><pre>surfaceflinger-1049  ( 1049) [000] .... 14425.779283: tracing_mark_write: B|1049|onMessageReceived
-
 surfaceflinger-1049  ( 1049) [000] .... 14425.779288: tracing_mark_write: B|1049|onMessageRefresh
 </pre></td></tr></tbody></table></code></pre></div></div>
 
@@ -816,9 +784,7 @@ surfaceflinger-1049  ( 1049) [000] .... 14425.779288: tracing_mark_write: B|1049
 
 <div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
 2
-3
 </pre></td><td class="rouge-code"><pre>crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373|commit|1
-
 crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373|commit|0
 </pre></td></tr></tbody></table></code></pre></div></div>
 
@@ -899,39 +865,39 @@ crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373
                 <a data-sort="0001" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="31">Android</a>
+                    rel="32">Android</a>
         
-                <a data-sort="0026" 
+                <a data-sort="0027" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="6">SystemUI</a>
         
-                <a data-sort="0029" 
+                <a data-sort="0030" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="3">ANR</a>
         
-                <a data-sort="0029" 
+                <a data-sort="0030" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=Binder"
                     title="Binder"
                     rel="2">Binder</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=Memory"
                     title="Memory"
                     rel="2">Memory</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

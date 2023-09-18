@@ -2,7 +2,7 @@
 layout:     post
 title:      "MVC,MVP,MVVM"
 subtitle:   ""
-date:       2021-08-20 12:00:00
+date:       2021-07-20 12:00:00
 author:     "Yaku"
 header-img: "img/post-bg-2015.jpg"
 tags:

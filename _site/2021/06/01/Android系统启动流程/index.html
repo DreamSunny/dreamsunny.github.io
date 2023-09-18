@@ -12,13 +12,13 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="MVC,MVP,MVVM - Android学习笔记 | Yaku Blog">
+        content="Android系统启动流程 - Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="1.MVC（Model-View-Controller）
+    <meta property="og:description" content="平台架构
 ">
     
-    <meta property="article:published_time" content=" 2021-08-20T20:00:00Z">
+    <meta property="article:published_time" content=" 2021-06-01T20:00:00Z">
     
     
     <meta property="article:author" content="Yaku">
@@ -26,18 +26,12 @@
     
     <meta property="article:tag" content="Android">
     
-    <meta property="article:tag" content="MVC">
-    
-    <meta property="article:tag" content="MVP">
-    
-    <meta property="article:tag" content="MVVM">
-    
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/2021/08/20/MVP,MVP,MVVM/">
+    <meta property="og:url" content="http://localhost:4000/2021/06/01/Android%E7%B3%BB%E7%BB%9F%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>MVC,MVP,MVVM - Android学习笔记 | Yaku Blog</title>
+    <title>Android系统启动流程 - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -46,7 +40,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/2021/08/20/MVP,MVP,MVVM/">
+    <link rel="canonical" href="http://localhost:4000/2021/06/01/Android%E7%B3%BB%E7%BB%9F%E5%90%AF%E5%8A%A8%E6%B5%81%E7%A8%8B/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -249,17 +243,11 @@
                         
                         <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
                         
-                        <a class="tag" href="/archive/?tag=MVC" title="MVC">MVC</a>
-                        
-                        <a class="tag" href="/archive/?tag=MVP" title="MVP">MVP</a>
-                        
-                        <a class="tag" href="/archive/?tag=MVVM" title="MVVM">MVVM</a>
-                        
                     </div>
-                    <h1>MVC,MVP,MVVM</h1>
+                    <h1>Android系统启动流程</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">Posted by Yaku on August 20, 2021</span>
+                    <span class="meta">Posted by Yaku on June 1, 2021</span>
                 </div>
             </div>
         </div>
@@ -286,393 +274,82 @@
                 <!-- Multi-Lingual -->
                 
 
-				<h1 id="1mvcmodel-view-controller">1.MVC（Model-View-Controller）</h1>
+				<p><a href="https://developer.android.com/guide/platform?hl=zh-cn">平台架构</a></p>
 
-<p><img src="/img/others/mvc.png" alt="img" /></p>
+<p><a href="http://gityuan.com/android/">Android 操作系统架构开篇</a></p>
+
+<p><img src="http://gityuan.com/images/android-arch/android-boot.jpg" alt="img" /></p>
+
+<p><strong>图解：</strong> Android系统启动过程由上图从下往上的一个过程是由Boot Loader引导开机，然后依次进入 -&gt; <code class="language-plaintext highlighter-rouge">Kernel</code> -&gt; <code class="language-plaintext highlighter-rouge">Native</code> -&gt; <code class="language-plaintext highlighter-rouge">Framework</code> -&gt; <code class="language-plaintext highlighter-rouge">App</code>，接来下简要说说每个过程。</p>
+
+<p>Native与Kernel之间有一层系统调用(SysCall)层，见<a href="http://gityuan.com/2016/05/21/syscall/">Linux系统调用(Syscall)原理</a>;</p>
+
+<p>Java层与Native(C/C++)层之间的纽带JNI，见<a href="http://gityuan.com/2016/05/28/android-jni/">Android JNI原理分析</a>。</p>
+
+<h1 id="1-loader层">1. Loader层</h1>
 
 <ul>
-  <li>模型层(Model) 负责存储、检索、操纵来自数据库或者网络的数据</li>
-  <li>视图层(View) 用户界面，一般采用XML文件进行界面的描述</li>
-  <li>控制层(Controller) 业务逻辑处理</li>
+  <li>Boot ROM: 当手机处于关机状态时，长按Power键开机，引导芯片开始从固化在ROM里的预设代码开始执行，然后加载引导程序到RAM。</li>
+  <li>Boot Loader：这是启动Android系统之前的引导程序，主要是检查RAM，初始化硬件参数等功能。</li>
 </ul>
 
-<p><strong>1.工作原理</strong></p>
+<h1 id="2-linux内核层">2. Linux内核层</h1>
 
-<ol>
-  <li>当用户出发事件的时候，view层会发送指令到controller层，自己不执行业务逻辑。</li>
-  <li>Controller执行业务逻辑并且操作Model，但不会直接操作View，可以说它是对View无知的。</li>
-  <li>model层更新完数据然后对视图进行更新，用户得到反馈。</li>
-</ol>
-
-<p><strong>2.MVC代码实例</strong></p>
-
-<p>1.先实现一个 model，需要有通知View更新的能力，当model加载成功，模拟从网络或者本地获取数据，需要告知View更新：</p>
-
-<pre><code class="language-Java">public class MvcModel {
-    String mId;
-    MvcActivity mActivity;
-
-    public MvcModel (MvcActivity activity) {
-        this.mActivity = activity;
-    }
-    public void loadModel (){
-        //模拟从网络或者本地获取数据
-        mId = "20170923";
-        mActivity.updateUI(this);
-    }
-}
-</code></pre>
-
-<p>2.View需要发出点击事件，并且传递Controller，同时需要根据Model更新UI：</p>
-
-<pre><code class="language-Java">public class MvcActivity extends AppCompatActivity {
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-       //省略
-        final MvcController controller = new MvcController(this);
-        mFindBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                controller.loadData();
-            }
-        });
-    }
-
-    public void updateUI (MvcModel model) {
-        mID.setText(model.mId);
-    }
-}
-</code></pre>
-
-<p>3.Controller：有时候我们的Activity既充当View也充当Controller，这里为了更好的理解MVC，将Activity进行了拆解：</p>
-
-<pre><code class="language-Java">public class MvcController {
-    MvcActivity mActivity;
-    MvcModel mModel;
-
-    MvcController (MvcActivity activity) {
-        this.mActivity = activity;
-    }
-
-    public void loadData (){
-        mModel = new MvcModel(mActivity);
-        mModel.loadModel();
-    }
-}
-</code></pre>
-
-<p><strong>3.MVC调用链</strong></p>
-
-<p>View.OnClick -&gt; Controller.loadData -&gt; Model.loadModel -&gt; View.updateUI</p>
-
-<p><strong>4.MVC优缺点</strong></p>
-
-<p><strong>优点：</strong></p>
-<ol>
-  <li>把业务逻辑全部分离到Controller中，模块化程度高。当业务逻辑变更的时候，不需要变更View和Model，只需要Controller换成另外一个Controller就行了。</li>
-</ol>
-
-<p><strong>缺点：</strong></p>
-
-<ol>
-  <li>
-    <p>Controller测试困难。因为视图同步操作是由View自己执行，而View只能在有UI的环境下运行。在没有UI环境下对Controller进行单元测试的时候，Controller业务逻辑的正确性是无法验证的：Controller更新Model的时候，无法对View的更新操作进行断言。</p>
-  </li>
-  <li>
-    <p>xml作为view层，控制能力实在太弱，Activity基本上都是View和Controller的合体，既要负责视图的显示又要加入控制逻辑，承担的功能很多，导致代码量很大。如想去动态的改变一个页面的背景，或者动态的隐藏/显示一个按钮，这些都没办法在xml中做，只能把代码写在activity中，造成了activity既是controller层。</p>
-  </li>
-  <li>
-    <p>view层和model层之间存在耦合。</p>
-  </li>
-</ol>
-
-<h1 id="2mvpmodel-view-presenter">2.MVP（Model-View-Presenter）</h1>
-
-<p><img src="/img/others/mvp.png" alt="img" /></p>
+<p>Android平台的基础是Linux内核，比如ART虚拟机最终调用底层Linux内核来执行功能。Linux内核的安全机制为Android提供相应的保障，也允许设备制造商为内核开发硬件驱动程序。</p>
 
 <ul>
-  <li>模型层(Model) 负责存储、检索、操纵来自数据库或者网络的数据。</li>
-  <li>视图层(View) 用户界面，一般采用XML文件进行界面的描述。</li>
-  <li>逻辑处理层（Presenter） 作为View与Model交互的中间纽带，处理与用户交互的负责逻辑。</li>
+  <li>启动Kernel的swapper进程(pid=0)：该进程又称为idle进程, 系统初始化过程Kernel由无到有开创的第一个进程, 用于初始化进程管理、内存管理，加载Display,Camera Driver，Binder Driver等相关工作；</li>
+  <li>启动kthreadd进程（pid=2）：是Linux系统的内核进程，会创建内核工作线程kworkder，软中断线程ksoftirqd，thermal等内核守护进程。<code class="language-plaintext highlighter-rouge">kthreadd进程是所有内核进程的鼻祖</code>。</li>
 </ul>
 
-<p><strong>1.工作原理</strong></p>
+<h1 id="3-硬件抽象层-hal">3. 硬件抽象层 (HAL)</h1>
 
-<ol>
-  <li>View接受用户请求</li>
-  <li>View传递请求给Presenter</li>
-  <li>Presenter做逻辑处理，修改Model</li>
-  <li>Model通知Presenter数据变化</li>
-  <li>Presenter更新View</li>
-</ol>
+<p>硬件抽象层 (HAL) 提供标准接口，HAL包含多个库模块，其中每个模块都为特定类型的硬件组件实现一组接口，比如WIFI/蓝牙模块，当框架API请求访问设备硬件时，Android系统将为该硬件加载相应的库模块。</p>
 
-<p><strong>2.MVP代码实例</strong></p>
+<h1 id="4-android-runtime--系统库">4. Android Runtime &amp; 系统库</h1>
 
-<p>1.MVP中Model、View、Presenter中的联系件：</p>
+<p>每个应用都在其自己的进程中运行，都有自己的虚拟机实例。ART通过执行DEX文件可在设备运行多个虚拟机，DEX文件是一种专为Android设计的字节码格式文件，经过优化，使用内存很少。ART主要功能包括：预先(AOT)和即时(JIT)编译，优化的垃圾回收(GC)，以及调试相关的支持。</p>
 
-<pre><code class="language-Java">public interface MvpContract {
-    interface View {
-        void updateUI();
-    }
-
-    interface Model {
-        void loadModel();
-    }
-
-    interface Presenter {
-        void loadData ();
-    }
-}
-</code></pre>
-
-<p>2.还在MVC的例子上变动，需要先对Model进行封装，当loadModel后，不直接通知View更新，而是通知Presenter。</p>
-
-<pre><code class="language-Java">public class MvpModel implements MvpContract.Model{
-    String mId;
-    OnGetListener mListener;
-
-    public MvpModel (OnGetListener listener) {
-        this.mListener = listener;
-    }
-   @Override
-    public void loadModel (){
-        //模拟从网络或者本地获取数据
-        mId = "20170923";
-        if (mListener != null) {
-            mListener.onSuccess(this);
-        }
-    }
-    interface OnGetListener {
-        void onSuccess (MvpModel model);
-    }
-}
-</code></pre>
-
-<p>3.View需要发出点击事件，并且传递给Presenter ，最后也由Presenter去通知View更新UI：</p>
-
-<pre><code class="language-Plaintext">public class MvpActivity extends AppCompatActivity implements MvpContract.View {
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-       //省略
-        final MvpPresenter presenter = new MvpPresenter(this);
-        mFindBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                presenter.loadData();
-            }
-        });
-    }
-    @Override
-    public void updateUI (MvpModel model) {
-        mID.setText(model.mId);
-    }
-}
-</code></pre>
-
-<p>4.Presenter，接收到来自View的操作命令后，进行逻辑处理，处理Model，修改完成后 通知View进行修改。</p>
-
-<pre><code class="language-Plaintext">public class MvpPresenter implements MvpContract.Presenter  {
-    MvpContract.View  mView;
-    MvpContract.Model mModel;
-
-    MvpPresenter (MvpContract.View view) {
-        this.mView= view;
-    }
-    @Override
-    public void loadData (){
-        mModel = new MvpModel(new MvpModel.OnGetListener() {
-            @Override
-            public void onSuccess(MvpModel model) {
-                mView.updateUI(model);
-            }
-        });
-        mModel.loadModel ();
-    }
-}
-</code></pre>
-
-<p><strong>3.MVP调用链</strong></p>
-
-<p>View:OnClick -&gt; Presenter:loadData -&gt; Model:loadModel -&gt; Presenter:onSuccess -&gt; View:updateUI</p>
-
-<p><strong>4.MVP优缺点</strong></p>
-
-<p><strong>优点：</strong></p>
-
-<ol>
-  <li>
-    <p>便于测试。Presenter对View是通过接口进行，在对Presenter进行不依赖UI环境的单元测试的时候。可以通过Mock一个View对象，这个对象只需要实现了View的接口即可。然后依赖注入到Presenter中，单元测试的时候就可以完整的测试Presenter业务逻辑的正确性。</p>
-  </li>
-  <li>
-    <p>避免了传统开发模式中View和Model耦合的情况，提高了代码可扩展性、组件复用能力、团队协作的效率。</p>
-  </li>
-</ol>
-
-<p><strong>缺点：</strong></p>
-
-<ol>
-  <li>
-    <p>View(Activity)需要持有Presenter的引用，同时，Presenter也需要持有View(Activity)的引用，增加了控制的复杂度；</p>
-  </li>
-  <li>
-    <p>MVC中Activity的代码很臃肿，转移到MVP的Presenter中，同样造成了Presenter在业务逻辑复杂时的代码臃肿。</p>
-  </li>
-</ol>
-
-<h1 id="3mvvmmodel-view-viewmodel">3.MVVM（Model-View-ViewModel）</h1>
-
-<p><img src="/img/others/mvvm.png" alt="img" /></p>
+<p>这里的Native系统库主要包括init孵化来的用户空间的守护进程、HAL层以及开机动画等。启动init进程(pid=1),是Linux系统的用户进程，<code class="language-plaintext highlighter-rouge">init进程是所有用户进程的鼻祖</code>。</p>
 
 <ul>
-  <li>模型层(Model) 负责存储、检索、操纵来自数据库或者网络的数据</li>
-  <li>视图层(View) 用户界面，一般采用XML文件进行界面的描述</li>
-  <li>视图-模型层(ViewModel) 负责View和Model之间的通信，以此分离视图和数据。</li>
+  <li>init进程会孵化出ueventd、logd、healthd、installd、adbd、lmkd等用户守护进程；</li>
+  <li>init进程还启动servicemanager(binder服务管家)、bootanim(开机动画)等重要服务</li>
+  <li>init进程孵化出Zygote进程，Zygote进程是Android系统的第一个Java进程(即虚拟机进程)，<code class="language-plaintext highlighter-rouge">Zygote是所有Java进程的父进程</code>，Zygote进程本身是由init进程孵化而来的。</li>
 </ul>
 
-<p><strong>1. 工作原理</strong></p>
-
-<ol>
-  <li>View接收用户交互请求</li>
-  <li>View将请求转交给ViewModel</li>
-  <li>ViewModel操作Model数据更新</li>
-  <li>Model更新完数据，通知ViewModel数据发生变化</li>
-  <li>ViewModel更新View数据</li>
-</ol>
-
-<p><strong>2. MVVM代码实例</strong></p>
-
-<p>1.Model</p>
-
-<pre><code class="language-Plaintext">public class MvvmModel {
-    String mId;
-    OnGetListener mListener;
-
-    public MvvmModel(OnGetListener listener) {
-        this.mListener = listener;
-    }
-    public void loadModel() {
-        //模拟从网络或者本地获取数据
-        mId = "20170923";
-        if (mListener != null) {
-            mListener.onSuccess(this);
-        }
-    }
-    interface OnGetListener {
-        void onSuccess (MvvmModel model);
-    }
-}
-</code></pre>
-
-<p>2.ViewModel</p>
-
-<pre><code class="language-Plaintext">public class MvvmViewModel extends BaseObservable {
-    public ObservableField&lt;String&gt; mId = new ObservableField&lt;&gt;();
-    public MvvmViewModel() {
-
-    }
-    public void doGetId(View view) {
-        loadData();
-    }
-    public void loadData() {
-        MvvmModel model = new MvvmModel(new MvvmModel.OnGetListener() {
-            @Override
-            public void onSuccess(MvvmModel model) {
-                mId.set(model.mId);
-            }
-        });
-        model.loadModel();
-    }
-}
-</code></pre>
-
-<p>3.接着使用databinding语法 对 xml 进行数据绑定,我们将 Click事件、输出结果都绑定到ViewModel上。</p>
-
-<pre><code class="language-Plaintext">&lt;?xml version="1.0" encoding="utf-8"?&gt;
-&lt;layout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:tools="http://schemas.android.com/tools"&gt;
-    &lt;data&gt;
-        &lt;variable name="viewModel" type="com.liujc.mvvm.MvvmViewModel"/&gt;
-    &lt;/data&gt;
-    &lt;LinearLayout   
-        &lt;TextView
-                android:id="@+id/id"
-                android:layout_width="match_parent"
-                android:layout_height="20dp"
-                android:text="@{viewModel.mId}"/&gt;
-          &lt;Button
-                android:id="@+id/findBtn"
-                android:onClick="@{viewModel.doGetId}"
-                android:text="获取Id"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/&gt;
-    &lt;/LinearLayout&gt;
-&lt;/layout&gt;
-</code></pre>
-
-<p>4.最后在View(Activity)中引入ViewModel：</p>
-
-<pre><code class="language-Plaintext">public class MvvmActivity extends AppCompatActivity {
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        ActivityMvvmBinding binding =   DataBindingUtil.setContentView(this,R.layout.activity_mvvm);
-
-        final MvvmViewModel viewModel = new MvvmViewModel();
-        binding.setViewModel(viewModel);
-    }
-
-}
-</code></pre>
-
-<p><strong>3.MVVM优缺点</strong></p>
-
-<p><strong>优点：</strong></p>
-
-<ol>
-  <li>低耦合。View可以独立于Model变化和修改，一个ViewModel可以绑定到不同的”View”上，当View变化的时候Model可以不变，当Model变化的时候View也可以不变。</li>
-  <li>可重用性。你可以把一些视图逻辑放在一个ViewModel里面，让很多view重用这段视图逻辑。</li>
-  <li>独立开发。开发人员可以专注于业务逻辑和数据的开发（ViewModel），设计人员可以专注于页面设计，生成xml代码。</li>
-  <li>ViewModel解决MVP中View(Activity)和Presenter相互持有对方应用的问题，界面由数据进行驱动，响应界面操作无需由View(Activity)传递，数据的变化也无需Presenter调用View(Activity)实现，使得数据传递的过程更加简洁，高效。</li>
-</ol>
-
-<p><strong>缺点：</strong></p>
-
-<ol>
-  <li>ViewModel中存在对Model的依赖。</li>
-  <li>数据绑定使得 Bug 很难被调试。你看到界面异常了，有可能是你 View 的代码有 Bug，也可能是 Model 的代码有问题。</li>
-  <li>IDE不够完善（修改ViewModel的名称对应的xml文件中不会自动修改等）。</li>
-</ol>
-
-<p><strong>DataBinding</strong></p>
-
-<p>DataBinding是2015年谷歌 I/O大会上介绍了一个数据绑定框架，以前我们可能需要在每个Activity里写很多的findViewById，不仅麻烦，还增加了代码的耦合性，如果我们使用DataBinding，就可以抛弃那么多的findViewById，省时省力。</p>
-
-<p>双向绑定的概念让传统的布局文件由被动转为主动，数据驱动UI，而且View与ViewModel实现了完美的解耦，这也解决了MVP模式下的缺点。</p>
-
-<h1 id="小结">小结</h1>
+<h1 id="5-framework层">5. Framework层</h1>
 
 <ul>
-  <li>从MVC、MVP到MVVM，实际上是模型和视图的分离过程。MVC中模型和视图没有完全分离，造成Activity代码臃肿，MVP中通过Presenter来进行中转，模型和视图彻底分离，但由于V和P互相引用，代码不够优雅。ViewModel通过Data Binding实现了视图和数据的绑定，解决了这种MVP的缺陷。</li>
-  <li>可参考一套Android App基础框架 架构设计：从MVC、MVP到MVVM 网络访问：支持REST、HTTPS及SPDY的Retrofit+Okhttp 响应式编程：RxJava/RxAndroid解决方案 依赖注入：Dagger2和ButterKnife使用</li>
-  <li>框架的选择 任何的项目框架，都是为项目服务的。没有绝对的好坏之分，只有更合适的选择。在项目进展的不同阶段，做出最合适的调整，才是是更适合团队项目发展的框架。谨记任何的项目设计，都是要围绕项目发展阶段，团队成员规模，和团队整体能力而定的。切莫为了设计而设计，为了框架而框架。快速，高效的配合整个团队进展项目，才是最合适的架构。</li>
+  <li>Zygote进程，是由init进程通过解析init.rc文件后fork生成的，Zygote进程主要包含：
+    <ul>
+      <li>加载ZygoteInit类，注册Zygote Socket服务端套接字</li>
+      <li>加载虚拟机</li>
+      <li>提前加载类preloadClasses</li>
+      <li>提前加载资源preloadResouces</li>
+    </ul>
+  </li>
+  <li>System Server进程，是由Zygote进程fork而来，<code class="language-plaintext highlighter-rouge">System Server是Zygote孵化的第一个进程</code>，System Server负责启动和管理整个Java framework，包含ActivityManager，WindowManager，PackageManager，PowerManager等服务。</li>
+  <li>Media Server进程，是由init进程fork而来，负责启动和管理整个C++ framework，包含AudioFlinger，Camera Service等服务。</li>
+</ul>
+
+<h1 id="6-app层">6. App层</h1>
+
+<ul>
+  <li>Zygote进程孵化出的第一个App进程是Launcher，这是用户看到的桌面App；</li>
+  <li>Zygote进程还会创建Browser，Phone，Email等App进程，每个App至少运行在一个进程上。</li>
+  <li>所有的App进程都是由Zygote进程fork生成的。</li>
 </ul>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
-                    <li class="previous">
-                        <a href="/2021/08/08/ASM%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="ASM介绍">
-                        Previous<br>
-                        <span>ASM介绍</span>
-                        </a>
-                    </li>
-                    
                     
                     <li class="next">
-                        <a href="/2021/09/04/JNI%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="JNI介绍">
+                        <a href="/2021/06/18/Handler%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="Handler机制介绍">
                         Next<br>
-                        <span>JNI介绍</span>
+                        <span>Handler机制介绍</span>
                         </a>
                     </li>
                     
@@ -726,39 +403,39 @@
                 <a data-sort="0001" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="31">Android</a>
+                    rel="32">Android</a>
         
-                <a data-sort="0026" 
+                <a data-sort="0027" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="6">SystemUI</a>
         
-                <a data-sort="0029" 
+                <a data-sort="0030" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="3">ANR</a>
         
-                <a data-sort="0029" 
+                <a data-sort="0030" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=Activity"
                     title="Activity"
                     rel="2">Activity</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=Binder"
                     title="Binder"
                     rel="2">Binder</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=Memory"
                     title="Memory"
                     rel="2">Memory</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

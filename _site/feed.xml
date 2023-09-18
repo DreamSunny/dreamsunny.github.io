@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Sun, 17 Sep 2023 15:38:42 +0800</pubDate>
-    <lastBuildDate>Sun, 17 Sep 2023 15:38:42 +0800</lastBuildDate>
+    <pubDate>Mon, 18 Sep 2023 20:22:34 +0800</pubDate>
+    <lastBuildDate>Mon, 18 Sep 2023 20:22:34 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -3783,7 +3783,7 @@ ROOT
 
 &lt;p&gt;systrace：atrace数据分析工具，将atrace采集上来的数据，以图形化的方式展现出来。&lt;/p&gt;
 
-&lt;p&gt;抓取trace方式：&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;抓取trace方式：&lt;/strong&gt;&lt;/p&gt;
 
 &lt;ol&gt;
   &lt;li&gt;开发者选项-系统跟踪，文件后缀为.perfetto-trace，二进制格式。&lt;/li&gt;
@@ -3796,9 +3796,7 @@ ROOT
 
 &lt;p&gt;命令：python2.7 systrace -a com.android.systemui am wm disk memreclaim mmc res sched freq binder_driver binder_lock dalvik pagecache database pm bionic rs gfx input view sm aidl sched freq idle&lt;/p&gt;
 
-&lt;ol&gt;
-  &lt;li&gt;atrace命令&lt;/li&gt;
-&lt;/ol&gt;
+&lt;p&gt;&lt;strong&gt;atrace命令&lt;/strong&gt;&lt;/p&gt;
 
 &lt;p&gt;//开始&lt;/p&gt;
 
@@ -4205,9 +4203,7 @@ void atrace_int64_body(const char* name, int64_t value)
 
 &lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 2
-3
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;app-1786  ( 1049) [002] d..4 14425.778934: sched_wakeup: comm=com.miui.home pid=3022 prio=98 target_cpu=005
-
 &amp;lt;idle&amp;gt;-0     (-----) [005] d..2 14425.778938: sched_switch: prev_comm=swapper/5 prev_pid=0 prev_prio=120 prev_state=R ==&amp;gt; next_comm=com.miui.home next_pid=3022 next_prio=98
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
@@ -4218,18 +4214,10 @@ void atrace_int64_body(const char* name, int64_t value)
 3
 4
 5
-6
-7
-8
-9
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779000: tracing_mark_write: B|3022|Choreographer#doFrame
-
 &amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779010: tracing_mark_write: B|3022|animation
-
 &amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779599: tracing_mark_write: B|3022|traversal
-
 &amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779695: tracing_mark_write: B|3022|draw
-
 &amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779745: tracing_mark_write: B|3022|syncAndDrawFrame
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
@@ -4248,24 +4236,12 @@ void atrace_int64_body(const char* name, int64_t value)
 5
 6
 7
-8
-9
-10
-11
-12
-13
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3253  ( 3022) [006] .... 14425.779787: tracing_mark_write: B|3022|DrawFrame
-
 &amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780064: tracing_mark_write: B|3022|syncFrameState
-
 &amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780294: tracing_mark_write: B|3022|beginFrame
-
 &amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780336: tracing_mark_write: B|3022|dequeueBuffer
-
 &amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780615: tracing_mark_write: B|3022|renderFrame
-
 &amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.782260: tracing_mark_write: B|3022|eglSwapBuffersWithDamageKHR
-
 &amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.782401: tracing_mark_write: B|3022|queueBuffer
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
@@ -4273,9 +4249,7 @@ void atrace_int64_body(const char* name, int64_t value)
 
 &lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 2
-3
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.782772: tracing_mark_write: C|3022|GPU completion|1
-
 &amp;lt;...&amp;gt;-3299  ( 1049) [001] .... 14425.782498: tracing_mark_write: C|1049|com.miui.home/com.miui.home.launcher.Launcher#0|1
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
@@ -4284,12 +4258,8 @@ void atrace_int64_body(const char* name, int64_t value)
 &lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 2
 3
-4
-5
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;surfaceflinger-1049  ( 1049) [000] .... 14425.778852: tracing_mark_write: B|1049|onMessageReceived
-
 surfaceflinger-1049  ( 1049) [000] .... 14425.778856: tracing_mark_write: B|1049|onMessageInvalidate
-
 surfaceflinger-1049  ( 1049) [000] .... 14425.778918: tracing_mark_write: B|1049|handleMessageInvalidate
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
@@ -4297,9 +4267,7 @@ surfaceflinger-1049  ( 1049) [000] .... 14425.778918: tracing_mark_write: B|1049
 
 &lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 2
-3
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;surfaceflinger-1049  ( 1049) [000] .... 14425.779283: tracing_mark_write: B|1049|onMessageReceived
-
 surfaceflinger-1049  ( 1049) [000] .... 14425.779288: tracing_mark_write: B|1049|onMessageRefresh
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 
@@ -4313,9 +4281,7 @@ surfaceflinger-1049  ( 1049) [000] .... 14425.779288: tracing_mark_write: B|1049
 
 &lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
 2
-3
 &lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373|commit|1
-
 crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373|commit|0
 &lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
 

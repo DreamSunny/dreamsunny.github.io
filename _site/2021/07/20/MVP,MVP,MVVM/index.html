@@ -12,13 +12,13 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="内存泄漏治理shark解析hprof文件 - Android学习笔记 | Yaku Blog">
+        content="MVC,MVP,MVVM - Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="解析hprof文件主要分为如下几个步骤，逐一来介绍。
+    <meta property="og:description" content="1.MVC（Model-View-Controller）
 ">
     
-    <meta property="article:published_time" content=" 2022-09-30T20:00:00Z">
+    <meta property="article:published_time" content=" 2021-07-20T20:00:00Z">
     
     
     <meta property="article:author" content="Yaku">
@@ -26,14 +26,18 @@
     
     <meta property="article:tag" content="Android">
     
-    <meta property="article:tag" content="LeakCanary-shark">
+    <meta property="article:tag" content="MVC">
+    
+    <meta property="article:tag" content="MVP">
+    
+    <meta property="article:tag" content="MVVM">
     
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/">
+    <meta property="og:url" content="http://localhost:4000/2021/07/20/MVP,MVP,MVVM/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>内存泄漏治理shark解析hprof文件 - Android学习笔记 | Yaku Blog</title>
+    <title>MVC,MVP,MVVM - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -42,7 +46,7 @@
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/">
+    <link rel="canonical" href="http://localhost:4000/2021/07/20/MVP,MVP,MVVM/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -245,13 +249,17 @@
                         
                         <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
                         
-                        <a class="tag" href="/archive/?tag=LeakCanary-shark" title="LeakCanary-shark">LeakCanary-shark</a>
+                        <a class="tag" href="/archive/?tag=MVC" title="MVC">MVC</a>
+                        
+                        <a class="tag" href="/archive/?tag=MVP" title="MVP">MVP</a>
+                        
+                        <a class="tag" href="/archive/?tag=MVVM" title="MVVM">MVVM</a>
                         
                     </div>
-                    <h1>内存泄漏治理shark解析hprof文件</h1>
+                    <h1>MVC,MVP,MVVM</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">Posted by Yaku on September 30, 2022</span>
+                    <span class="meta">Posted by Yaku on July 20, 2021</span>
                 </div>
             </div>
         </div>
@@ -278,265 +286,393 @@
                 <!-- Multi-Lingual -->
                 
 
-				<p>解析hprof文件主要分为如下几个步骤，逐一来介绍。</p>
+				<h1 id="1mvcmodel-view-controller">1.MVC（Model-View-Controller）</h1>
 
-<h1 id="1parsing_heap_dump">1.PARSING_HEAP_DUMP</h1>
-
-<p>这一步是解析hprof文件，包含两部分：</p>
+<p><img src="/img/others/mvc.png" alt="img" /></p>
 
 <ul>
-  <li>解析Header部分</li>
-  <li>解析Records部分</li>
+  <li>模型层(Model) 负责存储、检索、操纵来自数据库或者网络的数据</li>
+  <li>视图层(View) 用户界面，一般采用XML文件进行界面的描述</li>
+  <li>控制层(Controller) 业务逻辑处理</li>
 </ul>
 
-<p>hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/manual.html</p>
+<p><strong>1.工作原理</strong></p>
 
-<p>重点在读取Records部分，读取逻辑在 StreamingHprofReader 这个类，处理逻辑在</p>
+<ol>
+  <li>当用户出发事件的时候，view层会发送指令到controller层，自己不执行业务逻辑。</li>
+  <li>Controller执行业务逻辑并且操作Model，但不会直接操作View，可以说它是对View无知的。</li>
+  <li>model层更新完数据然后对视图进行更新，用户得到反馈。</li>
+</ol>
 
-<p>HprofInMemoryIndex 这个类中，这里共读取了两遍：</p>
+<p><strong>2.MVC代码实例</strong></p>
 
-<p>第1遍，收集数据信息，包括 类/实例/object数组/原始类型数组 的数量、数据最大长度等等。</p>
+<p>1.先实现一个 model，需要有通知View更新的能力，当model加载成功，模拟从网络或者本地获取数据，需要告知View更新：</p>
 
-<p>第2遍，生成 类/实例/object数组/原始类型数组 的信息，以支持随机读取。</p>
+<pre><code class="language-Java">public class MvcModel {
+    String mId;
+    MvcActivity mActivity;
 
-<table>
-  <thead>
-    <tr>
-      <th> </th>
-      <th>支持随机读取所需信息，以Byte数组形式存储</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>类</td>
-      <td>ID，文件中位置，父类ID，实例大小，数据长度，数组下标</td>
-    </tr>
-    <tr>
-      <td>实例</td>
-      <td>ID，文件中位置，类ID，数据长度</td>
-    </tr>
-    <tr>
-      <td>object数组</td>
-      <td>ID，文件中位置，类ID，数据长度</td>
-    </tr>
-    <tr>
-      <td>primitive数组</td>
-      <td>ID，文件中位置，原始类型，数据长度</td>
-    </tr>
-  </tbody>
-</table>
-
-<p>这里解释下为什么要读两遍：</p>
-
-<p>主要是从节省内存的角度考虑，比如 文件中位置 这个数值，第一遍读取后我们可以获得文件的大小，从而可以确定存储 文件中位置 这个数值所需要的byte数量，从而避免直接使用int或long存储节省内存。</p>
-
-<p>这里有两个知识点：</p>
-
-<p><strong>1.Shark 比 Haha 占用内存小的原因？</strong></p>
-
-<p>Shark并不会直接把所有的Records都读取到内存中。</p>
-
-<p><strong>2.gc root对象都有哪些？</strong></p>
-
-<pre><code class="language-Kotlin">fun defaultIndexedGcRootTags(): EnumSet&lt;HprofRecordTag&gt; = EnumSet.of(
-  HprofRecordTag.ROOT_JNI_GLOBAL,
-  HprofRecordTag.ROOT_JAVA_FRAME,
-  HprofRecordTag.ROOT_JNI_LOCAL,
-  HprofRecordTag.ROOT_MONITOR_USED,
-  HprofRecordTag.ROOT_NATIVE_STACK,
-  HprofRecordTag.ROOT_STICKY_CLASS,
-  HprofRecordTag.ROOT_THREAD_BLOCK,
-  HprofRecordTag.ROOT_THREAD_OBJECT,
-  HprofRecordTag.ROOT_JNI_MONITOR
-)
-</code></pre>
-
-<h1 id="2extracting_metadata">2.EXTRACTING_METADATA</h1>
-
-<p>这一步是解析一些常量值，具体参考 AndroidMetadataExtractor 这个类。</p>
-
-<pre><code class="language-Kotlin">override fun extractMetadata(graph: HeapGraph): Map&lt;String, String&gt; {
-  val metadata = mutableMapOf&lt;String, String&gt;()
-
-  val build = AndroidBuildMirror.fromHeapGraph(graph)
-  metadata["Build.VERSION.SDK_INT"] = build.sdkInt.toString()
-  metadata["Build.MANUFACTURER"] = build.manufacturer
-  metadata["LeakCanary version"] = readLeakCanaryVersion(graph)
-  metadata["App process name"] = readProcessName(graph)
-  metadata["Class count"] = graph.classCount.toString()
-  metadata["Instance count"] = graph.instanceCount.toString()
-  metadata["Primitive array count"] = graph.primitiveArrayCount.toString()
-  metadata["Object array count"] = graph.objectArrayCount.toString()
-  metadata["Thread count"] = readThreadCount(graph).toString()
-  metadata["Heap total bytes"] = readHeapTotalBytes(graph).toString()
-  metadata.putBitmaps(graph)
-  metadata.putDbLabels(graph)
-
-  return metadata
+    public MvcModel (MvcActivity activity) {
+        this.mActivity = activity;
+    }
+    public void loadModel (){
+        //模拟从网络或者本地获取数据
+        mId = "20170923";
+        mActivity.updateUI(this);
+    }
 }
 </code></pre>
 
-<h1 id="3finding_retained_objects">3.FINDING_RETAINED_OBJECTS</h1>
+<p>2.View需要发出点击事件，并且传递Controller，同时需要根据Model更新UI：</p>
 
-<p>这一步是找出泄漏对象。Android中常见的泄漏对象定义在 AndroidObjectInspectors 这个类中，</p>
+<pre><code class="language-Java">public class MvcActivity extends AppCompatActivity {
 
-<p>以 Activity 为例，当 Activity 实例中 mDestroyed == true 时，也就是 Activity 执行完 onDestroyed 回调，Activity 实例仍存在则判定为内存泄漏。</p>
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+       //省略
+        final MvcController controller = new MvcController(this);
+        mFindBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                controller.loadData();
+            }
+        });
+    }
 
-<pre><code class="language-Kotlin">override val leakingObjectFilter = { heapObject: HeapObject -&gt;
-  heapObject is HeapInstance &amp;&amp;
-    heapObject instanceOf "android.app.Activity" &amp;&amp;
-    heapObject["android.app.Activity", "mDestroyed"]?.value?.asBoolean == true
+    public void updateUI (MvcModel model) {
+        mID.setText(model.mId);
+    }
 }
 </code></pre>
 
-<h1 id="4finding_paths_to_retained_objects">4.FINDING_PATHS_TO_RETAINED_OBJECTS</h1>
+<p>3.Controller：有时候我们的Activity既充当View也充当Controller，这里为了更好的理解MVC，将Activity进行了拆解：</p>
 
-<p>这一步是找出泄漏最短路径。核心逻辑在 PathFinder 类，首先遍历所有的 gc roots 对象，然后依次递归遍历其所引用的子对象，直至找出包含上一步找出的所有泄漏对象。因为在遍历过程中可以创建父子关系，所以从泄漏对象一直找parent，即为最短泄漏路径。</p>
+<pre><code class="language-Java">public class MvcController {
+    MvcActivity mActivity;
+    MvcModel mModel;
 
-<pre><code class="language-Kotlin">private fun State.findPathsFromGcRoots(): PathFindingResults {
-  enqueueGcRoots()
+    MvcController (MvcActivity activity) {
+        this.mActivity = activity;
+    }
 
-  val shortestPathsToLeakingObjects = mutableListOf&lt;ReferencePathNode&gt;()
-  visitingQueue@ while (queuesNotEmpty) {
-    val node = poll()
-    if (leakingObjectIds.contains(node.objectId)) {
-      shortestPathsToLeakingObjects.add(node)
-      // Found all refs, stop searching (unless computing retained size)
-      if (shortestPathsToLeakingObjects.size == leakingObjectIds.size()) {
-        if (computeRetainedHeapSize) {
-          listener.onAnalysisProgress(FINDING_DOMINATORS)
-        } else {
-          break@visitingQueue
+    public void loadData (){
+        mModel = new MvcModel(mActivity);
+        mModel.loadModel();
+    }
+}
+</code></pre>
+
+<p><strong>3.MVC调用链</strong></p>
+
+<p>View.OnClick -&gt; Controller.loadData -&gt; Model.loadModel -&gt; View.updateUI</p>
+
+<p><strong>4.MVC优缺点</strong></p>
+
+<p><strong>优点：</strong></p>
+<ol>
+  <li>把业务逻辑全部分离到Controller中，模块化程度高。当业务逻辑变更的时候，不需要变更View和Model，只需要Controller换成另外一个Controller就行了。</li>
+</ol>
+
+<p><strong>缺点：</strong></p>
+
+<ol>
+  <li>
+    <p>Controller测试困难。因为视图同步操作是由View自己执行，而View只能在有UI的环境下运行。在没有UI环境下对Controller进行单元测试的时候，Controller业务逻辑的正确性是无法验证的：Controller更新Model的时候，无法对View的更新操作进行断言。</p>
+  </li>
+  <li>
+    <p>xml作为view层，控制能力实在太弱，Activity基本上都是View和Controller的合体，既要负责视图的显示又要加入控制逻辑，承担的功能很多，导致代码量很大。如想去动态的改变一个页面的背景，或者动态的隐藏/显示一个按钮，这些都没办法在xml中做，只能把代码写在activity中，造成了activity既是controller层。</p>
+  </li>
+  <li>
+    <p>view层和model层之间存在耦合。</p>
+  </li>
+</ol>
+
+<h1 id="2mvpmodel-view-presenter">2.MVP（Model-View-Presenter）</h1>
+
+<p><img src="/img/others/mvp.png" alt="img" /></p>
+
+<ul>
+  <li>模型层(Model) 负责存储、检索、操纵来自数据库或者网络的数据。</li>
+  <li>视图层(View) 用户界面，一般采用XML文件进行界面的描述。</li>
+  <li>逻辑处理层（Presenter） 作为View与Model交互的中间纽带，处理与用户交互的负责逻辑。</li>
+</ul>
+
+<p><strong>1.工作原理</strong></p>
+
+<ol>
+  <li>View接受用户请求</li>
+  <li>View传递请求给Presenter</li>
+  <li>Presenter做逻辑处理，修改Model</li>
+  <li>Model通知Presenter数据变化</li>
+  <li>Presenter更新View</li>
+</ol>
+
+<p><strong>2.MVP代码实例</strong></p>
+
+<p>1.MVP中Model、View、Presenter中的联系件：</p>
+
+<pre><code class="language-Java">public interface MvpContract {
+    interface View {
+        void updateUI();
+    }
+
+    interface Model {
+        void loadModel();
+    }
+
+    interface Presenter {
+        void loadData ();
+    }
+}
+</code></pre>
+
+<p>2.还在MVC的例子上变动，需要先对Model进行封装，当loadModel后，不直接通知View更新，而是通知Presenter。</p>
+
+<pre><code class="language-Java">public class MvpModel implements MvpContract.Model{
+    String mId;
+    OnGetListener mListener;
+
+    public MvpModel (OnGetListener listener) {
+        this.mListener = listener;
+    }
+   @Override
+    public void loadModel (){
+        //模拟从网络或者本地获取数据
+        mId = "20170923";
+        if (mListener != null) {
+            mListener.onSuccess(this);
         }
-      }
     }
-
-    val heapObject = graph.findObjectById(node.objectId)
-    objectReferenceReader.read(heapObject).forEach { reference -&gt;
-      val newNode = ChildNode(
-        objectId = reference.valueObjectId,
-        parent = node,
-        lazyDetailsResolver = reference.lazyDetailsResolver
-      )
-      enqueue(newNode, isLowPriority = reference.isLowPriority)
+    interface OnGetListener {
+        void onSuccess (MvpModel model);
     }
-  }
-  return PathFindingResults(
-    shortestPathsToLeakingObjects,
-    if (visitTracker is Dominated) visitTracker.dominatorTree else null
-  )
 }
 </code></pre>
 
-<p>这里还包含了关键一步，去重最短路径，逻辑在 HeapAnalyzer.deduplicateShortestPaths() ，也就是相同泄漏路径会被合并。举个例子，比如2个不同Activity都是注册了同一listener导致的泄漏，因此泄漏路径是一致的，会被自动合并。</p>
+<p>3.View需要发出点击事件，并且传递给Presenter ，最后也由Presenter去通知View更新UI：</p>
 
-<h1 id="5finding_dominators">5.FINDING_DOMINATORS</h1>
-
-<p>如果需要计算泄漏对象导致内存泄漏大小，会在上一步的基础上遍历所有对象。</p>
-
-<p>备注：为了提升效率，我们去掉了这部分功能。</p>
-
-<h1 id="6inspecting_objects">6.INSPECTING_OBJECTS</h1>
-
-<p>这一步是描述对象是否有泄漏及泄漏原因，还是以 Activity 为例：</p>
-
-<pre><code class="language-Kotlin">override fun inspect(
-  reporter: ObjectReporter
-) {
-  reporter.whenInstanceOf("android.app.Activity") { instance -&gt;
-    // Activity.mDestroyed was introduced in 17.
-    // https://android.googlesource.com/platform/frameworks/base/+
-    // /6d9dcbccec126d9b87ab6587e686e28b87e5a04d
-    val field = instance["android.app.Activity", "mDestroyed"]
-
-    if (field != null) {
-      if (field.value.asBoolean!!) {
-        leakingReasons += field describedWithValue "true"
-      } else {
-        notLeakingReasons += field describedWithValue "false"
-      }
+<pre><code class="language-Plaintext">public class MvpActivity extends AppCompatActivity implements MvpContract.View {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+       //省略
+        final MvpPresenter presenter = new MvpPresenter(this);
+        mFindBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                presenter.loadData();
+            }
+        });
     }
-  }
+    @Override
+    public void updateUI (MvpModel model) {
+        mID.setText(model.mId);
+    }
 }
 </code></pre>
 
-<h1 id="7computing_native_retained_size">7.COMPUTING_NATIVE_RETAINED_SIZE</h1>
+<p>4.Presenter，接收到来自View的操作命令后，进行逻辑处理，处理Model，修改完成后 通知View进行修改。</p>
 
-<p>这一步是计算 Native 内存泄漏大小，主要逻辑在 AndroidNativeSizeMapper 类。</p>
+<pre><code class="language-Plaintext">public class MvpPresenter implements MvpContract.Presenter  {
+    MvpContract.View  mView;
+    MvpContract.Model mModel;
 
-<h1 id="8computing_retained_size">8.COMPUTING_RETAINED_SIZE</h1>
-
-<p>这一步是计算泄漏对象导致内存泄漏大小，主要逻辑在 DominatorTree 类。</p>
-
-<h1 id="9building_leak_traces">9.BUILDING_LEAK_TRACES</h1>
-
-<p>这一步是生成泄漏堆栈，包括：ApplicationLeak，LibraryLeak。</p>
-
-<pre><code class="language-Kotlin">private fun FindLeakInput.buildLeakTraces(
-  shortestPaths: List&lt;ShortestPath&gt;,
-  inspectedObjectsByPath: List&lt;List&lt;InspectedObject&gt;&gt;,
-  retainedSizes: Map&lt;Long, Pair&lt;Int, Int&gt;&gt;?
-): Pair&lt;List&lt;ApplicationLeak&gt;, List&lt;LibraryLeak&gt;&gt; {
-  listener.onAnalysisProgress(BUILDING_LEAK_TRACES)
-
-  val applicationLeaksMap = mutableMapOf&lt;String, MutableList&lt;LeakTrace&gt;&gt;()
-  val libraryLeaksMap =
-    mutableMapOf&lt;String, Pair&lt;LibraryLeakReferenceMatcher, MutableList&lt;LeakTrace&gt;&gt;&gt;()
-
-  shortestPaths.forEachIndexed { pathIndex, shortestPath -&gt;
-    val inspectedObjects = inspectedObjectsByPath[pathIndex]
-
-    val leakTraceObjects = buildLeakTraceObjects(inspectedObjects, retainedSizes)
-
-    val referencePath = buildReferencePath(shortestPath, leakTraceObjects)
-
-    val leakTrace = LeakTrace(
-      gcRootType = GcRootType.fromGcRoot(shortestPath.root.gcRoot),
-      referencePath = referencePath,
-      leakingObject = leakTraceObjects.last()
-    )
-
-    val firstLibraryLeakMatcher = shortestPath.firstLibraryLeakMatcher()
-    if (firstLibraryLeakMatcher != null) {
-      val signature: String = firstLibraryLeakMatcher.pattern.toString()
-        .createSHA1Hash()
-      libraryLeaksMap.getOrPut(signature) { firstLibraryLeakMatcher to mutableListOf() }
-        .second += leakTrace
-    } else {
-      applicationLeaksMap.getOrPut(leakTrace.signature) { mutableListOf() } += leakTrace
+    MvpPresenter (MvpContract.View view) {
+        this.mView= view;
     }
-  }
-  val applicationLeaks = applicationLeaksMap.map { (_, leakTraces) -&gt;
-    ApplicationLeak(leakTraces)
-  }
-  val libraryLeaks = libraryLeaksMap.map { (_, pair) -&gt;
-    val (matcher, leakTraces) = pair
-    LibraryLeak(leakTraces, matcher.pattern, matcher.description)
-  }
-  return applicationLeaks to libraryLeaks
+    @Override
+    public void loadData (){
+        mModel = new MvpModel(new MvpModel.OnGetListener() {
+            @Override
+            public void onSuccess(MvpModel model) {
+                mView.updateUI(model);
+            }
+        });
+        mModel.loadModel ();
+    }
 }
 </code></pre>
 
-<h1 id="10reporting_heap_analysis">10.REPORTING_HEAP_ANALYSIS</h1>
+<p><strong>3.MVP调用链</strong></p>
 
-<p>最后一步，报告分析结果，包括：HeapAnalysisSuccess，HeapAnalysisFailure。</p>
+<p>View:OnClick -&gt; Presenter:loadData -&gt; Model:loadModel -&gt; Presenter:onSuccess -&gt; View:updateUI</p>
+
+<p><strong>4.MVP优缺点</strong></p>
+
+<p><strong>优点：</strong></p>
+
+<ol>
+  <li>
+    <p>便于测试。Presenter对View是通过接口进行，在对Presenter进行不依赖UI环境的单元测试的时候。可以通过Mock一个View对象，这个对象只需要实现了View的接口即可。然后依赖注入到Presenter中，单元测试的时候就可以完整的测试Presenter业务逻辑的正确性。</p>
+  </li>
+  <li>
+    <p>避免了传统开发模式中View和Model耦合的情况，提高了代码可扩展性、组件复用能力、团队协作的效率。</p>
+  </li>
+</ol>
+
+<p><strong>缺点：</strong></p>
+
+<ol>
+  <li>
+    <p>View(Activity)需要持有Presenter的引用，同时，Presenter也需要持有View(Activity)的引用，增加了控制的复杂度；</p>
+  </li>
+  <li>
+    <p>MVC中Activity的代码很臃肿，转移到MVP的Presenter中，同样造成了Presenter在业务逻辑复杂时的代码臃肿。</p>
+  </li>
+</ol>
+
+<h1 id="3mvvmmodel-view-viewmodel">3.MVVM（Model-View-ViewModel）</h1>
+
+<p><img src="/img/others/mvvm.png" alt="img" /></p>
+
+<ul>
+  <li>模型层(Model) 负责存储、检索、操纵来自数据库或者网络的数据</li>
+  <li>视图层(View) 用户界面，一般采用XML文件进行界面的描述</li>
+  <li>视图-模型层(ViewModel) 负责View和Model之间的通信，以此分离视图和数据。</li>
+</ul>
+
+<p><strong>1. 工作原理</strong></p>
+
+<ol>
+  <li>View接收用户交互请求</li>
+  <li>View将请求转交给ViewModel</li>
+  <li>ViewModel操作Model数据更新</li>
+  <li>Model更新完数据，通知ViewModel数据发生变化</li>
+  <li>ViewModel更新View数据</li>
+</ol>
+
+<p><strong>2. MVVM代码实例</strong></p>
+
+<p>1.Model</p>
+
+<pre><code class="language-Plaintext">public class MvvmModel {
+    String mId;
+    OnGetListener mListener;
+
+    public MvvmModel(OnGetListener listener) {
+        this.mListener = listener;
+    }
+    public void loadModel() {
+        //模拟从网络或者本地获取数据
+        mId = "20170923";
+        if (mListener != null) {
+            mListener.onSuccess(this);
+        }
+    }
+    interface OnGetListener {
+        void onSuccess (MvvmModel model);
+    }
+}
+</code></pre>
+
+<p>2.ViewModel</p>
+
+<pre><code class="language-Plaintext">public class MvvmViewModel extends BaseObservable {
+    public ObservableField&lt;String&gt; mId = new ObservableField&lt;&gt;();
+    public MvvmViewModel() {
+
+    }
+    public void doGetId(View view) {
+        loadData();
+    }
+    public void loadData() {
+        MvvmModel model = new MvvmModel(new MvvmModel.OnGetListener() {
+            @Override
+            public void onSuccess(MvvmModel model) {
+                mId.set(model.mId);
+            }
+        });
+        model.loadModel();
+    }
+}
+</code></pre>
+
+<p>3.接着使用databinding语法 对 xml 进行数据绑定,我们将 Click事件、输出结果都绑定到ViewModel上。</p>
+
+<pre><code class="language-Plaintext">&lt;?xml version="1.0" encoding="utf-8"?&gt;
+&lt;layout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"&gt;
+    &lt;data&gt;
+        &lt;variable name="viewModel" type="com.liujc.mvvm.MvvmViewModel"/&gt;
+    &lt;/data&gt;
+    &lt;LinearLayout   
+        &lt;TextView
+                android:id="@+id/id"
+                android:layout_width="match_parent"
+                android:layout_height="20dp"
+                android:text="@{viewModel.mId}"/&gt;
+          &lt;Button
+                android:id="@+id/findBtn"
+                android:onClick="@{viewModel.doGetId}"
+                android:text="获取Id"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/&gt;
+    &lt;/LinearLayout&gt;
+&lt;/layout&gt;
+</code></pre>
+
+<p>4.最后在View(Activity)中引入ViewModel：</p>
+
+<pre><code class="language-Plaintext">public class MvvmActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        ActivityMvvmBinding binding =   DataBindingUtil.setContentView(this,R.layout.activity_mvvm);
+
+        final MvvmViewModel viewModel = new MvvmViewModel();
+        binding.setViewModel(viewModel);
+    }
+
+}
+</code></pre>
+
+<p><strong>3.MVVM优缺点</strong></p>
+
+<p><strong>优点：</strong></p>
+
+<ol>
+  <li>低耦合。View可以独立于Model变化和修改，一个ViewModel可以绑定到不同的”View”上，当View变化的时候Model可以不变，当Model变化的时候View也可以不变。</li>
+  <li>可重用性。你可以把一些视图逻辑放在一个ViewModel里面，让很多view重用这段视图逻辑。</li>
+  <li>独立开发。开发人员可以专注于业务逻辑和数据的开发（ViewModel），设计人员可以专注于页面设计，生成xml代码。</li>
+  <li>ViewModel解决MVP中View(Activity)和Presenter相互持有对方应用的问题，界面由数据进行驱动，响应界面操作无需由View(Activity)传递，数据的变化也无需Presenter调用View(Activity)实现，使得数据传递的过程更加简洁，高效。</li>
+</ol>
+
+<p><strong>缺点：</strong></p>
+
+<ol>
+  <li>ViewModel中存在对Model的依赖。</li>
+  <li>数据绑定使得 Bug 很难被调试。你看到界面异常了，有可能是你 View 的代码有 Bug，也可能是 Model 的代码有问题。</li>
+  <li>IDE不够完善（修改ViewModel的名称对应的xml文件中不会自动修改等）。</li>
+</ol>
+
+<p><strong>DataBinding</strong></p>
+
+<p>DataBinding是2015年谷歌 I/O大会上介绍了一个数据绑定框架，以前我们可能需要在每个Activity里写很多的findViewById，不仅麻烦，还增加了代码的耦合性，如果我们使用DataBinding，就可以抛弃那么多的findViewById，省时省力。</p>
+
+<p>双向绑定的概念让传统的布局文件由被动转为主动，数据驱动UI，而且View与ViewModel实现了完美的解耦，这也解决了MVP模式下的缺点。</p>
+
+<h1 id="小结">小结</h1>
+
+<ul>
+  <li>从MVC、MVP到MVVM，实际上是模型和视图的分离过程。MVC中模型和视图没有完全分离，造成Activity代码臃肿，MVP中通过Presenter来进行中转，模型和视图彻底分离，但由于V和P互相引用，代码不够优雅。ViewModel通过Data Binding实现了视图和数据的绑定，解决了这种MVP的缺陷。</li>
+  <li>可参考一套Android App基础框架 架构设计：从MVC、MVP到MVVM 网络访问：支持REST、HTTPS及SPDY的Retrofit+Okhttp 响应式编程：RxJava/RxAndroid解决方案 依赖注入：Dagger2和ButterKnife使用</li>
+  <li>框架的选择 任何的项目框架，都是为项目服务的。没有绝对的好坏之分，只有更合适的选择。在项目进展的不同阶段，做出最合适的调整，才是是更适合团队项目发展的框架。谨记任何的项目设计，都是要围绕项目发展阶段，团队成员规模，和团队整体能力而定的。切莫为了设计而设计，为了框架而框架。快速，高效的配合整个团队进展项目，才是最合适的架构。</li>
+</ul>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/" data-toggle="tooltip" data-placement="top" title="内存泄漏治理-LeakCanary库解析">
+                        <a href="/2021/07/04/Binder%E6%9C%BA%E5%88%B6%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="Binder机制介绍">
                         Previous<br>
-                        <span>内存泄漏治理-LeakCanary库解析</span>
+                        <span>Binder机制介绍</span>
                         </a>
                     </li>
                     
                     
                     <li class="next">
-                        <a href="/2022/10/10/Android-meminfo%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3/" data-toggle="tooltip" data-placement="top" title="Android meminfo 字段详解">
+                        <a href="/2021/08/08/ASM%E4%BB%8B%E7%BB%8D/" data-toggle="tooltip" data-placement="top" title="ASM介绍">
                         Next<br>
-                        <span>Android meminfo 字段详解</span>
+                        <span>ASM介绍</span>
                         </a>
                     </li>
                     
