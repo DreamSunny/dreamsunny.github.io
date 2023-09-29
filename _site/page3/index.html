@@ -250,6 +250,131 @@
       col-xs-12 postlist-container">
       
 <div class="post-preview">
+    <a href="/2022/05/07/SystemUI-%E4%BD%BF%E7%94%A8GarbageMonitor/">
+        <h2 class="post-title">
+            SystemUI-使用GarbageMonitor
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.简介
+
+GarbageMonitor 用于定期监测 SystemUI 堆内存，提供了一个自定义快捷开关方便生成 hprof 文件。
+
+目前仅支持 UserDebug 版本中使用，其核心功能是在内部 Service 中启动的，且有一定的条件限制，需要手动写入 Settings 值或 SystemProperties 值：
+
+public static final boolean LEAK_...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on May 7, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/04/30/SystemUI-%E6%8F%92%E4%BB%B6%E6%9C%BA%E5%88%B6/">
+        <h2 class="post-title">
+            SystemUI-插件机制
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1. 介绍
+
+Plugins可用于SysUI解耦与自升级，原理是在SysUI进程中动态加载/运行插件应用的资源和代码。
+
+其表现是改变SysUI功能的显示/行为，优点是简单，安全，易于管理。
+
+
+
+2.编写插件
+
+核心逻辑在：/SystemUI/plugin_core
+
+示例代码在：/SystemUI/plugin/ExamplePlugin
+
+1.继承Plugin，定义宿主应用与插件应用P...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on April 30, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/">
+        <h2 class="post-title">
+            SystemUI-通知显示流程
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                官方文档：
+通知概览
+创建通知
+
+1.应用发送通知
+
+应用侧发通知代码：
+
+// 构建Notification
+NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
+        .setSmallIcon(R.drawable.notification_icon)
+   ...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on April 17, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/">
+        <h2 class="post-title">
+            SystemUI-支持gradle编译
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1. 导入framework.jar
+
+在源码根目录下执行：make framework
+
+在R以下拷贝 out/target/common/obj/JAVA_LIBRARIES/framework-full_intermediates/classes.jar 重命名为 framework.jar。
+
+在R及以上拷贝 out/target/common/obj/JAVA_LIBRARIES/...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on March 20, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/2022/03/04/SystemUI-%E5%8A%9F%E8%83%BD%E4%BB%8B%E7%BB%8D/">
         <h2 class="post-title">
             SystemUI-功能介绍
@@ -277,112 +402,6 @@ SystemUIService 继承于 Servic...
     </a>
     <p class="post-meta">
         Posted by Yaku on March 4, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2021/10/29/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/">
-        <h2 class="post-title">
-            微信Tinker热修复
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                Github地址：https://github.com/Tencent/tinker/tree/dev/tinker-android
-
-
-  
-    如何快速接入请参考Tinker 接入指南；
-  
-  
-    如何自定义类请参考Tinker 自定义扩展；
-  
-  
-    Tinker的API预览请参考Tinker API预览；
-  
-
-
-tinker-android的源码主要包括三...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on October 29, 2021
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2021/10/19/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/">
-        <h2 class="post-title">
-            美团Robust热修复
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                Github地址：https://github.com/Meituan-Dianping/Robust
-WIKI：https://github.com/Meituan-Dianping/Robust/wiki
-Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on October 19, 2021
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2021/10/10/Android%E7%83%AD%E4%BF%AE%E5%A4%8D%E5%8E%9F%E7%90%86/">
-        <h2 class="post-title">
-            Android热修复原理
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                
-
-
-  
-    
-       
-      Dalvik
-      ART
-      AOP
-      HotFix
-       
-    
-  
-  
-    
-      Dexposed
-      ✓
-       
-      ✓
-      ✓
-      替换Method的nativeFunc
-    
-    
-      AndFix / HotFix
-   ...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on October 10, 2021
     </p>
 </div>
 <hr>
@@ -579,42 +598,6 @@ ClassFile {
 </div>
 <hr>
 
-<div class="post-preview">
-    <a href="/2021/07/20/MVP,MVP,MVVM/">
-        <h2 class="post-title">
-            MVC,MVP,MVVM
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1.MVC（Model-View-Controller）
-
-
-
-
-  模型层(Model) 负责存储、检索、操纵来自数据库或者网络的数据
-  视图层(View) 用户界面，一般采用XML文件进行界面的描述
-  控制层(Controller) 业务逻辑处理
-
-
-1.工作原理
-
-
-  当用户出发事件的时候，view层会发送指令到controller层，自己不执行业务逻辑。
-  Controlle...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on July 20, 2021
-    </p>
-</div>
-<hr>
-
 
 <!-- Pager -->
 
@@ -653,39 +636,39 @@ ClassFile {
                 <a data-sort="0001" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="32">Android</a>
+                    rel="33">Android</a>
         
-                <a data-sort="0027" 
+                <a data-sort="0028" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="6">SystemUI</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="3">ANR</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="3">Activity</a>
+        
+                <a data-sort="0031" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0031" 
-                    href="/archive/?tag=Activity"
-                    title="Activity"
-                    rel="2">Activity</a>
-        
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=Binder"
                     title="Binder"
                     rel="2">Binder</a>
         
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=Memory"
                     title="Memory"
                     rel="2">Memory</a>
         
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

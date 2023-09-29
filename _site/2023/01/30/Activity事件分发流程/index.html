@@ -12,15 +12,13 @@
 
     <!-- Open Graph -->
     <meta property="og:title"
-        content="美团Robust热修复 - Android学习笔记 | Yaku Blog">
+        content="Activity事件分发流程 - Android学习笔记 | Yaku Blog">
     
     <meta property="og:type" content="article">
-    <meta property="og:description" content="Github地址：https://github.com/Meituan-Dianping/Robust
-WIKI：https://github.com/Meituan-Dianping/Robust/wiki
-Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/
+    <meta property="og:description" content="1.IMS初始化
 ">
     
-    <meta property="article:published_time" content=" 2021-10-19T20:00:00Z">
+    <meta property="article:published_time" content=" 2023-01-30T20:00:00Z">
     
     
     <meta property="article:author" content="Yaku">
@@ -28,16 +26,16 @@ Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studi
     
     <meta property="article:tag" content="Android">
     
-    <meta property="article:tag" content="HotFix">
+    <meta property="article:tag" content="Activity">
     
-    <meta property="article:tag" content="Rubust">
+    <meta property="article:tag" content="Input">
     
     
     <meta property="og:image" content="http://localhost:4000/img/avatar-yaku.jpg">
-    <meta property="og:url" content="http://localhost:4000/2021/10/19/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/">
+    <meta property="og:url" content="http://localhost:4000/2023/01/30/Activity%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E6%B5%81%E7%A8%8B/">
     <meta property="og:site_name" content="Android学习笔记 | Yaku Blog">
 
-    <title>美团Robust热修复 - Android学习笔记 | Yaku Blog</title>
+    <title>Activity事件分发流程 - Android学习笔记 | Yaku Blog</title>
 
     <!-- Web App Manifest -->
     <link rel="manifest" href="/pwa/manifest.json">
@@ -46,7 +44,7 @@ Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studi
     <link rel="shortcut icon" href="/img/favicon.ico">
 
     <!-- Canonical URL -->
-    <link rel="canonical" href="http://localhost:4000/2021/10/19/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/">
+    <link rel="canonical" href="http://localhost:4000/2023/01/30/Activity%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E6%B5%81%E7%A8%8B/">
 
     <!-- Bootstrap Core CSS -->
     <link rel="stylesheet" href=" /css/bootstrap.min.css">
@@ -249,15 +247,15 @@ Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studi
                         
                         <a class="tag" href="/archive/?tag=Android" title="Android">Android</a>
                         
-                        <a class="tag" href="/archive/?tag=HotFix" title="HotFix">HotFix</a>
+                        <a class="tag" href="/archive/?tag=Activity" title="Activity">Activity</a>
                         
-                        <a class="tag" href="/archive/?tag=Rubust" title="Rubust">Rubust</a>
+                        <a class="tag" href="/archive/?tag=Input" title="Input">Input</a>
                         
                     </div>
-                    <h1>美团Robust热修复</h1>
+                    <h1>Activity事件分发流程</h1>
                     
                     <h2 class="subheading"></h2>
-                    <span class="meta">Posted by Yaku on October 19, 2021</span>
+                    <span class="meta">Posted by Yaku on January 30, 2023</span>
                 </div>
             </div>
         </div>
@@ -284,247 +282,397 @@ Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studi
                 <!-- Multi-Lingual -->
                 
 
-				<p>Github地址：<a href="https://github.com/Meituan-Dianping/Robust">https://github.com/Meituan-Dianping/Robust</a><br />
-WIKI：<a href="https://github.com/Meituan-Dianping/Robust/wiki">https://github.com/Meituan-Dianping/Robust/wiki</a><br />
-Instant Run原理：<a href="https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/">https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/</a></p>
+				<h1 id="1ims初始化">1.IMS初始化</h1>
 
-<p>Robust的源码主要包括三大模块：</p>
+<p><img src="/img/input/ims.png" alt="img" /></p>
 
-<table>
-  <thead>
-    <tr>
-      <th>模块类库</th>
-      <th>功能</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>gradle-plugin</td>
-      <td>代码插桩，静态字段ChangeQuickRedirect</td>
-    </tr>
-    <tr>
-      <td>auto-patch-plugin<br />autopatchbase</td>
-      <td>生成补丁包</td>
-    </tr>
-    <tr>
-      <td>patch</td>
-      <td>加载补丁</td>
-    </tr>
-  </tbody>
-</table>
+<p>InputManagerService初始化过程中主要创建了2个Native线程：</p>
 
-<h1 id="1代码插桩">1.代码插桩</h1>
+<ul>
+  <li>InputReader，读取底层输入，转换成Input事件，交给InputDispatcher分发。</li>
+  <li>InputDispatcher，向窗口分发Input事件，监控窗口ANR。</li>
+</ul>
 
-<p>基于Gradle Transform在构建阶段对字节码插桩。</p>
-
-<p>支持两种插桩实现方式：JavaAssist和ASM。</p>
-
-<p>核心类是：RobustTransform，AsmInsertImpl，RobustAsmUtils，JavaAssistInsertImpl</p>
-
-<p>插入的字节码内容：</p>
-
-<pre><code class="language-Java">// JavaAssistInsertImpl.java
-String body = "Object argThis = null;";
-if (!isStatic) {
-    body += "argThis = $0;";
+<pre><code class="language-C++">InputManager::InputManager(
+        const sp&lt;InputReaderPolicyInterface&gt;&amp; readerPolicy,
+        const sp&lt;InputDispatcherPolicyInterface&gt;&amp; dispatcherPolicy) {
+    mDispatcher = createInputDispatcher(dispatcherPolicy);
+    mClassifier = std::make_unique&lt;InputClassifier&gt;(*mDispatcher);
+    mBlocker = std::make_unique&lt;UnwantedInteractionBlocker&gt;(*mClassifier);
+    mReader = createInputReader(readerPolicy, *mBlocker);
 }
-String parametersClassType = getParametersClassType(ctMethod); // 函数参数
-body += "   if (com.meituan.robust.PatchProxy.isSupport($args, argThis, " + Constants.INSERT_FIELD_NAME + ", " + isStatic +
-        ", " + methodMap.get(ctBehavior.getLongName()) + "," + parametersClassType + "," + returnTypeString + ".class)) {";
-body += getReturnStatement(returnTypeString, isStatic, methodMap.get(ctBehavior.getLongName()), parametersClassType, returnTypeString + ".class"); // 函数返回值
-body += "   }";
-</code></pre>
 
-<p>简化为Java代码：</p>
+std::unique_ptr&lt;InputDispatcherInterface&gt; createInputDispatcher(
+        const sp&lt;InputDispatcherPolicyInterface&gt;&amp; policy) {
+    return std::make_unique&lt;android::inputdispatcher::InputDispatcher&gt;(policy);
+}
 
-<pre><code class="language-Java">public static ChangeQuickRedirect changeQuickRedirect;
-
-if (PatchProxy.isSupport(函数参数, this, changeQuickRedirect, 是否静态方法, 方法ID, 参数类型，返回值类型)) {
-    return PatchProxy.accessDispatch(函数参数, this, changeQuickRedirect, 是否静态方法, 方法ID, 参数类型，返回值类型);
+std::unique_ptr&lt;InputReaderInterface&gt; createInputReader(
+        const sp&lt;InputReaderPolicyInterface&gt;&amp; policy, InputListenerInterface&amp; listener) {
+    return std::make_unique&lt;InputReader&gt;(std::make_unique&lt;EventHub&gt;(), policy, listener);
 }
 </code></pre>
 
-<h1 id="2生成补丁包">2.生成补丁包</h1>
+<p><a href="https://android.googlesource.com/platform/frameworks/base.git/+/android-4.2.2_r1/services/input/InputListener.cpp">QueuedInputListener</a>类图：</p>
 
-<h2 id="21-patch文件的构成">2.1 Patch文件的构成</h2>
+<p><img src="/img/input/qil.png" alt="img" /></p>
 
-<ul>
-  <li>PatchesInfoImpl</li>
-</ul>
-
-<p>PatchesInfoImpl实现了PatchesInfo接口</p>
-
-<pre><code class="language-Java">public interface PatchesInfo {
-    List&lt;PatchedClassInfo&gt; getPatchedClassesInfo();
-}
-
-public class PatchedClassInfo {
-    public String patchedClassName; // apk中的类名
-    public String patchClassName; // 补丁包中的xxPatchControl
-}
-</code></pre>
-
-<ul>
-  <li>xxPatch</li>
-</ul>
-
-<p>修复bug的全部逻辑代码。此外把改动方法中调用的方法和字段访问全部改为了反射调用，同时要解决Proguard造成的混淆、以及内联的问题。</p>
-
-<ul>
-  <li>xxPatchControl</li>
-</ul>
-
-<p>实现了ChangeQuickRedirect接口，APK中的bug方法转到补丁中的fix方法。</p>
-
-<pre><code class="language-TypeScript">public interface ChangeQuickRedirect {
-    Object accessDispatch(String methodName, Object[] paramArrayOfObject);
-    boolean isSupport(String methodName, Object[] paramArrayOfObject);
-}
-</code></pre>
-
-<p>对应代码插桩里的逻辑，当isSupport方法返回true时，才会执行accessDispatch方法。在accessDispatch方法中会创建xxPatch的实例，调用xxPatch里的修复方法。</p>
-
-<ul>
-  <li>xxInLinePatch，处理内联问题。</li>
-  <li>XXPatchRobustAssist，处理super问题。</li>
-  <li>最后一种是新增类的，Add注解加在那个类上，就会把这个类放入补丁内部。</li>
-</ul>
-
-<h2 id="22-autopatchbase核心类">2.2 autopatchbase核心类</h2>
-
-<ul>
-  <li>com.meituan.robust.patch.annotaion.Add</li>
-</ul>
-
-<p>用来标记新增的类和方法的注解。</p>
-
-<ul>
-  <li>com.meituan.robust.patch.annotaion.Modify</li>
-</ul>
-
-<p>用来标记被改动的类和方法的注解。如果这个注解是放在一个类A上面，自动化补丁会生成类APatch，APatch会被打入补丁，原始APK中的类A中每个方法都不会被执行，只会执行APatch中的方法；如果注解标记的是方法，则表明这个方法是需要被打入补丁中的，只有被标注的方法会打入补丁，打入补丁之后，就会执行补丁的方法，原始方法不会在执行。</p>
-
-<ul>
-  <li>com.meituan.robust.patch.RobustModify</li>
-</ul>
-
-<p>针对泛型、匿名内部类等需要在泛型方法里面使用RobustModify.modify()来标注需要打入补丁中的方法。</p>
-
-<ul>
-  <li>com.meituan.robust.utils.EnhancedRobustUtils，反射的工具类。</li>
-  <li>com.meituan.robust.utils.PatchTemplate，补丁的模板类。</li>
-  <li>com.meituan.robust.ChangeQuickRedirect，xxControl的实现接口。</li>
-</ul>
-
-<h1 id="3加载补丁">3.加载补丁</h1>
-
-<p>官方热修复原理图：</p>
-
-<p><img src="/img/HotFix/robust.png" alt="img" /></p>
-
-<p>简单来说就是下发补丁后，会将 badClass 的 changeQuickRedirect 置为 patched.class，在 badMethod 方法中跳转到 patchedMethod ，达到热修复目的。</p>
-
-<p>其核心流程如下：</p>
+<h1 id="2窗口注册inputchannel">2.窗口注册InputChannel</h1>
 
 <ol>
-  <li>创建PatchExecutor线程并执行</li>
+  <li>应用侧向WMS添加窗口时，会调用Native层的IMS创建InputChannel。</li>
+  <li>在InputDispatcher中会创建socketpair，基于fd创建一对InputChannel。</li>
+  <li>创建的clientChannel会填充到ViewRootImpl中创建的Java层InputChannel对象。</li>
+  <li>创建的serverChannel会保存到InputDispatcher的mConnectionsByToken。</li>
+  <li>基于Looper的epoll机制，当APP与IMS互相Socket通信时执行回调方法。</li>
 </ol>
 
-<pre><code class="language-Java">public void run() {
-    try {
-        //拉取补丁列表
-        List&lt;Patch&gt; patches = fetchPatchList();
-        //应用补丁列表
-        applyPatchList(patches);
-    } catch (Throwable t) {
+<h2 id="21-java层">2.1 Java层</h2>
+
+<p><img src="/img/input/java.png" alt="img" /></p>
+
+<h2 id="22-native层">2.2 Native层</h2>
+
+<p><img src="/img/input/native.png" alt="img" /></p>
+
+<h1 id="3窗口input事件">3.窗口Input事件</h1>
+
+<p>通过 adb shell getevent 可查看Input设备以及实时Input事件，以按下Power键为例：</p>
+
+<blockquote>
+  <p>add device 8: /dev/input/event2</p>
+
+  <p>name:     “pmic_pwrkey”</p>
+
+  <p>/dev/input/event2: 0001 0074 00000001</p>
+
+  <p>/dev/input/event2: 0000 0000 00000000</p>
+
+  <p>/dev/input/event2: 0001 0074 00000000</p>
+
+  <p>/dev/input/event2: 0000 0000 00000000</p>
+</blockquote>
+
+<p>Input事件传递流程如下图：</p>
+
+<p><img src="/img/input/input.png" alt="img" /></p>
+
+<p>InboundQueue：从 InputReader 中拿到的 Input 事件。</p>
+
+<p>OutboundQueue：即将要被派发给目标窗口的 Input 事件。</p>
+
+<p>WaitQueue：已经派发给目标窗口等待其回调 finishInputEvent 的 Input 事件。</p>
+
+<h2 id="31-inputreader从eventhub中读取input事件">3.1 InputReader从EventHub中读取Input事件</h2>
+
+<pre><code class="language-C++">void InputReader::loopOnce() {
+    ...
+    // 获取事件
+    size_t count = mEventHub-&gt;getEvents(timeoutMillis, mEventBuffer, EVENT_BUFFER_SIZE);
+    { 
+        AutoMutex _l(mLock);
+        if (count) {
+            // 处理事件
+            processEventsLocked(mEventBuffer, count);
+        }
+        ...
+    } 
+    ...
+    mQueuedListener-&gt;flush(); // 传递事件
+}
+</code></pre>
+
+<ol>
+  <li>从EventHub中读取的事件可以是设备输入事件，也可以是设备增减变更触发的事件。</li>
+  <li>对于设备变更，会根据实际情况调用addDeviceLocked() / removeDeviceLocked() / handleConfigurationChangedLocked()处理。</li>
+  <li>对于设备输入事件，会调用processEventsForDeviceLocked()进一步处理。</li>
+</ol>
+
+<pre><code class="language-C++">void InputReader::processEventsForDeviceLocked(int32_t eventHubId, const RawEvent* rawEvents,
+                                               size_t count) {
+    auto deviceIt = mDevices.find(eventHubId);
+    std::shared_ptr&lt;InputDevice&gt;&amp; device = deviceIt-&gt;second;
+    device-&gt;process(rawEvents, count);
+}
+
+void InputDevice::process(const RawEvent* rawEvents, size_t count) {
+    for (const RawEvent* rawEvent = rawEvents; count != 0; rawEvent++) {
+        for_each_mapper_in_subdevice(rawEvent-&gt;deviceId, [rawEvent](InputMapper&amp; mapper) {
+            mapper.process(rawEvent);
+        });
+        --count;
     }
 }
 </code></pre>
 
 <ol>
-  <li>遍历patches执行patch(..)方法，创建DexClassLoader加载patch</li>
+  <li>InputMapper用于解析原始输入事件，将RawEvent数据转换成EventEntry。</li>
+  <li>最后通过调用mQueuedListener-&gt;flush()传递到InputDispatcher，回调其notifyMotion()方法。</li>
+  <li>调用enqueueInboundEventLocked()方法，加入到InboundQueue队列。</li>
 </ol>
 
-<pre><code class="language-Java">try {
-    File dexOutputDir = getPatchCacheDirPath(context, patch.getName() + patch.getMd5());
-    classLoader = new DexClassLoader(patch.getTempPath(), dexOutputDir.getAbsolutePath(),
-            null, PatchExecutor.class.getClassLoader());
-} catch (Throwable throwable) {
-}
-</code></pre>
+<h2 id="32-inputdispatcher分发input事件">3.2 InputDispatcher分发Input事件</h2>
 
-<ol>
-  <li>加载patchesInfo类并创建实例</li>
-</ol>
-
-<pre><code class="language-Java">Class patchesInfoClass;
-PatchesInfo patchesInfo = null;
-try {
-    Log.d("robust", "patch patch_info_name:" + patch.getPatchesInfoImplClassFullName());
-    patchesInfoClass = classLoader.loadClass(patch.getPatchesInfoImplClassFullName());
-    patchesInfo = (PatchesInfo) patchesInfoClass.newInstance();
-} catch (Throwable t) {
-    Log.e("robust", "patch failed 188 ", t);
-}
-</code></pre>
-
-<ol>
-  <li>遍历patchesInfo中的PatchedClassInfo，替换changeQuickRedirect变量</li>
-</ol>
-
-<pre><code class="language-Java">for (PatchedClassInfo patchedClassInfo : patchedClasses) {
-    String patchedClassName = patchedClassInfo.patchedClassName;
-    String patchClassName = patchedClassInfo.patchClassName;
-
-    try {
-        // apk中的类
-        sourceClass = classLoader.loadClass(patchedClassName.trim());
-    } catch (ClassNotFoundException e) {
-        isClassNotFoundException = true;
-        continue;
-    }
-
-    // 反射获取到changeQuickRedirect
-    Field[] fields = sourceClass.getDeclaredFields();
-    Field changeQuickRedirectField = null;
-    for (Field field : fields) {
-        if (TextUtils.equals(field.getType().getCanonicalName(), ChangeQuickRedirect.class.getCanonicalName()) &amp;&amp; TextUtils.equals(field.getDeclaringClass().getCanonicalName(), sourceClass.getCanonicalName())) {
-            changeQuickRedirectField = field;
-            break;
+<pre><code class="language-C++">void InputDispatcher::dispatchOnce() {
+    nsecs_t nextWakeupTime = LONG_LONG_MAX;
+    {
+        AutoMutex _l(mLock);
+        if (!haveCommandsLocked()) {
+            // 分发事件
+            dispatchOnceInnerLocked(&amp;nextWakeupTime);
+        }
+        // 执行command
+        if (runCommandsLockedInterruptable()) {
+            nextWakeupTime = LONG_LONG_MIN;
         }
     }
+    nsecs_t currentTime = now();
+    int timeoutMillis = toMillisecondTimeoutDelay(currentTime, nextWakeupTime);
+    mLooper-&gt;pollOnce(timeoutMillis);
+}
 
-    // 将changeQuickRedirect替换为patchClassName的实例
-    try {
-        patchClass = classLoader.loadClass(patchClassName);
-        Object patchObject = patchClass.newInstance();
-        changeQuickRedirectField.setAccessible(true);
-        changeQuickRedirectField.set(null, patchObject);
-    } catch (Throwable t) {
+bool InputDispatcher::haveCommandsLocked() const {
+    return !mCommandQueue.empty();
+}
+</code></pre>
+
+<ol>
+  <li>dispatchOnceInnerLocked()方法中根据EventEntry的类型执行不同的方法。</li>
+  <li>在dispatchMotionLocked()方法中调用findTouchedWindowTargetsLocked()基于WindowHandle找到目标窗口。</li>
+  <li>在dispatchEventLocked()方法中最终调用到startDispatchCycleLocked()方法将Input事件发送到应用窗口，同时将DispatchEntry从outboundQueue中移除，同时添加到waitQueue队列。。</li>
+</ol>
+
+<pre><code class="language-C++">void InputDispatcher::startDispatchCycleLocked(nsecs_t currentTime,
+                                               const sp&lt;Connection&gt;&amp; connection) {
+    while (connection-&gt;status == Connection::Status::NORMAL &amp;&amp; !connection-&gt;outboundQueue.empty()) {
+        DispatchEntry* dispatchEntry = connection-&gt;outboundQueue.front();
+        dispatchEntry-&gt;deliveryTime = currentTime;
+        const std::chrono::nanoseconds timeout = getDispatchingTimeoutLocked(connection);
+        dispatchEntry-&gt;timeoutTime = currentTime + timeout.count();
+
+        // Publish the event.
+        status_t status;
+        const EventEntry&amp; eventEntry = *(dispatchEntry-&gt;eventEntry);
+        switch (eventEntry.type) {
+            case EventEntry::Type::KEY: {}
+            case EventEntry::Type::MOTION: {}
+            case EventEntry::Type::FOCUS: {}
+            case EventEntry::Type::TOUCH_MODE_CHANGED: {}
+            case EventEntry::Type::POINTER_CAPTURE_CHANGED: {}
+            case EventEntry::Type::DRAG: {}
+            case EventEntry::Type::CONFIGURATION_CHANGED:
+            case EventEntry::Type::DEVICE_RESET:
+            case EventEntry::Type::SENSOR: {
+                return;
+            }
+        }
+
+        // Re-enqueue the event on the wait queue.
+        connection-&gt;outboundQueue.erase(std::remove(connection-&gt;outboundQueue.begin(),
+                                                    connection-&gt;outboundQueue.end(),
+                                                    dispatchEntry));
+        traceOutboundQueueLength(*connection);
+        connection-&gt;waitQueue.push_back(dispatchEntry);
+        if (connection-&gt;responsive) {
+            mAnrTracker.insert(dispatchEntry-&gt;timeoutTime,
+                               connection-&gt;inputChannel-&gt;getConnectionToken());
+        }
+        traceWaitQueueLength(*connection);
     }
 }
 </code></pre>
 
-<h1 id="4小结">4.小结</h1>
+<ol>
+  <li>当收到应用侧finishInputEvent()回调后最终调用到doDispatchCycleFinishedCommand()方法，将DispatchEntry从waitQueue队列中移除。</li>
+</ol>
 
-<p>Robust热修复采用 InstantRun 的热更新机制，可以即时生效，不需要重启，采用插桩和多ClassLoader方案，兼容性和稳定性较好。核心难点在于补丁包的生成，需要考虑代码混淆、方法内联、匿名类、匿名方法的影响。</p>
+<pre><code class="language-C++">void InputDispatcher::doDispatchCycleFinishedCommand(nsecs_t finishTime,
+                                                     const sp&lt;Connection&gt;&amp; connection, uint32_t seq,
+                                                     bool handled, nsecs_t consumeTime) {
+    ...
+    dispatchEntryIt = connection-&gt;findWaitQueueEntry(seq);
+    if (dispatchEntryIt != connection-&gt;waitQueue.end()) {
+        dispatchEntry = *dispatchEntryIt;
+        connection-&gt;waitQueue.erase(dispatchEntryIt);
+        const sp&lt;IBinder&gt;&amp; connectionToken = connection-&gt;inputChannel-&gt;getConnectionToken();
+        mAnrTracker.erase(dispatchEntry-&gt;timeoutTime, connectionToken);
+        ...
+    }
+    ...
+}
+</code></pre>
+
+<h2 id="33-窗口收到input事件">3.3 窗口收到Input事件</h2>
+
+<p><img src="/img/input/inputevent.png" alt="img" /></p>
+
+<ol>
+  <li>InputStage采用责任链模式，依次由NativePreImeInputStage-&gt;ViewPreImeInputStage-&gt;ImeInputStage-&gt;EarlyPostImeInputStage-&gt;NativePostImeInputStage-&gt;ViewPostImeInputStage-&gt;SyntheticInputStage处理。</li>
+  <li>在ViewPostImeInputStage阶段分发给DecorView。</li>
+</ol>
+
+<h2 id="34-view事件分发">3.4 View事件分发</h2>
+
+<pre><code class="language-Java">// 事件分发到某个具体的 ViewGroup，会直接调用 dispatchTouchEvent() 方法
+public boolean dispatchTouchEvent(MotionEvent ev) {
+    //代表是否消费事件
+    boolean consume = false;
+
+    if (onInterceptTouchEvent(ev)) {
+    // 如果 onInterceptTouchEvent() 返回 true 则代表当前 View 拦截了事件
+    // 则该事件则会交给当前View进行处理
+    // 即调用 onTouchEvent() 方法去处理事件
+      consume = onTouchEvent (ev) ;
+    } else {
+      // 如果 onInterceptTouchEvent() 返回 false 则代表当前 View 不拦截事件
+      // 则该事件则会继续传递给它的子元素
+      // 子元素的 dispatchTouchEvent() 就会被调用，重复上述过程
+      // 直到事件被最终处理为止
+      consume = child.dispatchTouchEvent(ev); //遍历处理
+    }
+    return consume;
+}
+</code></pre>
+
+<h1 id="4窗口anr">4.窗口ANR</h1>
+
+<p>在dispatchOnce()方法中会调用processAnrsLocked()方法处理ANR：</p>
+
+<pre><code class="language-C++">void InputDispatcher::dispatchOnce() {
+    nsecs_t nextWakeupTime = LONG_LONG_MAX;
+    {
+        AutoMutex _l(mLock);
+        // 
+        const nsecs_t nextAnrCheck = processAnrsLocked();
+        nextWakeupTime = std::min(nextWakeupTime, nextAnrCheck);
+    }
+    nsecs_t currentTime = now();
+    int timeoutMillis = toMillisecondTimeoutDelay(currentTime, nextWakeupTime);
+    mLooper-&gt;pollOnce(timeoutMillis);
+}
+
+bool InputDispatcher::haveCommandsLocked() const {
+    return !mCommandQueue.empty();
+}
+</code></pre>
+
+<h2 id="41-无焦点窗口---does-not-have-a-focused-window">4.1 无焦点窗口 - does not have a focused window</h2>
+
+<p>在findFocusedWindowTargetsLocked()方法中，如果没有找到焦点窗口时，会更新mNoFocusedWindowTimeoutTime，开启ANR计时。</p>
+
+<pre><code class="language-C++">InputEventInjectionResult InputDispatcher::findFocusedWindowTargetsLocked(
+        nsecs_t currentTime, const EventEntry&amp; entry, std::vector&lt;InputTarget&gt;&amp; inputTargets,
+        nsecs_t* nextWakeupTime) {
+    ...
+    if (focusedWindowHandle == nullptr &amp;&amp; focusedApplicationHandle != nullptr) {
+        if (!mNoFocusedWindowTimeoutTime.has_value()) {
+            // We just discovered that there's no focused window. Start the ANR timer
+            std::chrono::nanoseconds timeout = focusedApplicationHandle-&gt;getDispatchingTimeout(
+                    DEFAULT_INPUT_DISPATCHING_TIMEOUT);
+            mNoFocusedWindowTimeoutTime = currentTime + timeout.count();
+            mAwaitedFocusedApplication = focusedApplicationHandle;
+            mAwaitedApplicationDisplayId = displayId;
+            *nextWakeupTime = *mNoFocusedWindowTimeoutTime;
+            return InputEventInjectionResult::PENDING;
+        } else if (currentTime &gt; *mNoFocusedWindowTimeoutTime) {
+            // Already raised ANR. Drop the event
+            return InputEventInjectionResult::FAILED;
+        } else {
+            // Still waiting for the focused window
+            return InputEventInjectionResult::PENDING;
+        }
+    }
+    ...
+}
+</code></pre>
+
+<p>在processAnrsLocked()方法中，如果当前时间超过设置的mNoFocusedWindowTimeoutTime时间，则处理无焦点窗口ANR。</p>
+
+<pre><code class="language-C++">nsecs_t InputDispatcher::processAnrsLocked() {
+    const nsecs_t currentTime = now();
+    nsecs_t nextAnrCheck = LONG_LONG_MAX;
+    // Check if we are waiting for a focused window to appear. Raise ANR if waited too long
+    if (mNoFocusedWindowTimeoutTime.has_value() &amp;&amp; mAwaitedFocusedApplication != nullptr) {
+        if (currentTime &gt;= *mNoFocusedWindowTimeoutTime) {
+            processNoFocusedWindowAnrLocked();
+            mAwaitedFocusedApplication.reset();
+            mNoFocusedWindowTimeoutTime = std::nullopt;
+            return LONG_LONG_MIN;
+        } else {
+            // Keep waiting. We will drop the event when mNoFocusedWindowTimeoutTime comes.
+            nextAnrCheck = *mNoFocusedWindowTimeoutTime;
+        }
+    }
+}
+</code></pre>
+
+<h2 id="42-窗口无响应---is-not-responding">4.2 窗口无响应 - is not responding</h2>
+
+<p>在startDispatchCycleLocked()方法中，将Input时间发送到应用窗口后，会在mAnrTracker中插入超时时间。</p>
+
+<pre><code class="language-JavaScript">void InputDispatcher::startDispatchCycleLocked(nsecs_t currentTime,
+                                               const sp&lt;Connection&gt;&amp; connection) {
+    while (connection-&gt;status == Connection::Status::NORMAL &amp;&amp; !connection-&gt;outboundQueue.empty()) {
+        DispatchEntry* dispatchEntry = connection-&gt;outboundQueue.front();
+        dispatchEntry-&gt;deliveryTime = currentTime;
+        const std::chrono::nanoseconds timeout = getDispatchingTimeoutLocked(connection);
+        dispatchEntry-&gt;timeoutTime = currentTime + timeout.count();
+        
+        // Publish the event.
+        ...
+        if (connection-&gt;responsive) {
+            mAnrTracker.insert(dispatchEntry-&gt;timeoutTime,
+                               connection-&gt;inputChannel-&gt;getConnectionToken());
+        }
+    }
+}
+</code></pre>
+
+<p>在processAnrsLocked()方法中，如果当前时间超过超时时间，则处理窗口无响应ANR</p>
+
+<pre><code class="language-C++">nsecs_t InputDispatcher::processAnrsLocked() {
+    const nsecs_t currentTime = now();
+    nsecs_t nextAnrCheck = LONG_LONG_MAX;
+
+    // Check if any connection ANRs are due
+    nextAnrCheck = std::min(nextAnrCheck, mAnrTracker.firstTimeout());
+    if (currentTime &lt; nextAnrCheck) { // most likely scenario
+        return nextAnrCheck;          // everything is normal. Let's check again at nextAnrCheck
+    }
+
+    // If we reached here, we have an unresponsive connection.
+    sp&lt;Connection&gt; connection = getConnectionLocked(mAnrTracker.firstToken());
+    if (connection == nullptr) {;
+        return nextAnrCheck;
+    }
+    connection-&gt;responsive = false;
+    // Stop waking up for this unresponsive connection
+    mAnrTracker.eraseToken(connection-&gt;inputChannel-&gt;getConnectionToken());
+    onAnrLocked(connection);
+    return LONG_LONG_MIN;
+}
+</code></pre>
+
+<p>参考文档：<br />
+<a href="https://blog.csdn.net/jinzhuojun/article/details/41909159">Android 5.0(Lollipop)事件输入系统(Input System)</a><br />
+<a href="https://cloud.tencent.com/developer/article/1707657">Android中窗口Input事件接收</a></p>
 
 
                 <hr style="visibility: hidden;">
                 <ul class="pager">
                     
                     <li class="previous">
-                        <a href="/2021/10/10/Android%E7%83%AD%E4%BF%AE%E5%A4%8D%E5%8E%9F%E7%90%86/" data-toggle="tooltip" data-placement="top" title="Android热修复原理">
+                        <a href="/2023/01/19/Activity%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/" data-toggle="tooltip" data-placement="top" title="Activity显示流程">
                         Previous<br>
-                        <span>Android热修复原理</span>
+                        <span>Activity显示流程</span>
                         </a>
                     </li>
                     
                     
                     <li class="next">
-                        <a href="/2021/10/29/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/" data-toggle="tooltip" data-placement="top" title="微信Tinker热修复">
+                        <a href="/2023/03/24/Android%E7%B1%BB%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/" data-toggle="tooltip" data-placement="top" title="Android类加载流程">
                         Next<br>
-                        <span>微信Tinker热修复</span>
+                        <span>Android类加载流程</span>
                         </a>
                     </li>
                     
@@ -578,39 +726,39 @@ try {
                 <a data-sort="0001" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="32">Android</a>
+                    rel="33">Android</a>
         
-                <a data-sort="0027" 
+                <a data-sort="0028" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="6">SystemUI</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="3">ANR</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="3">Activity</a>
+        
+                <a data-sort="0031" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0031" 
-                    href="/archive/?tag=Activity"
-                    title="Activity"
-                    rel="2">Activity</a>
-        
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=Binder"
                     title="Binder"
                     rel="2">Binder</a>
         
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=Memory"
                     title="Memory"
                     rel="2">Memory</a>
         
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

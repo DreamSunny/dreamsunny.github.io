@@ -250,6 +250,127 @@
       col-xs-12 postlist-container">
       
 <div class="post-preview">
+    <a href="/2022/10/24/%E5%9F%BA%E4%BA%8Eatrace%E7%BB%9F%E8%AE%A1%E5%BA%94%E7%94%A8%E7%BB%98%E5%88%B6%E6%8E%89%E5%B8%A7/">
+        <h2 class="post-title">
+            基于atrace统计应用绘制掉帧
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                0.概述
+
+ftrace：是一个内核函数跟踪器，function tracer，旨在帮助开发人员和系统设计者可以找到内核内部发生的事情。
+
+atrace：Android tracer，使用ftrace来跟踪Android上层的函数调用。为数据采集部分。
+
+systrace：atrace数据分析工具，将atrace采集上来的数据，以图形化的方式展现出来。
+
+抓取trace方式：
+
+
+  开发者...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on October 24, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/10/10/Android-meminfo%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3/">
+        <h2 class="post-title">
+            Android meminfo 字段详解
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                对于Android内存的统计拆分，需要从系统到进程，再细分到内存分类。Android的内存通常被多个进程共享，一个进程占用的内存涉及到虚拟内存、物理内存、私有、共享、图形显存等等。想要详细统计一个进程的内存占用，就需要了解Android 的内存管理机制和对内存的分类拆解。
+
+1.Android 内存管理
+
+Android内存的管理核心是paging和memory-mapping（mmap）。...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on October 10, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/">
+        <h2 class="post-title">
+            内存泄漏治理shark解析hprof文件
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                解析hprof文件主要分为如下几个步骤，逐一来介绍。
+
+1.PARSING_HEAP_DUMP
+
+这一步是解析hprof文件，包含两部分：
+
+
+  解析Header部分
+  解析Records部分
+
+
+hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/man...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on September 30, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/">
+        <h2 class="post-title">
+            内存泄漏治理-LeakCanary库解析
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.认识 LeakCanary
+
+1.1 什么是内存泄漏
+
+内存泄漏（Memory Leaks）指不再使用的对象或数据没有被回收，随着内存泄漏的堆积，应用性能会逐渐变差，甚至发生 OOM 奔溃。在 Android 应用中的内存泄漏可以分为 2 类：
+
+
+  Java 内存泄露： 不再使用的对象被生命周期更长的 GC Root 引用，无法被判定为垃圾对象而导致内存泄漏（LeakCanary 只...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on September 24, 2022
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
     <a href="/2022/09/11/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-KOOM%E5%BA%93%E8%A7%A3%E6%9E%90/">
         <h2 class="post-title">
             内存泄漏治理-KOOM库解析
@@ -422,131 +543,6 @@ Soong是为Android编译...
 </div>
 <hr>
 
-<div class="post-preview">
-    <a href="/2022/05/07/SystemUI-%E4%BD%BF%E7%94%A8GarbageMonitor/">
-        <h2 class="post-title">
-            SystemUI-使用GarbageMonitor
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1.简介
-
-GarbageMonitor 用于定期监测 SystemUI 堆内存，提供了一个自定义快捷开关方便生成 hprof 文件。
-
-目前仅支持 UserDebug 版本中使用，其核心功能是在内部 Service 中启动的，且有一定的条件限制，需要手动写入 Settings 值或 SystemProperties 值：
-
-public static final boolean LEAK_...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on May 7, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/04/30/SystemUI-%E6%8F%92%E4%BB%B6%E6%9C%BA%E5%88%B6/">
-        <h2 class="post-title">
-            SystemUI-插件机制
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1. 介绍
-
-Plugins可用于SysUI解耦与自升级，原理是在SysUI进程中动态加载/运行插件应用的资源和代码。
-
-其表现是改变SysUI功能的显示/行为，优点是简单，安全，易于管理。
-
-
-
-2.编写插件
-
-核心逻辑在：/SystemUI/plugin_core
-
-示例代码在：/SystemUI/plugin/ExamplePlugin
-
-1.继承Plugin，定义宿主应用与插件应用P...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on April 30, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/04/17/SystemUI-%E9%80%9A%E7%9F%A5%E6%98%BE%E7%A4%BA%E6%B5%81%E7%A8%8B/">
-        <h2 class="post-title">
-            SystemUI-通知显示流程
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                官方文档：
-通知概览
-创建通知
-
-1.应用发送通知
-
-应用侧发通知代码：
-
-// 构建Notification
-NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-        .setSmallIcon(R.drawable.notification_icon)
-   ...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on April 17, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/03/20/SystemUI-%E6%94%AF%E6%8C%81gradle%E7%BC%96%E8%AF%91/">
-        <h2 class="post-title">
-            SystemUI-支持gradle编译
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1. 导入framework.jar
-
-在源码根目录下执行：make framework
-
-在R以下拷贝 out/target/common/obj/JAVA_LIBRARIES/framework-full_intermediates/classes.jar 重命名为 framework.jar。
-
-在R及以上拷贝 out/target/common/obj/JAVA_LIBRARIES/...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on March 20, 2022
-    </p>
-</div>
-<hr>
-
 
 <!-- Pager -->
 
@@ -585,39 +581,39 @@ NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNE
                 <a data-sort="0001" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="32">Android</a>
+                    rel="33">Android</a>
         
-                <a data-sort="0027" 
+                <a data-sort="0028" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="6">SystemUI</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="3">ANR</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="3">Activity</a>
+        
+                <a data-sort="0031" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0031" 
-                    href="/archive/?tag=Activity"
-                    title="Activity"
-                    rel="2">Activity</a>
-        
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=Binder"
                     title="Binder"
                     rel="2">Binder</a>
         
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=Memory"
                     title="Memory"
                     rel="2">Memory</a>
         
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>

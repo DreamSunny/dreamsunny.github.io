@@ -5,8 +5,8 @@
     <description>Android学习笔记</description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml" />
-    <pubDate>Mon, 18 Sep 2023 20:22:34 +0800</pubDate>
-    <lastBuildDate>Mon, 18 Sep 2023 20:22:34 +0800</lastBuildDate>
+    <pubDate>Fri, 29 Sep 2023 12:07:26 +0800</pubDate>
+    <lastBuildDate>Fri, 29 Sep 2023 12:07:26 +0800</lastBuildDate>
     <generator>Jekyll v4.3.2</generator>
     
       <item>
@@ -47,6 +47,1004 @@ B站：&lt;a href=&quot;https://www.bilibili.com/video/BV1Fh4y1X71b&quot;&gt;抖
         <category>Performance</category>
         
         <category>Stability</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>微信Tinker热修复</title>
+        <description>&lt;p&gt;Github地址：&lt;a href=&quot;https://github.com/Tencent/tinker/tree/dev/tinker-android&quot;&gt;https://github.com/Tencent/tinker/tree/dev/tinker-android&lt;/a&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;如何快速接入请参考&lt;a href=&quot;https://github.com/Tencent/tinker/wiki/Tinker-接入指南&quot;&gt;Tinker 接入指南&lt;/a&gt;；&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;如何自定义类请参考&lt;a href=&quot;https://github.com/Tencent/tinker/wiki/Tinker-自定义扩展&quot;&gt;Tinker 自定义扩展&lt;/a&gt;；&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Tinker的API预览请参考&lt;a href=&quot;https://github.com/Tencent/tinker/wiki/Tinker-API概览&quot;&gt;Tinker API预览&lt;/a&gt;；&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;tinker-android的源码主要包括三大模块：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;模块类库&lt;/th&gt;
+      &lt;th&gt;功能&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;tinker-android-anno&lt;br /&gt;tinker-android-anno-support&lt;/td&gt;
+      &lt;td&gt;编译时注解，用于生成空的Application类。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;tinker-android-lib&lt;/td&gt;
+      &lt;td&gt;开发者API，提供三方开发接口。&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;tinker-android-loader&lt;/td&gt;
+      &lt;td&gt;补丁包加载，热修复核心逻辑。&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h1 id=&quot;1tinker-android-anno&quot;&gt;1.tinker-android-anno&lt;/h1&gt;
+
+&lt;p&gt;Android应用启动时会先创建Application类，tinker加载Patch补丁包的逻辑也在Application初始化流程中。如果Application类中还引用了其他类，就有可能导致在tinker加载Patch补丁包前就已经加载过了其他类，这样一来就无法通过优先加载补丁包里的类达到热修复的目的，因此要将这些类从Application类中解耦出来。&lt;/p&gt;
+
+&lt;p&gt;为了实现业务逻辑与Application解耦，tinker设计了一个基于TinkerApplication和ApplicationLike的解耦方案，开发者需要继承TinkerApplication自定义一个空的Application，同时将业务逻辑写到ApplicationLike中。&lt;/p&gt;
+
+&lt;p&gt;这个插件的作用是通过解析配置在自定义ApplicationLike类的DefaultLifeCycle注解，在编译期间生成一个自定义Application类，其逻辑在AnnotationProcessor，其模板代码如下：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// TinkerAnnoApplication.tmpl
+package %PACKAGE%;
+
+import com.tencent.tinker.loader.app.TinkerApplication;
+
+public class %APPLICATION% extends TinkerApplication {
+
+    public %APPLICATION%() {
+        super(%TINKER_FLAGS%, &quot;%APPLICATION_LIFE_CYCLE%&quot;, &quot;%TINKER_LOADER_CLASS%&quot;, %TINKER_LOAD_VERIFY_FLAG%, %TINKER_USE_DLC%, %TINKER_USE_INTERPRET_MODE_ON_SUPPORTED_32BIT_SYSTEM%);
+    }
+
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;此外还设计了TinkerApplicationInlineFence类来阻止方法内联。&lt;/p&gt;
+
+&lt;h1 id=&quot;2tinker-android-lib&quot;&gt;2.tinker-android-lib&lt;/h1&gt;
+
+&lt;p&gt;这个类库主要功能包括：初始化tinker，通知tinker合成patch，tinker合成patch，触发dex2oat。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/HotFix/tinker1.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;21-tinker初始化&quot;&gt;2.1 Tinker初始化&lt;/h2&gt;
+
+&lt;p&gt;Tinker类的构造方法：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private Tinker(Context context, int tinkerFlags, LoadReporter loadReporter, PatchReporter patchReporter,
+               PatchListener listener, File patchDirectory, File patchInfoFile, File patchInfoLockFile,
+               AbstractFilePatch customPatcher, boolean isInMainProc, boolean isPatchProcess, boolean tinkerLoadVerifyFlag) {
+    this.context = context;
+    this.listener = listener; // 通知tinker合成新patch， 默认实现DefaultPatchListener
+    this.loadReporter = loadReporter; // 加载补丁回调，默认实现DefaultLoadReporter
+    this.patchReporter = patchReporter; // 合成补丁回调，默认实现DefaultPatchReporter
+    this.tinkerFlags = tinkerFlags; // 定制tinker功能
+    this.patchDirectory = patchDirectory; // /data/data/xx.xx.xx/tinker
+    this.patchInfoFile = patchInfoFile; // /data/data/xx.xx.xx/tinker/patch.info
+    this.patchInfoLockFile = patchInfoLockFile; // /data/data/xx.xx.xx/tinker/info.lock
+    this.customPatcher = customPatcher; // patch合成策略
+    this.isMainProcess = isInMainProc; // 是否是主进程
+    this.tinkerLoadVerifyFlag = tinkerLoadVerifyFlag; // 加载补丁是否校验md5
+    this.isPatchProcess = isPatchProcess; // 是否是patch进程
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;Tinker初始化：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-TypeScript&quot;&gt;public void install(Intent intentResult) {
+    install(intentResult, DefaultTinkerResultService.class, new UpgradePatch());
+}
+
+// intentResult 是ApplicationLike.getTinkerResultIntent()返回值
+// serviceClass 默认是DefaultTinkerResultService ，合成patch后策略
+// upgradePatch 默认是UpgradePatch，合成patch过程
+public void install(Intent intentResult, Class&amp;lt;? extends AbstractResultService&amp;gt; serviceClass,
+                    AbstractPatch upgradePatch) {
+    sInstalled = true;
+    TinkerPatchService.setPatchProcessor(upgradePatch, serviceClass);
+    ...
+    tinkerLoadResult = new TinkerLoadResult();
+    tinkerLoadResult.parseTinkerResult(getContext(), intentResult);
+    //after load code set
+    loadReporter.onLoadResult(patchDirectory, tinkerLoadResult.loadCode, tinkerLoadResult.costTime);
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;22-应用通知tinker合成patch&quot;&gt;2.2 应用通知tinker合成patch&lt;/h2&gt;
+
+&lt;p&gt;应用基于PatchListener接口通知Tinker有新patch，传入的path是patch的绝对路径。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public interface PatchListener {
+    int onPatchReceived(String path);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;PatchListener的默认实现类是DefaultPatchListener，当收onPatchReceived回调后会先做校验，再启动TinkerPatchService合成new patch。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-TypeScript&quot;&gt;public int onPatchReceived(String path) {
+    return checkPackageAndRunPatchService(path, false);
+}
+
+protected int checkPackageAndRunPatchService(String path, boolean useEmergencyMode) {
+    final File patchFile = new File(path);
+    final String patchMD5 = SharePatchFileUtil.getMD5(patchFile);
+    final int returnCode = patchCheck(path, patchMD5);
+    if (returnCode == ShareConstants.ERROR_PATCH_OK) {
+        runForgService();
+        TinkerPatchService.runPatchService(context, path, useEmergencyMode);
+    } else {
+        Tinker.with(context).getLoadReporter().onLoadPatchListenerReceiveFail(new File(path), returnCode);
+    }
+    return returnCode;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;23-合成new-patch&quot;&gt;2.3 合成new patch&lt;/h2&gt;
+
+&lt;p&gt;Tinker会启动TinkerPatchService来合成new patch，运行在一个独立的patch进程中：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private static void doApplyPatch(Context context, Intent intent) {
+    try {
+        PatchResult patchResult = new PatchResult();
+        try {
+            result = upgradePatchProcessor.tryPatch(context, path, useEmergencyMode, patchResult);
+        } catch (Throwable throwable) {
+        }
+        AbstractResultService.runResultService(context, patchResult, getPatchResultExtra(intent));
+    } finally {
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;合成new patch的核心逻辑在UpgradePatch，主要步骤包括：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;基于ShareSecurityCheck校验应用签名、tinkerID、tinkerFlag。&lt;/li&gt;
+  &lt;li&gt;基于本地记录的已加载的patch信息，校验new patch是否可以被合成。&lt;/li&gt;
+  &lt;li&gt;将new patch拷贝到 data/data/xx.xx.xx/tinker/patch-xxx 目录，并重命名为.apk。&lt;/li&gt;
+  &lt;li&gt;分别合成补丁中dex文件，so库，资源文件，合成dex后对新dex做dex2oat操作。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;DexDiffPatchInternal.tryRecoverDexFiles(..)&lt;/th&gt;
+      &lt;th&gt;合成dex&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;ArkHotDiffPatchInternal.tryRecoverArkHotLibrary(..)&lt;/td&gt;
+      &lt;td&gt;适配华为方舟编译器&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;SoDiffPatchInternal.tryRecoverLibraryFiles(..)&lt;/td&gt;
+      &lt;td&gt;合成so库&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;ResDiffPatchInternal.tryRecoverResourceFiles(..)&lt;/td&gt;
+      &lt;td&gt;合成资源文件&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2 id=&quot;24-触发dex2oat&quot;&gt;2.4 触发dex2oat&lt;/h2&gt;
+
+&lt;p&gt;核心逻辑在TinkerDexOptimizer的OptimizeWorker内部类中，不同Android版本触发方式有区别：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;boolean run() {
+    try {
+        String optimizedPath = SharePatchFileUtil.optimizedPathFor(this.dexFile, this.optimizedDir);
+        if (!ShareTinkerInternals.isArkHotRuning()) {
+            if (useInterpretMode) { // VM_IS_ART &amp;amp;&amp;amp; L &amp;lt;= SDK_INT &amp;lt;= N &amp;amp;&amp;amp; isSystemOTA
+                interpretDex2Oat(dexFile.getAbsolutePath(), optimizedPath, targetISA);
+            } else if (TinkerApplication.getInstance().isUseInterpretModeOnSupported32BitSystem() &amp;amp;&amp;amp;
+                    ShareTinkerInternals.isVersionInRange(21, 25, true) &amp;amp;&amp;amp;
+                    ShareTinkerInternals.is32BitEnv()
+            ) { // L &amp;lt;= SDK_INT &amp;lt;= N
+                interpretDex2Oat(dexFile.getAbsolutePath(), optimizedPath, targetISA);
+                DexFile.loadDex(dexFile.getAbsolutePath(), optimizedPath, 0);
+            } else if (ShareTinkerInternals.isNewerOrEqualThanVersion(26, true)) { // SDK_INT &amp;gt;= O
+                if (ShareTinkerInternals.isNewerOrEqualThanVersion(29, true)) { // SDK_INT &amp;gt;= Q
+                    NewClassLoaderInjector.triggerDex2Oat(context, optimizedDir,
+                            useDLC, dexFile.getAbsolutePath());
+                    triggerPMDexOptOnDemand(context, dexFile.getAbsolutePath(), optimizedPath);
+                } else {
+                    NewClassLoaderInjector.triggerDex2Oat(context, optimizedDir,
+                            useDLC, dexFile.getAbsolutePath());
+                }
+            } else {
+                DexFile.loadDex(dexFile.getAbsolutePath(), optimizedPath, 0);
+            }
+        }
+    } catch (final Throwable e) {
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;interpretDex2Oat是通过新创建一个进程执行command来执行dex2oat：&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;final List&amp;lt;String&amp;gt; commandAndParams = new ArrayList&amp;lt;&amp;gt;();
+commandAndParams.add(&quot;dex2oat&quot;);
+// for 7.1.1, duplicate class fix
+if (Build.VERSION.SDK_INT &amp;gt;= 24) {
+    commandAndParams.add(&quot;--runtime-arg&quot;);
+    commandAndParams.add(&quot;-classpath&quot;);
+    commandAndParams.add(&quot;--runtime-arg&quot;);
+    commandAndParams.add(&quot;&amp;amp;&quot;);
+}
+commandAndParams.add(&quot;--dex-file=&quot; + dexFilePath);
+commandAndParams.add(&quot;--oat-file=&quot; + oatFilePath);
+commandAndParams.add(&quot;--instruction-set=&quot; + targetISA);
+if (Build.VERSION.SDK_INT &amp;gt; 25) {
+    commandAndParams.add(&quot;--compiler-filter=quicken&quot;);
+} else {
+    commandAndParams.add(&quot;--compiler-filter=interpret-only&quot;);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;DexFile.loadDex加载dex文件触发dex2oat。&lt;/li&gt;
+  &lt;li&gt;NewClassLoaderInjector.triggerDex2Oat创建新的ClassLoader触发dex2oat。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h1 id=&quot;3tinker-android-loader&quot;&gt;3.tinker-android-loader&lt;/h1&gt;
+
+&lt;p&gt;这个类库的核心功能是加载已合成好的Patch，其流程如下：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/HotFix/tinker2.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;在tryLoadPatchFilesInternal方法中会读取合成patch时写入本地的PatchInfo，这里介绍各个字段含义：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;patchInfo = SharePatchInfo.readAndCheckPropertyWithLock(patchInfoFile, patchInfoLockFile);
+
+public SharePatchInfo(String oldVer, String newVer, boolean isProtectedApp, boolean useCustomPatch, String versionToRemove, String finger, String oatDir, boolean isRemoveInterpretOATDir) {
+    this.oldVersion = oldVer; // 旧patch的md5值
+    this.newVersion = newVer; // 新patch的md5值
+    this.isProtectedApp = isProtectedApp; // 是否为加固应用
+    this.versionToRemove = versionToRemove; // 要删除patch的md5值
+    this.fingerPrint = finger; // Build.FINGERPRINT
+    this.oatDir = oatDir; // 默认&quot;odex&quot;，在Android O及以下OTA升级时会被置为&quot;interpet&quot;
+    this.isRemoveInterpretOATDir = isRemoveInterpretOATDir; // 是否删除&quot;interpet&quot;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;接下来会做一系列校验工作：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;TinkerDexLoader.checkComplete(..)&lt;/th&gt;
+      &lt;th&gt;校验要加载的dex以及对应的的odex是否存在&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;TinkerArkHotLoader.checkComplete(..)&lt;/td&gt;
+      &lt;td&gt;适配华为方舟编译器&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;TinkerSoLoader.checkComplete(..)&lt;/td&gt;
+      &lt;td&gt;校验so库合法性&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;TinkerResourceLoader.checkComplete(..)&lt;/td&gt;
+      &lt;td&gt;校验补丁资源正确性&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;p&gt;最后会加载dex和资源文件：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;TinkerDexLoader.loadTinkerJars(..)&lt;/th&gt;
+      &lt;th&gt;加载dex，isSystemOTA==true以解释模式加载&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;TinkerArkHotLoader.loadTinkerArkHot(..)&lt;/td&gt;
+      &lt;td&gt;适配华为方舟编译器&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;TinkerResourceLoader.loadTinkerResources(..)&lt;/td&gt;
+      &lt;td&gt;加载资源文件&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h2 id=&quot;31-loadtinkerjars&quot;&gt;3.1 loadTinkerJars&lt;/h2&gt;
+
+&lt;p&gt;在Android N及以上版本且非加固应用，会重新创建一个ClassLoader：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// SystemClassLoaderAdder.java
+public static void installDexes(Application application, ClassLoader loader, File dexOptDir, List&amp;lt;File&amp;gt; files,
+                                boolean isProtectedApp, boolean useDLC) throws Throwable {
+    if (!files.isEmpty()) {
+        ...
+        if (Build.VERSION.SDK_INT &amp;gt;= 24 &amp;amp;&amp;amp; !isProtectedApp) { // SDK_INT &amp;gt;= N
+            classLoader = NewClassLoaderInjector.inject(application, loader, dexOptDir, useDLC, files);
+        } else {
+            injectDexesInternal(classLoader, files, dexOptDir);
+        }
+        ...
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在Android O_MR1及以上版本可以指定创建DelegateLastClassLoader：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// NewClassLoaderInjector.java
+public static ClassLoader inject(Application app, ClassLoader oldClassLoader, File dexOptDir,
+                                 boolean useDLC, List&amp;lt;File&amp;gt; patchedDexes) throws Throwable {
+    final String[] patchedDexPaths = new String[patchedDexes.size()];
+    for (int i = 0; i &amp;lt; patchedDexPaths.length; ++i) {
+        patchedDexPaths[i] = patchedDexes.get(i).getAbsolutePath();
+    }
+    final ClassLoader newClassLoader = createNewClassLoader(oldClassLoader,
+          dexOptDir, useDLC, true, patchedDexPaths);
+    doInject(app, newClassLoader);
+    return newClassLoader;
+}
+
+private static ClassLoader createNewClassLoader(ClassLoader oldClassLoader,
+                                                File dexOptDir,
+                                                boolean useDLC,
+                                                boolean forActualLoading,
+                                                String... patchDexPaths) throws Throwable {
+    ...
+    final String combinedDexPath = dexPathBuilder.toString(); // 拼接patchDexPaths
+    ...
+    final String combinedLibraryPath = libraryPathBuilder.toString();
+
+    ClassLoader result = null;
+    if (useDLC &amp;amp;&amp;amp; ShareTinkerInternals.isNewerOrEqualThanVersion(27, true)) { // SDK_INT &amp;gt;= O_MR1
+        if (ShareTinkerInternals.isNewerOrEqualThanVersion(31, true)) { // SDK_INT &amp;gt;= S
+            result = new DelegateLastClassLoader(combinedDexPath, combinedLibraryPath, oldClassLoader);
+        } else {
+            result = new DelegateLastClassLoader(combinedDexPath, combinedLibraryPath, ClassLoader.getSystemClassLoader());
+            final Field parentField = ClassLoader.class.getDeclaredField(&quot;parent&quot;);
+            parentField.setAccessible(true);
+            parentField.set(result, oldClassLoader);
+        }
+    } else {
+        result = new TinkerClassLoader(combinedDexPath, dexOptDir, combinedLibraryPath, oldClassLoader);
+    }
+    ...
+    return result;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;doInject方法中会替换ContextImpl，LoadedApk，Resources，DrawableInflater类的mClassLoader成员变量。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;private static void doInject(Application app, ClassLoader classLoader) throws Throwable {
+    Thread.currentThread().setContextClassLoader(classLoader);
+
+    final Context baseContext = (Context) findField(app.getClass(), &quot;mBase&quot;).get(app);
+    try {
+        findField(baseContext.getClass(), &quot;mClassLoader&quot;).set(baseContext, classLoader);
+    } catch (Throwable ignored) {
+        // There&apos;s no mClassLoader field in ContextImpl before Android O.
+        // However we should try our best to replace this field in case some
+        // customized system has one.
+    }
+
+    final Object basePackageInfo = findField(baseContext.getClass(), &quot;mPackageInfo&quot;).get(baseContext);
+    findField(basePackageInfo.getClass(), &quot;mClassLoader&quot;).set(basePackageInfo, classLoader);
+
+    final Resources res = app.getResources();
+    try {
+        findField(res.getClass(), &quot;mClassLoader&quot;).set(res, classLoader);
+    } catch (Throwable ignored) {
+        // Ignored.
+    }
+    try {
+        final Object drawableInflater = findField(res.getClass(), &quot;mDrawableInflater&quot;).get(res);
+        if (drawableInflater != null) {
+            findField(drawableInflater.getClass(), &quot;mClassLoader&quot;).set(drawableInflater, classLoader);
+        }
+    } catch (Throwable ignored) {
+        // Ignored.
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;32-loadtinkerresources&quot;&gt;3.2 loadTinkerResources&lt;/h2&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;将LoadedApk实例中mResDir成员变量设为新资源包路径。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// 反射ActivityThread的mPackages和mResourcePackages成员变量获取到LoadedApk
+final ArrayMap&amp;lt;String, WeakReference&amp;lt;LoadedApk&amp;gt;&amp;gt; mPackages = new ArrayMap&amp;lt;&amp;gt;();
+final ArrayMap&amp;lt;String, WeakReference&amp;lt;LoadedApk&amp;gt;&amp;gt; mResourcePackages = new ArrayMap&amp;lt;&amp;gt;();
+// 替换LoadedApk的mResDir
+private String mResDir;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;创建新的AssetManager实例，并设置它的资源路径为新资源包路径。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;newAssetManager = (AssetManager) newAssetManagerCtor.newInstance();
+// Create a new AssetManager instance and point it to the resources installed under
+if (((Integer) addAssetPathMethod.invoke(newAssetManager, externalResourceFile)) == 0) {
+    throw new IllegalStateException(&quot;Could not create new AssetManager&quot;);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;将Resources.mAssets设为新创建的AssetManager，清除原app的Resources中typedArray缓存，刷新资源配置。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// 反射ResourcesManager的mResourceReferences成员变量获取到Resources
+private final ArrayList&amp;lt;WeakReference&amp;lt;Resources&amp;gt;&amp;gt; mResourceReferences = new ArrayList&amp;lt;&amp;gt;();
+// 反射Resources的mResourcesImpl成员变量获取到ResourcesImpl
+private ResourcesImpl mResourcesImpl;
+// 反射ResourcesImpl的mAssets成员变量替换为newAssetManager
+final AssetManager mAssets;
+
+// 清空Resources的typedArray缓存，循环调用其acquire方法
+final SynchronizedPool&amp;lt;TypedArray&amp;gt; mTypedArrayPool = new SynchronizedPool&amp;lt;&amp;gt;(5);
+
+// 刷新资源配置，调用updateConfiguration方法
+resources.updateConfiguration(resources.getConfiguration(), resources.getDisplayMetrics());
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;4小结&quot;&gt;4.小结&lt;/h1&gt;
+
+&lt;p&gt;Q：为什么要基于patch合成新的dex？&lt;/p&gt;
+
+&lt;p&gt;Qzone热修复方案为了规避Dalvik虚拟机pre-verify问题需要代码插桩做规避，直接影响了程序运行时性能，此外在Art虚拟机上还需要规避内存错乱的问题。tinker采用合成dex的方式可以规避以上两个问题。&lt;/p&gt;
+
+&lt;p&gt;Q：为什么要替换PatchClassLoader？&lt;/p&gt;
+
+&lt;p&gt;dex2oat流程中传入profile文件，会生成app_image的base.art文件。app image的作用是记录已经编译好的“热代码”，并且在启动时一次性把它们加载到缓存，预先加载代替用时查找以提升应用的性能。也就是说系统在查找类时会直接使用base.apk中的class，这样一来热修复机制就失效了，所以要创建新的ClassLoader。&lt;/p&gt;
+
+&lt;p&gt;Q：Android8.0之前系统OTA后加载补丁为什么会ANR？&lt;/p&gt;
+
+&lt;p&gt;A：Android 8.0之前动态加载的dex会被以speed模式全量编译，系统OTA更新后导致旧的补丁dex的oat文件失效，此时运行app就会对它重新执行dex2oat，可能耗时比较久造成ANR。&lt;/p&gt;
+
+&lt;h1 id=&quot;参考文档&quot;&gt;参考文档&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://github.com/WeMobileDev/article/blob/master/微信Android热补丁实践演进之路.md&quot;&gt;微信Android热补丁实践演进之路&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://mp.weixin.qq.com/s?__biz=MzAwNDY1ODY2OQ==&amp;amp;mid=2649286341&amp;amp;idx=1&amp;amp;sn=054d595af6e824cbe4edd79427fc2706#rd&quot;&gt;Android N混合编译与对热补丁影响解析&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://mp.weixin.qq.com/s?__biz=MzAwNDY1ODY2OQ==&amp;amp;mid=2649286426&amp;amp;idx=1&amp;amp;sn=eb75349c0c3663f10fbdd74ef87be338&amp;amp;chksm=8334c398b4434a8e6933ddb4fda4a4f06c729c7d2ffef37e4598cb90f4602f5310486b7f95ff#rd&quot;&gt;ART下的方法内联策略及其对Android热修复方案的影响分析&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://juejin.cn/post/6971232987681652773&quot;&gt;Android 热修复Tinker源码分析（一）补丁包的生成&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://juejin.cn/post/6980259462036586526&quot;&gt;Android 热修复Tinker源码分析（二）补丁包的合成&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://juejin.cn/post/6980259506097750030&quot;&gt;Android 热修复Tinker源码分析（三）补丁的加载&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Thu, 20 Apr 2023 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2023/04/20/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/</link>
+        <guid isPermaLink="true">http://localhost:4000/2023/04/20/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/</guid>
+        
+        <category>Android</category>
+        
+        <category>HotFix</category>
+        
+        <category>Tinker</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>美团Robust热修复</title>
+        <description>&lt;p&gt;Github地址：&lt;a href=&quot;https://github.com/Meituan-Dianping/Robust&quot;&gt;https://github.com/Meituan-Dianping/Robust&lt;/a&gt;&lt;br /&gt;
+WIKI：&lt;a href=&quot;https://github.com/Meituan-Dianping/Robust/wiki&quot;&gt;https://github.com/Meituan-Dianping/Robust/wiki&lt;/a&gt;&lt;br /&gt;
+Instant Run原理：&lt;a href=&quot;https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/&quot;&gt;https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Robust的源码主要包括三大模块：&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt;模块类库&lt;/th&gt;
+      &lt;th&gt;功能&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;gradle-plugin&lt;/td&gt;
+      &lt;td&gt;代码插桩，静态字段ChangeQuickRedirect&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;auto-patch-plugin&lt;br /&gt;autopatchbase&lt;/td&gt;
+      &lt;td&gt;生成补丁包&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;patch&lt;/td&gt;
+      &lt;td&gt;加载补丁&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h1 id=&quot;1代码插桩&quot;&gt;1.代码插桩&lt;/h1&gt;
+
+&lt;p&gt;基于Gradle Transform在构建阶段对字节码插桩。&lt;/p&gt;
+
+&lt;p&gt;支持两种插桩实现方式：JavaAssist和ASM。&lt;/p&gt;
+
+&lt;p&gt;核心类是：RobustTransform，AsmInsertImpl，RobustAsmUtils，JavaAssistInsertImpl&lt;/p&gt;
+
+&lt;p&gt;插入的字节码内容：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// JavaAssistInsertImpl.java
+String body = &quot;Object argThis = null;&quot;;
+if (!isStatic) {
+    body += &quot;argThis = $0;&quot;;
+}
+String parametersClassType = getParametersClassType(ctMethod); // 函数参数
+body += &quot;   if (com.meituan.robust.PatchProxy.isSupport($args, argThis, &quot; + Constants.INSERT_FIELD_NAME + &quot;, &quot; + isStatic +
+        &quot;, &quot; + methodMap.get(ctBehavior.getLongName()) + &quot;,&quot; + parametersClassType + &quot;,&quot; + returnTypeString + &quot;.class)) {&quot;;
+body += getReturnStatement(returnTypeString, isStatic, methodMap.get(ctBehavior.getLongName()), parametersClassType, returnTypeString + &quot;.class&quot;); // 函数返回值
+body += &quot;   }&quot;;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;简化为Java代码：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public static ChangeQuickRedirect changeQuickRedirect;
+
+if (PatchProxy.isSupport(函数参数, this, changeQuickRedirect, 是否静态方法, 方法ID, 参数类型，返回值类型)) {
+    return PatchProxy.accessDispatch(函数参数, this, changeQuickRedirect, 是否静态方法, 方法ID, 参数类型，返回值类型);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;2生成补丁包&quot;&gt;2.生成补丁包&lt;/h1&gt;
+
+&lt;h2 id=&quot;21-patch文件的构成&quot;&gt;2.1 Patch文件的构成&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;PatchesInfoImpl&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;PatchesInfoImpl实现了PatchesInfo接口&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public interface PatchesInfo {
+    List&amp;lt;PatchedClassInfo&amp;gt; getPatchedClassesInfo();
+}
+
+public class PatchedClassInfo {
+    public String patchedClassName; // apk中的类名
+    public String patchClassName; // 补丁包中的xxPatchControl
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;xxPatch&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;修复bug的全部逻辑代码。此外把改动方法中调用的方法和字段访问全部改为了反射调用，同时要解决Proguard造成的混淆、以及内联的问题。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;xxPatchControl&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;实现了ChangeQuickRedirect接口，APK中的bug方法转到补丁中的fix方法。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-TypeScript&quot;&gt;public interface ChangeQuickRedirect {
+    Object accessDispatch(String methodName, Object[] paramArrayOfObject);
+    boolean isSupport(String methodName, Object[] paramArrayOfObject);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;对应代码插桩里的逻辑，当isSupport方法返回true时，才会执行accessDispatch方法。在accessDispatch方法中会创建xxPatch的实例，调用xxPatch里的修复方法。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;xxInLinePatch，处理内联问题。&lt;/li&gt;
+  &lt;li&gt;XXPatchRobustAssist，处理super问题。&lt;/li&gt;
+  &lt;li&gt;最后一种是新增类的，Add注解加在那个类上，就会把这个类放入补丁内部。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h2 id=&quot;22-autopatchbase核心类&quot;&gt;2.2 autopatchbase核心类&lt;/h2&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;com.meituan.robust.patch.annotaion.Add&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;用来标记新增的类和方法的注解。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;com.meituan.robust.patch.annotaion.Modify&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;用来标记被改动的类和方法的注解。如果这个注解是放在一个类A上面，自动化补丁会生成类APatch，APatch会被打入补丁，原始APK中的类A中每个方法都不会被执行，只会执行APatch中的方法；如果注解标记的是方法，则表明这个方法是需要被打入补丁中的，只有被标注的方法会打入补丁，打入补丁之后，就会执行补丁的方法，原始方法不会在执行。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;com.meituan.robust.patch.RobustModify&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;针对泛型、匿名内部类等需要在泛型方法里面使用RobustModify.modify()来标注需要打入补丁中的方法。&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;com.meituan.robust.utils.EnhancedRobustUtils，反射的工具类。&lt;/li&gt;
+  &lt;li&gt;com.meituan.robust.utils.PatchTemplate，补丁的模板类。&lt;/li&gt;
+  &lt;li&gt;com.meituan.robust.ChangeQuickRedirect，xxControl的实现接口。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h1 id=&quot;3加载补丁&quot;&gt;3.加载补丁&lt;/h1&gt;
+
+&lt;p&gt;官方热修复原理图：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/HotFix/robust.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;简单来说就是下发补丁后，会将 badClass 的 changeQuickRedirect 置为 patched.class，在 badMethod 方法中跳转到 patchedMethod ，达到热修复目的。&lt;/p&gt;
+
+&lt;p&gt;其核心流程如下：&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;创建PatchExecutor线程并执行&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;public void run() {
+    try {
+        //拉取补丁列表
+        List&amp;lt;Patch&amp;gt; patches = fetchPatchList();
+        //应用补丁列表
+        applyPatchList(patches);
+    } catch (Throwable t) {
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;遍历patches执行patch(..)方法，创建DexClassLoader加载patch&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;try {
+    File dexOutputDir = getPatchCacheDirPath(context, patch.getName() + patch.getMd5());
+    classLoader = new DexClassLoader(patch.getTempPath(), dexOutputDir.getAbsolutePath(),
+            null, PatchExecutor.class.getClassLoader());
+} catch (Throwable throwable) {
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;加载patchesInfo类并创建实例&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;Class patchesInfoClass;
+PatchesInfo patchesInfo = null;
+try {
+    Log.d(&quot;robust&quot;, &quot;patch patch_info_name:&quot; + patch.getPatchesInfoImplClassFullName());
+    patchesInfoClass = classLoader.loadClass(patch.getPatchesInfoImplClassFullName());
+    patchesInfo = (PatchesInfo) patchesInfoClass.newInstance();
+} catch (Throwable t) {
+    Log.e(&quot;robust&quot;, &quot;patch failed 188 &quot;, t);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;遍历patchesInfo中的PatchedClassInfo，替换changeQuickRedirect变量&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;for (PatchedClassInfo patchedClassInfo : patchedClasses) {
+    String patchedClassName = patchedClassInfo.patchedClassName;
+    String patchClassName = patchedClassInfo.patchClassName;
+
+    try {
+        // apk中的类
+        sourceClass = classLoader.loadClass(patchedClassName.trim());
+    } catch (ClassNotFoundException e) {
+        isClassNotFoundException = true;
+        continue;
+    }
+
+    // 反射获取到changeQuickRedirect
+    Field[] fields = sourceClass.getDeclaredFields();
+    Field changeQuickRedirectField = null;
+    for (Field field : fields) {
+        if (TextUtils.equals(field.getType().getCanonicalName(), ChangeQuickRedirect.class.getCanonicalName()) &amp;amp;&amp;amp; TextUtils.equals(field.getDeclaringClass().getCanonicalName(), sourceClass.getCanonicalName())) {
+            changeQuickRedirectField = field;
+            break;
+        }
+    }
+
+    // 将changeQuickRedirect替换为patchClassName的实例
+    try {
+        patchClass = classLoader.loadClass(patchClassName);
+        Object patchObject = patchClass.newInstance();
+        changeQuickRedirectField.setAccessible(true);
+        changeQuickRedirectField.set(null, patchObject);
+    } catch (Throwable t) {
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;4小结&quot;&gt;4.小结&lt;/h1&gt;
+
+&lt;p&gt;Robust热修复采用 InstantRun 的热更新机制，可以即时生效，不需要重启，采用插桩和多ClassLoader方案，兼容性和稳定性较好。核心难点在于补丁包的生成，需要考虑代码混淆、方法内联、匿名类、匿名方法的影响。&lt;/p&gt;
+</description>
+        <pubDate>Wed, 12 Apr 2023 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2023/04/12/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/</link>
+        <guid isPermaLink="true">http://localhost:4000/2023/04/12/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/</guid>
+        
+        <category>Android</category>
+        
+        <category>HotFix</category>
+        
+        <category>Rubust</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Android热修复原理</title>
+        <description>&lt;p&gt;&lt;img src=&quot;/img/HotFix/hook.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;table&gt;
+  &lt;thead&gt;
+    &lt;tr&gt;
+      &lt;th&gt; &lt;/th&gt;
+      &lt;th&gt;Dalvik&lt;/th&gt;
+      &lt;th&gt;ART&lt;/th&gt;
+      &lt;th&gt;AOP&lt;/th&gt;
+      &lt;th&gt;HotFix&lt;/th&gt;
+      &lt;th&gt; &lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Dexposed&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;替换Method的nativeFunc&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;AndFix / HotFix&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;替换Method的entrypoint&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Sophix&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;优化AndFix，整体替换Method&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;AndroidMethodHook&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;Sophix + dexmaker&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;td&gt;Epic&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt;✓&lt;/td&gt;
+      &lt;td&gt; &lt;/td&gt;
+      &lt;td&gt;ART上的Dexposed&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;h1 id=&quot;1aop框架&quot;&gt;1.AOP框架&lt;/h1&gt;
+
+&lt;p&gt;摘自百度百科：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;在软件业，AOP为Aspect Oriented Programming的缩写，意为：面向切面编程，通过预编译方式和运行期间动态代理实现程序功能的统一维护的一种技术。AOP是OOP的延续，是软件开发中的一个热点，也是Spring框架中的一个重要内容，是函数式编程的一种衍生范型。利用AOP可以对业务逻辑的各个部分进行隔离，从而使得业务逻辑各部分之间的耦合度降低，提高程序的可重用性，同时提高了开发的效率。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;11-aspectj框架&quot;&gt;1.1 Aspectj框架&lt;/h2&gt;
+
+&lt;p&gt;官网：https://eclipse.dev/aspectj/&lt;/p&gt;
+
+&lt;p&gt;摘自百度百科：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;AspectJ是一个面向切面的框架，它扩展了Java语言。AspectJ定义了AOP语法，它有一个专门的编译器用来生成遵守Java字节编码规范的Class文件。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;在Android中使用Aspectj框架：&lt;/p&gt;
+
+&lt;p&gt;开源项目：https://github.com/HujiangTechnology/gradle_plugin_android_aspectjx&lt;/p&gt;
+
+&lt;p&gt;gradle_plugin_android_aspectjx一个基于AspectJ并在此基础上扩展出来可应用于Android开发平台的AOP框架，可作用于java源码，class文件及jar包，同时支持kotlin的应用。&lt;/p&gt;
+
+&lt;p&gt;其核心原理是基于Gradle Transform接口，通过字节码插桩技术插入切面方法。&lt;/p&gt;
+
+&lt;h2 id=&quot;12-xposed框架&quot;&gt;1.2 Xposed框架&lt;/h2&gt;
+
+&lt;p&gt;官网：https://devtut.github.io/android/xposed.html&lt;/p&gt;
+
+&lt;p&gt;摘自百度百科：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;Xposed框架(Xposed Framework)是一套开源的、在Android高权限模式下运行的框架服务，可以在不修改APK文件的情况下影响程序运行（修改系统）的框架服务，基于它可以制作出许多功能强大的模块，且在功能不冲突的情况下同时运作。&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;在已root手机上，通过替换 system/bin/app_process 以及虚拟机动态链接库，实现对Davilk/ART虚拟机劫持，使得应用在启动时加载 XposedBridge.jar 初始化Hook模块。Hook核心原理是将需要hook的函数注册为Native层函数，当执行到这一函数时虚拟机会优先执行Native层函数，然后再去执行Java层函数，这样完成函数的hook。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/HotFix/xposed.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;2java层热修复&quot;&gt;2.Java层热修复&lt;/h1&gt;
+
+&lt;h2 id=&quot;21-编译时注解&quot;&gt;2.1 编译时注解&lt;/h2&gt;
+
+&lt;p&gt;APT（Annotation Processing Tool）即注解处理器（通常也叫做编译时注解、编译时代码自动生成），是一种处理注解的工具，确切的说它是javac的一个工具，它用来在编译时扫描和处理注解。注解处理器以Java代码（或者编译过的字节码）作为输入，生成.java文件作为输出。 简单来说就是在编译期，通过注解生成.java文件。&lt;/p&gt;
+
+&lt;p&gt;业界基于APT的开源项目有：&lt;a href=&quot;https://github.com/android/databinding-samples&quot;&gt;DataBinding&lt;/a&gt; / &lt;a href=&quot;https://github.com/JakeWharton/butterknife&quot;&gt;butterknife&lt;/a&gt; / &lt;a href=&quot;https://github.com/google/dagger&quot;&gt;dagger2&lt;/a&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;22-字节码插桩&quot;&gt;2.2 字节码插桩&lt;/h2&gt;
+
+&lt;p&gt;Java Source文件（.java）在经过javac编译器编译后会生成字节码文件（.class）。字节码插桩技术就是对字节码文件做修改，以达到代码注入的目的。&lt;/p&gt;
+
+&lt;p&gt;1.基于ASM&lt;/p&gt;
+
+&lt;p&gt;官网地址：&lt;a href=&quot;https://asm.ow2.io/&quot;&gt;https://asm.ow2.io/&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Android Framework源码编译中有应用到ASM插桩，详见：&lt;a href=&quot;https://android.googlesource.com/platform/frameworks/base/+/refs/heads/main/tools/locked_region_code_injection/src/lockedregioncodeinjection&quot;&gt;lockedregioncodeinjection&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;2.基于Javassist&lt;/p&gt;
+
+&lt;p&gt;官网地址：&lt;a href=&quot;http://www.javassist.org/&quot;&gt;http://www.javassist.org/&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;Javassist提供两种级别的API：源代码级别和字节码级别。&lt;/p&gt;
+
+&lt;p&gt;相比于ASM需要开发者熟悉字节码指令，Javassist支持使用Java编码的形式编辑或生成class文件。&lt;/p&gt;
+
+&lt;h2 id=&quot;23-dex插桩&quot;&gt;2.3 Dex插桩&lt;/h2&gt;
+
+&lt;p&gt;Android编译流程中会将字节码文件打包生成dex文件，Dex插桩就是对dex文件做修改以达到代码注入的目的。&lt;/p&gt;
+
+&lt;p&gt;业界开源项目有：&lt;a href=&quot;https://github.com/facebook/redex&quot;&gt;redex&lt;/a&gt; / DexInjector&lt;/p&gt;
+
+&lt;p&gt;相关联知识点：&lt;/p&gt;
+
+&lt;p&gt;1.smali&lt;/p&gt;
+
+&lt;p&gt;JVM 的执行是 Stack-based , 基于栈帧的，而 Dalvik 虚拟机是 Register-based，基于寄存器的。&lt;/p&gt;
+
+&lt;p&gt;smali/baksmali 是针对 dalvik 使用的 dex 格式的汇编/反汇编器。它的语法基于 Jasmin’s/dedexer，支持 dex 格式的所有功能（注释，调试信息，行信息等等）。因此我们可以认为 smali 和 Dalvik 字节码文件是等价的。&lt;/p&gt;
+
+&lt;p&gt;2.&lt;a href=&quot;https://android.googlesource.com/platform/tools/dexter/+/refs/heads/master&quot;&gt;dexter&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;dexter 工具是google开发的一个类似dexdump的工具，但其内部实现了对dex文件结构和字节码指令的一套完整的操作api，轻量简洁，对字节码的操作可以达到ASM的体验。&lt;/p&gt;
+
+&lt;h1 id=&quot;3native层热修复&quot;&gt;3.Native层热修复&lt;/h1&gt;
+
+&lt;h2 id=&quot;31-dexposed&quot;&gt;3.1 Dexposed&lt;/h2&gt;
+
+&lt;p&gt;Github地址：&lt;a href=&quot;https://github.com/alibaba/dexposed&quot;&gt;https://github.com/alibaba/dexposed&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;核心实现在dexposed.cpp，首先基于dvm接口找到方法地址，其次保存原始方法信息，最后将原始方法设置为Native方法，并将nativeFunc指向自定义的函数地址。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;static void com_taobao_android_dexposed_DexposedBridge_hookMethodNative(JNIEnv* env, jclass clazz, jobject reflectedMethodIndirect,
+            jobject declaredClassIndirect, jint slot, jobject additionalInfoIndirect) {
+    // Find the internal representation of the method
+    ClassObject* declaredClass = (ClassObject*) dvmDecodeIndirectRef(dvmThreadSelf(), declaredClassIndirect);
+    Method* method = dvmSlotToMethod(declaredClass, slot);
+    
+    // Save a copy of the original method and other hook info
+    DexposedHookInfo* hookInfo = (DexposedHookInfo*) calloc(1, sizeof(DexposedHookInfo));
+    memcpy(hookInfo, method, sizeof(hookInfo-&amp;gt;originalMethodStruct));
+    hookInfo-&amp;gt;reflectedMethod = dvmDecodeIndirectRef(dvmThreadSelf(), env-&amp;gt;NewGlobalRef(reflectedMethodIndirect));
+    hookInfo-&amp;gt;additionalInfo = dvmDecodeIndirectRef(dvmThreadSelf(), env-&amp;gt;NewGlobalRef(additionalInfoIndirect));
+
+    // Replace method with our own code
+    SET_METHOD_FLAG(method, ACC_NATIVE);
+    method-&amp;gt;nativeFunc = &amp;amp;dexposedCallHandler;
+    method-&amp;gt;insns = (const u2*) hookInfo;
+    method-&amp;gt;registersSize = method-&amp;gt;insSize;
+    method-&amp;gt;outsSize = 0;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;这里需要掌握的知识点包括：dvm虚拟机中如何描述Java中的类和方法，以及dvm虚拟机执行方法的逻辑。&lt;/p&gt;
+
+&lt;h2 id=&quot;32-andfix--hotfix&quot;&gt;3.2 AndFix / HotFix&lt;/h2&gt;
+
+&lt;p&gt;Github地址：&lt;a href=&quot;https://github.com/alibaba/AndFix&quot;&gt;https://github.com/alibaba/AndFix&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;AndFix的策略是方法替换，首先加载补丁包获取到要替换的方法，其次基于art接口找到原始方法地址和补丁包中替换方法地址，最后将替换方法内容覆盖原始方法内容。&lt;/p&gt;
+
+&lt;p&gt;不同Android版本中底层ArtMethod会有改动，因此要基于Android版本做适配。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;// art_method_replace_7_0.cpp
+void replace_7_0(JNIEnv* env, jobject src, jobject dest) {
+    art::mirror::ArtMethod* smeth =
+            (art::mirror::ArtMethod*) env-&amp;gt;FromReflectedMethod(src);
+
+    art::mirror::ArtMethod* dmeth =
+            (art::mirror::ArtMethod*) env-&amp;gt;FromReflectedMethod(dest);
+
+    reinterpret_cast&amp;lt;art::mirror::Class*&amp;gt;(dmeth-&amp;gt;declaring_class_)-&amp;gt;clinit_thread_id_ =
+            reinterpret_cast&amp;lt;art::mirror::Class*&amp;gt;(smeth-&amp;gt;declaring_class_)-&amp;gt;clinit_thread_id_;
+    reinterpret_cast&amp;lt;art::mirror::Class*&amp;gt;(dmeth-&amp;gt;declaring_class_)-&amp;gt;status_ =
+            reinterpret_cast&amp;lt;art::mirror::Class*&amp;gt;(smeth-&amp;gt;declaring_class_)-&amp;gt;status_ -1;
+    //for reflection invoke
+    reinterpret_cast&amp;lt;art::mirror::Class*&amp;gt;(dmeth-&amp;gt;declaring_class_)-&amp;gt;super_class_ = 0;
+
+    smeth-&amp;gt;declaring_class_ = dmeth-&amp;gt;declaring_class_;
+    smeth-&amp;gt;access_flags_ = dmeth-&amp;gt;access_flags_  | 0x0001;
+    smeth-&amp;gt;dex_code_item_offset_ = dmeth-&amp;gt;dex_code_item_offset_;
+    smeth-&amp;gt;dex_method_index_ = dmeth-&amp;gt;dex_method_index_;
+    smeth-&amp;gt;method_index_ = dmeth-&amp;gt;method_index_;
+    smeth-&amp;gt;hotness_count_ = dmeth-&amp;gt;hotness_count_;
+
+    smeth-&amp;gt;ptr_sized_fields_.dex_cache_resolved_methods_ =
+            dmeth-&amp;gt;ptr_sized_fields_.dex_cache_resolved_methods_;
+    smeth-&amp;gt;ptr_sized_fields_.dex_cache_resolved_types_ =
+            dmeth-&amp;gt;ptr_sized_fields_.dex_cache_resolved_types_;
+
+    smeth-&amp;gt;ptr_sized_fields_.entry_point_from_jni_ =
+            dmeth-&amp;gt;ptr_sized_fields_.entry_point_from_jni_;
+    smeth-&amp;gt;ptr_sized_fields_.entry_point_from_quick_compiled_code_ =
+            dmeth-&amp;gt;ptr_sized_fields_.entry_point_from_quick_compiled_code_;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;33-sophix&quot;&gt;3.3 Sophix&lt;/h2&gt;
+
+&lt;p&gt;Sophix对AndFix做了优化，通过定义两个相邻的方法，获取其在内存中的地址，计算差值获取到ArtMethod的大小，实现method整体拷贝，从而规避了Android版本适配问题。&lt;/p&gt;
+
+&lt;h2 id=&quot;34-androidmethodhook&quot;&gt;3.4 AndroidMethodHook&lt;/h2&gt;
+
+&lt;p&gt;Github地址：&lt;a href=&quot;https://github.com/panhongwei/AndroidMethodHook&quot;&gt;https://github.com/panhongwei/AndroidMethodHook&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;AndroidMethodHook在Sophix基础上，通过dexmaker在运行时动态生成dex文件，实现AOP。&lt;/p&gt;
+
+&lt;h2 id=&quot;35-epic&quot;&gt;3.5 Epic&lt;/h2&gt;
+
+&lt;p&gt;Github地址：&lt;a href=&quot;https://github.com/tiann/epic&quot;&gt;https://github.com/tiann/epic&lt;/a&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;强制编译Method成为Native代码，避免解释执行。&lt;/li&gt;
+  &lt;li&gt;修改代码起始字节，替换成跳转指令，跳转到跳板函数，在跳板函数中做分发逻辑。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/HotFix/epic.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;36-artdroid&quot;&gt;3.6 ARTDroid&lt;/h2&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://ceur-ws.org/Vol-1575/paper_10.pdf&quot;&gt;https://ceur-ws.org/Vol-1575/paper_10.pdf&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;ART中调用一个virtual method的时候，会查相应Class类里面的一张表，如果修改这张表对应项的指向，就能达到Hook的目的。&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/HotFix/artdroid.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;参考文档&quot;&gt;参考文档：&lt;/h1&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://weishu.me/2017/11/23/dexposed-on-art/&quot;&gt;论ART上运行时 Method AOP实现&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;http://rk700.github.io/2017/06/30/hook-on-android-n/&quot;&gt;在Android N上对Java方法做hook遇到的坑&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;http://rk700.github.io/2017/03/30/YAHFA-introduction/&quot;&gt;YAHFA–ART环境下的Hook框架&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Wed, 05 Apr 2023 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2023/04/05/Android%E7%83%AD%E4%BF%AE%E5%A4%8D%E5%8E%9F%E7%90%86/</link>
+        <guid isPermaLink="true">http://localhost:4000/2023/04/05/Android%E7%83%AD%E4%BF%AE%E5%A4%8D%E5%8E%9F%E7%90%86/</guid>
+        
+        <category>Android</category>
+        
+        <category>HotFix</category>
         
         
       </item>
@@ -1022,9 +2020,9 @@ status_t _FileAsset::openChunk(incfs::IncFsFileMap&amp;amp;&amp;amp; dataMap, ba
 &lt;a href=&quot;https://blog.csdn.net/luoshengyang/article/details/8791064&quot;&gt;Android应用程序资源管理器（Asset Manager）的创建过程分析&lt;/a&gt;&lt;br /&gt;
 &lt;a href=&quot;https://blog.csdn.net/luoshengyang/article/details/8806798&quot;&gt;Android应用程序资源的查找过程分析&lt;/a&gt;&lt;/p&gt;
 </description>
-        <pubDate>Mon, 17 Apr 2023 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2023/04/17/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/</link>
-        <guid isPermaLink="true">http://localhost:4000/2023/04/17/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/</guid>
+        <pubDate>Thu, 30 Mar 2023 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2023/03/30/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/</link>
+        <guid isPermaLink="true">http://localhost:4000/2023/03/30/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/</guid>
         
         <category>Android</category>
         
@@ -1630,6 +2628,396 @@ protected Class&amp;lt;?&amp;gt; loadClass(String name, boolean resolve) throws 
         <category>Android</category>
         
         <category>ClassLoader</category>
+        
+        
+      </item>
+    
+      <item>
+        <title>Activity事件分发流程</title>
+        <description>&lt;h1 id=&quot;1ims初始化&quot;&gt;1.IMS初始化&lt;/h1&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/input/ims.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;InputManagerService初始化过程中主要创建了2个Native线程：&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;InputReader，读取底层输入，转换成Input事件，交给InputDispatcher分发。&lt;/li&gt;
+  &lt;li&gt;InputDispatcher，向窗口分发Input事件，监控窗口ANR。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;InputManager::InputManager(
+        const sp&amp;lt;InputReaderPolicyInterface&amp;gt;&amp;amp; readerPolicy,
+        const sp&amp;lt;InputDispatcherPolicyInterface&amp;gt;&amp;amp; dispatcherPolicy) {
+    mDispatcher = createInputDispatcher(dispatcherPolicy);
+    mClassifier = std::make_unique&amp;lt;InputClassifier&amp;gt;(*mDispatcher);
+    mBlocker = std::make_unique&amp;lt;UnwantedInteractionBlocker&amp;gt;(*mClassifier);
+    mReader = createInputReader(readerPolicy, *mBlocker);
+}
+
+std::unique_ptr&amp;lt;InputDispatcherInterface&amp;gt; createInputDispatcher(
+        const sp&amp;lt;InputDispatcherPolicyInterface&amp;gt;&amp;amp; policy) {
+    return std::make_unique&amp;lt;android::inputdispatcher::InputDispatcher&amp;gt;(policy);
+}
+
+std::unique_ptr&amp;lt;InputReaderInterface&amp;gt; createInputReader(
+        const sp&amp;lt;InputReaderPolicyInterface&amp;gt;&amp;amp; policy, InputListenerInterface&amp;amp; listener) {
+    return std::make_unique&amp;lt;InputReader&amp;gt;(std::make_unique&amp;lt;EventHub&amp;gt;(), policy, listener);
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;&lt;a href=&quot;https://android.googlesource.com/platform/frameworks/base.git/+/android-4.2.2_r1/services/input/InputListener.cpp&quot;&gt;QueuedInputListener&lt;/a&gt;类图：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/input/qil.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;2窗口注册inputchannel&quot;&gt;2.窗口注册InputChannel&lt;/h1&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;应用侧向WMS添加窗口时，会调用Native层的IMS创建InputChannel。&lt;/li&gt;
+  &lt;li&gt;在InputDispatcher中会创建socketpair，基于fd创建一对InputChannel。&lt;/li&gt;
+  &lt;li&gt;创建的clientChannel会填充到ViewRootImpl中创建的Java层InputChannel对象。&lt;/li&gt;
+  &lt;li&gt;创建的serverChannel会保存到InputDispatcher的mConnectionsByToken。&lt;/li&gt;
+  &lt;li&gt;基于Looper的epoll机制，当APP与IMS互相Socket通信时执行回调方法。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;21-java层&quot;&gt;2.1 Java层&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/input/java.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;h2 id=&quot;22-native层&quot;&gt;2.2 Native层&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/input/native.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;3窗口input事件&quot;&gt;3.窗口Input事件&lt;/h1&gt;
+
+&lt;p&gt;通过 adb shell getevent 可查看Input设备以及实时Input事件，以按下Power键为例：&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;add device 8: /dev/input/event2&lt;/p&gt;
+
+  &lt;p&gt;name:     “pmic_pwrkey”&lt;/p&gt;
+
+  &lt;p&gt;/dev/input/event2: 0001 0074 00000001&lt;/p&gt;
+
+  &lt;p&gt;/dev/input/event2: 0000 0000 00000000&lt;/p&gt;
+
+  &lt;p&gt;/dev/input/event2: 0001 0074 00000000&lt;/p&gt;
+
+  &lt;p&gt;/dev/input/event2: 0000 0000 00000000&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Input事件传递流程如下图：&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/input/input.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;InboundQueue：从 InputReader 中拿到的 Input 事件。&lt;/p&gt;
+
+&lt;p&gt;OutboundQueue：即将要被派发给目标窗口的 Input 事件。&lt;/p&gt;
+
+&lt;p&gt;WaitQueue：已经派发给目标窗口等待其回调 finishInputEvent 的 Input 事件。&lt;/p&gt;
+
+&lt;h2 id=&quot;31-inputreader从eventhub中读取input事件&quot;&gt;3.1 InputReader从EventHub中读取Input事件&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;void InputReader::loopOnce() {
+    ...
+    // 获取事件
+    size_t count = mEventHub-&amp;gt;getEvents(timeoutMillis, mEventBuffer, EVENT_BUFFER_SIZE);
+    { 
+        AutoMutex _l(mLock);
+        if (count) {
+            // 处理事件
+            processEventsLocked(mEventBuffer, count);
+        }
+        ...
+    } 
+    ...
+    mQueuedListener-&amp;gt;flush(); // 传递事件
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;从EventHub中读取的事件可以是设备输入事件，也可以是设备增减变更触发的事件。&lt;/li&gt;
+  &lt;li&gt;对于设备变更，会根据实际情况调用addDeviceLocked() / removeDeviceLocked() / handleConfigurationChangedLocked()处理。&lt;/li&gt;
+  &lt;li&gt;对于设备输入事件，会调用processEventsForDeviceLocked()进一步处理。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;void InputReader::processEventsForDeviceLocked(int32_t eventHubId, const RawEvent* rawEvents,
+                                               size_t count) {
+    auto deviceIt = mDevices.find(eventHubId);
+    std::shared_ptr&amp;lt;InputDevice&amp;gt;&amp;amp; device = deviceIt-&amp;gt;second;
+    device-&amp;gt;process(rawEvents, count);
+}
+
+void InputDevice::process(const RawEvent* rawEvents, size_t count) {
+    for (const RawEvent* rawEvent = rawEvents; count != 0; rawEvent++) {
+        for_each_mapper_in_subdevice(rawEvent-&amp;gt;deviceId, [rawEvent](InputMapper&amp;amp; mapper) {
+            mapper.process(rawEvent);
+        });
+        --count;
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;InputMapper用于解析原始输入事件，将RawEvent数据转换成EventEntry。&lt;/li&gt;
+  &lt;li&gt;最后通过调用mQueuedListener-&amp;gt;flush()传递到InputDispatcher，回调其notifyMotion()方法。&lt;/li&gt;
+  &lt;li&gt;调用enqueueInboundEventLocked()方法，加入到InboundQueue队列。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;32-inputdispatcher分发input事件&quot;&gt;3.2 InputDispatcher分发Input事件&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;void InputDispatcher::dispatchOnce() {
+    nsecs_t nextWakeupTime = LONG_LONG_MAX;
+    {
+        AutoMutex _l(mLock);
+        if (!haveCommandsLocked()) {
+            // 分发事件
+            dispatchOnceInnerLocked(&amp;amp;nextWakeupTime);
+        }
+        // 执行command
+        if (runCommandsLockedInterruptable()) {
+            nextWakeupTime = LONG_LONG_MIN;
+        }
+    }
+    nsecs_t currentTime = now();
+    int timeoutMillis = toMillisecondTimeoutDelay(currentTime, nextWakeupTime);
+    mLooper-&amp;gt;pollOnce(timeoutMillis);
+}
+
+bool InputDispatcher::haveCommandsLocked() const {
+    return !mCommandQueue.empty();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;dispatchOnceInnerLocked()方法中根据EventEntry的类型执行不同的方法。&lt;/li&gt;
+  &lt;li&gt;在dispatchMotionLocked()方法中调用findTouchedWindowTargetsLocked()基于WindowHandle找到目标窗口。&lt;/li&gt;
+  &lt;li&gt;在dispatchEventLocked()方法中最终调用到startDispatchCycleLocked()方法将Input事件发送到应用窗口，同时将DispatchEntry从outboundQueue中移除，同时添加到waitQueue队列。。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;void InputDispatcher::startDispatchCycleLocked(nsecs_t currentTime,
+                                               const sp&amp;lt;Connection&amp;gt;&amp;amp; connection) {
+    while (connection-&amp;gt;status == Connection::Status::NORMAL &amp;amp;&amp;amp; !connection-&amp;gt;outboundQueue.empty()) {
+        DispatchEntry* dispatchEntry = connection-&amp;gt;outboundQueue.front();
+        dispatchEntry-&amp;gt;deliveryTime = currentTime;
+        const std::chrono::nanoseconds timeout = getDispatchingTimeoutLocked(connection);
+        dispatchEntry-&amp;gt;timeoutTime = currentTime + timeout.count();
+
+        // Publish the event.
+        status_t status;
+        const EventEntry&amp;amp; eventEntry = *(dispatchEntry-&amp;gt;eventEntry);
+        switch (eventEntry.type) {
+            case EventEntry::Type::KEY: {}
+            case EventEntry::Type::MOTION: {}
+            case EventEntry::Type::FOCUS: {}
+            case EventEntry::Type::TOUCH_MODE_CHANGED: {}
+            case EventEntry::Type::POINTER_CAPTURE_CHANGED: {}
+            case EventEntry::Type::DRAG: {}
+            case EventEntry::Type::CONFIGURATION_CHANGED:
+            case EventEntry::Type::DEVICE_RESET:
+            case EventEntry::Type::SENSOR: {
+                return;
+            }
+        }
+
+        // Re-enqueue the event on the wait queue.
+        connection-&amp;gt;outboundQueue.erase(std::remove(connection-&amp;gt;outboundQueue.begin(),
+                                                    connection-&amp;gt;outboundQueue.end(),
+                                                    dispatchEntry));
+        traceOutboundQueueLength(*connection);
+        connection-&amp;gt;waitQueue.push_back(dispatchEntry);
+        if (connection-&amp;gt;responsive) {
+            mAnrTracker.insert(dispatchEntry-&amp;gt;timeoutTime,
+                               connection-&amp;gt;inputChannel-&amp;gt;getConnectionToken());
+        }
+        traceWaitQueueLength(*connection);
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;当收到应用侧finishInputEvent()回调后最终调用到doDispatchCycleFinishedCommand()方法，将DispatchEntry从waitQueue队列中移除。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;void InputDispatcher::doDispatchCycleFinishedCommand(nsecs_t finishTime,
+                                                     const sp&amp;lt;Connection&amp;gt;&amp;amp; connection, uint32_t seq,
+                                                     bool handled, nsecs_t consumeTime) {
+    ...
+    dispatchEntryIt = connection-&amp;gt;findWaitQueueEntry(seq);
+    if (dispatchEntryIt != connection-&amp;gt;waitQueue.end()) {
+        dispatchEntry = *dispatchEntryIt;
+        connection-&amp;gt;waitQueue.erase(dispatchEntryIt);
+        const sp&amp;lt;IBinder&amp;gt;&amp;amp; connectionToken = connection-&amp;gt;inputChannel-&amp;gt;getConnectionToken();
+        mAnrTracker.erase(dispatchEntry-&amp;gt;timeoutTime, connectionToken);
+        ...
+    }
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;33-窗口收到input事件&quot;&gt;3.3 窗口收到Input事件&lt;/h2&gt;
+
+&lt;p&gt;&lt;img src=&quot;/img/input/inputevent.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;InputStage采用责任链模式，依次由NativePreImeInputStage-&amp;gt;ViewPreImeInputStage-&amp;gt;ImeInputStage-&amp;gt;EarlyPostImeInputStage-&amp;gt;NativePostImeInputStage-&amp;gt;ViewPostImeInputStage-&amp;gt;SyntheticInputStage处理。&lt;/li&gt;
+  &lt;li&gt;在ViewPostImeInputStage阶段分发给DecorView。&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;34-view事件分发&quot;&gt;3.4 View事件分发&lt;/h2&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-Java&quot;&gt;// 事件分发到某个具体的 ViewGroup，会直接调用 dispatchTouchEvent() 方法
+public boolean dispatchTouchEvent(MotionEvent ev) {
+    //代表是否消费事件
+    boolean consume = false;
+
+    if (onInterceptTouchEvent(ev)) {
+    // 如果 onInterceptTouchEvent() 返回 true 则代表当前 View 拦截了事件
+    // 则该事件则会交给当前View进行处理
+    // 即调用 onTouchEvent() 方法去处理事件
+      consume = onTouchEvent (ev) ;
+    } else {
+      // 如果 onInterceptTouchEvent() 返回 false 则代表当前 View 不拦截事件
+      // 则该事件则会继续传递给它的子元素
+      // 子元素的 dispatchTouchEvent() 就会被调用，重复上述过程
+      // 直到事件被最终处理为止
+      consume = child.dispatchTouchEvent(ev); //遍历处理
+    }
+    return consume;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h1 id=&quot;4窗口anr&quot;&gt;4.窗口ANR&lt;/h1&gt;
+
+&lt;p&gt;在dispatchOnce()方法中会调用processAnrsLocked()方法处理ANR：&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;void InputDispatcher::dispatchOnce() {
+    nsecs_t nextWakeupTime = LONG_LONG_MAX;
+    {
+        AutoMutex _l(mLock);
+        // 
+        const nsecs_t nextAnrCheck = processAnrsLocked();
+        nextWakeupTime = std::min(nextWakeupTime, nextAnrCheck);
+    }
+    nsecs_t currentTime = now();
+    int timeoutMillis = toMillisecondTimeoutDelay(currentTime, nextWakeupTime);
+    mLooper-&amp;gt;pollOnce(timeoutMillis);
+}
+
+bool InputDispatcher::haveCommandsLocked() const {
+    return !mCommandQueue.empty();
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;41-无焦点窗口---does-not-have-a-focused-window&quot;&gt;4.1 无焦点窗口 - does not have a focused window&lt;/h2&gt;
+
+&lt;p&gt;在findFocusedWindowTargetsLocked()方法中，如果没有找到焦点窗口时，会更新mNoFocusedWindowTimeoutTime，开启ANR计时。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;InputEventInjectionResult InputDispatcher::findFocusedWindowTargetsLocked(
+        nsecs_t currentTime, const EventEntry&amp;amp; entry, std::vector&amp;lt;InputTarget&amp;gt;&amp;amp; inputTargets,
+        nsecs_t* nextWakeupTime) {
+    ...
+    if (focusedWindowHandle == nullptr &amp;amp;&amp;amp; focusedApplicationHandle != nullptr) {
+        if (!mNoFocusedWindowTimeoutTime.has_value()) {
+            // We just discovered that there&apos;s no focused window. Start the ANR timer
+            std::chrono::nanoseconds timeout = focusedApplicationHandle-&amp;gt;getDispatchingTimeout(
+                    DEFAULT_INPUT_DISPATCHING_TIMEOUT);
+            mNoFocusedWindowTimeoutTime = currentTime + timeout.count();
+            mAwaitedFocusedApplication = focusedApplicationHandle;
+            mAwaitedApplicationDisplayId = displayId;
+            *nextWakeupTime = *mNoFocusedWindowTimeoutTime;
+            return InputEventInjectionResult::PENDING;
+        } else if (currentTime &amp;gt; *mNoFocusedWindowTimeoutTime) {
+            // Already raised ANR. Drop the event
+            return InputEventInjectionResult::FAILED;
+        } else {
+            // Still waiting for the focused window
+            return InputEventInjectionResult::PENDING;
+        }
+    }
+    ...
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在processAnrsLocked()方法中，如果当前时间超过设置的mNoFocusedWindowTimeoutTime时间，则处理无焦点窗口ANR。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;nsecs_t InputDispatcher::processAnrsLocked() {
+    const nsecs_t currentTime = now();
+    nsecs_t nextAnrCheck = LONG_LONG_MAX;
+    // Check if we are waiting for a focused window to appear. Raise ANR if waited too long
+    if (mNoFocusedWindowTimeoutTime.has_value() &amp;amp;&amp;amp; mAwaitedFocusedApplication != nullptr) {
+        if (currentTime &amp;gt;= *mNoFocusedWindowTimeoutTime) {
+            processNoFocusedWindowAnrLocked();
+            mAwaitedFocusedApplication.reset();
+            mNoFocusedWindowTimeoutTime = std::nullopt;
+            return LONG_LONG_MIN;
+        } else {
+            // Keep waiting. We will drop the event when mNoFocusedWindowTimeoutTime comes.
+            nextAnrCheck = *mNoFocusedWindowTimeoutTime;
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;h2 id=&quot;42-窗口无响应---is-not-responding&quot;&gt;4.2 窗口无响应 - is not responding&lt;/h2&gt;
+
+&lt;p&gt;在startDispatchCycleLocked()方法中，将Input时间发送到应用窗口后，会在mAnrTracker中插入超时时间。&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-JavaScript&quot;&gt;void InputDispatcher::startDispatchCycleLocked(nsecs_t currentTime,
+                                               const sp&amp;lt;Connection&amp;gt;&amp;amp; connection) {
+    while (connection-&amp;gt;status == Connection::Status::NORMAL &amp;amp;&amp;amp; !connection-&amp;gt;outboundQueue.empty()) {
+        DispatchEntry* dispatchEntry = connection-&amp;gt;outboundQueue.front();
+        dispatchEntry-&amp;gt;deliveryTime = currentTime;
+        const std::chrono::nanoseconds timeout = getDispatchingTimeoutLocked(connection);
+        dispatchEntry-&amp;gt;timeoutTime = currentTime + timeout.count();
+        
+        // Publish the event.
+        ...
+        if (connection-&amp;gt;responsive) {
+            mAnrTracker.insert(dispatchEntry-&amp;gt;timeoutTime,
+                               connection-&amp;gt;inputChannel-&amp;gt;getConnectionToken());
+        }
+    }
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;在processAnrsLocked()方法中，如果当前时间超过超时时间，则处理窗口无响应ANR&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&quot;language-C++&quot;&gt;nsecs_t InputDispatcher::processAnrsLocked() {
+    const nsecs_t currentTime = now();
+    nsecs_t nextAnrCheck = LONG_LONG_MAX;
+
+    // Check if any connection ANRs are due
+    nextAnrCheck = std::min(nextAnrCheck, mAnrTracker.firstTimeout());
+    if (currentTime &amp;lt; nextAnrCheck) { // most likely scenario
+        return nextAnrCheck;          // everything is normal. Let&apos;s check again at nextAnrCheck
+    }
+
+    // If we reached here, we have an unresponsive connection.
+    sp&amp;lt;Connection&amp;gt; connection = getConnectionLocked(mAnrTracker.firstToken());
+    if (connection == nullptr) {;
+        return nextAnrCheck;
+    }
+    connection-&amp;gt;responsive = false;
+    // Stop waking up for this unresponsive connection
+    mAnrTracker.eraseToken(connection-&amp;gt;inputChannel-&amp;gt;getConnectionToken());
+    onAnrLocked(connection);
+    return LONG_LONG_MIN;
+}
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;参考文档：&lt;br /&gt;
+&lt;a href=&quot;https://blog.csdn.net/jinzhuojun/article/details/41909159&quot;&gt;Android 5.0(Lollipop)事件输入系统(Input System)&lt;/a&gt;&lt;br /&gt;
+&lt;a href=&quot;https://cloud.tencent.com/developer/article/1707657&quot;&gt;Android中窗口Input事件接收&lt;/a&gt;&lt;/p&gt;
+</description>
+        <pubDate>Mon, 30 Jan 2023 20:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2023/01/30/Activity%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E6%B5%81%E7%A8%8B/</link>
+        <guid isPermaLink="true">http://localhost:4000/2023/01/30/Activity%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E6%B5%81%E7%A8%8B/</guid>
+        
+        <category>Android</category>
+        
+        <category>Activity</category>
+        
+        <category>Input</category>
         
         
       </item>
@@ -3769,1278 +5157,6 @@ ROOT
         <guid isPermaLink="true">http://localhost:4000/2023/01/04/DisplayArea%E6%A0%91%E5%B1%82%E7%BA%A7%E7%BB%93%E6%9E%84/</guid>
         
         <category>Android</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>基于atrace统计应用绘制掉帧</title>
-        <description>&lt;h1 id=&quot;0概述&quot;&gt;0.概述&lt;/h1&gt;
-
-&lt;p&gt;ftrace：是一个内核函数跟踪器，function tracer，旨在帮助开发人员和系统设计者可以找到内核内部发生的事情。&lt;/p&gt;
-
-&lt;p&gt;atrace：Android tracer，使用ftrace来跟踪Android上层的函数调用。为数据采集部分。&lt;/p&gt;
-
-&lt;p&gt;systrace：atrace数据分析工具，将atrace采集上来的数据，以图形化的方式展现出来。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;抓取trace方式：&lt;/strong&gt;&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;开发者选项-系统跟踪，文件后缀为.perfetto-trace，二进制格式。&lt;/li&gt;
-  &lt;li&gt;使用python脚本，文件后缀为.html。&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;Android SDK：Sdk/platform-tools/systrace.py&lt;/p&gt;
-
-&lt;p&gt;&lt;a href=&quot;https://chromium.googlesource.com/catapult/&quot;&gt;Chrome catapult&lt;/a&gt;：catapult/systrace/bin/systrace&lt;/p&gt;
-
-&lt;p&gt;命令：python2.7 systrace -a com.android.systemui am wm disk memreclaim mmc res sched freq binder_driver binder_lock dalvik pagecache database pm bionic rs gfx input view sm aidl sched freq idle&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;atrace命令&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;//开始&lt;/p&gt;
-
-&lt;p&gt;adb shell atrace –async_start -b 10240 gfx input view wm am res sched freq dalvik idle pm hal disk memreclaim sync binder_lock binder_driver&lt;/p&gt;
-
-&lt;p&gt;//结束&lt;/p&gt;
-
-&lt;p&gt;adb shell atrace –async_stop &amp;gt; trace.atrace&lt;/p&gt;
-
-&lt;h1 id=&quot;1atrace文件格式&quot;&gt;1.atrace文件格式&lt;/h1&gt;
-
-&lt;p&gt;参考文档：https://www.kernel.org/doc/Documentation/trace/ftrace.txt&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/atrace/frame1.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;TASK-PID：线程名-线程ID&lt;/p&gt;
-
-&lt;p&gt;TGID：进程ID&lt;/p&gt;
-
-&lt;p&gt;CPU#：CPU ID，即线程运行在哪一个CPU上&lt;/p&gt;
-
-&lt;p&gt;irqs-off：’d’ interrupts are disabled. ‘.’ otherwise.&lt;/p&gt;
-
-&lt;p&gt;need-resched：’N’ both TIF_NEED_RESCHED and PREEMPT_NEED_RESCHED is set,&lt;/p&gt;
-
-&lt;p&gt;​                          ‘n’ only TIF_NEED_RESCHED is set,&lt;/p&gt;
-
-&lt;p&gt;​                          ‘p’ only PREEMPT_NEED_RESCHED is set,&lt;/p&gt;
-
-&lt;p&gt;​                           ‘.’ otherwise.&lt;/p&gt;
-
-&lt;p&gt;hardirq/softirq：’Z’ - NMI occurred inside a hardirq&lt;/p&gt;
-
-&lt;p&gt;​                          ‘z’ - NMI is running&lt;/p&gt;
-
-&lt;p&gt;​                          ‘H’ - hard irq occurred inside a softirq.&lt;/p&gt;
-
-&lt;p&gt;​                          ‘h’ - hard irq is running&lt;/p&gt;
-
-&lt;p&gt;​                          ‘s’ - soft irq is running&lt;/p&gt;
-
-&lt;p&gt;​                          ‘.’ - normal context.&lt;/p&gt;
-
-&lt;p&gt;preempt-depth：The level of preempt_disabled&lt;/p&gt;
-
-&lt;p&gt;delay TIMESTAMP：时间戳，单位是秒.&lt;/p&gt;
-
-&lt;p&gt;FUNCTION：函数: 信息&lt;/p&gt;
-
-&lt;p&gt;realtime_ts：Unix时间戳&lt;/p&gt;
-
-&lt;h1 id=&quot;2文件内容&quot;&gt;2.文件内容&lt;/h1&gt;
-
-&lt;p&gt;Systrace抓取的trace数据，总体上可以分为两类：一类是Java和Native在用户层发生的函数调用，一类是内核态的事件信息。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;记录Java代码函数调用&lt;/strong&gt;：&lt;/p&gt;
-
-&lt;p&gt;Trace.traceBegin(Trace.TRACE_TAG_VIEW, “Choreographer#doFrame”);&lt;/p&gt;
-
-&lt;p&gt;Trace.traceEnd(Trace.TRACE_TAG_VIEW);&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;记录C++代码函数调用：&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;ATRACE_CALL();&lt;/p&gt;
-
-&lt;p&gt;用户层的函数调用记录在文件节点：/sys/kernel/debug/tracing/trace_marker。&lt;/p&gt;
-
-&lt;p&gt;此节点允许用户层写入字符串，ftrace会记录该写入操作时的时间戳，当用户在上层调用不同函数时，写入不同的调用信息，比如函数进入和退出分别写入，那么ftrace就可以记录跟踪函数的运行时间。&lt;/p&gt;
-
-&lt;p&gt;内核态的事件信息，则不是统一的，需要激活各自对应的事件节点，让ftrace记录下不同事件的tracepoint。&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;tracing_mark_write&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;tracing_mark_write函数的作用就是写入内容，格式定义在 system/core/libcutils/trace-dev.cpp&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-C%2B%2B&quot;&gt;void atrace_begin_body(const char* name)
-{
-    WRITE_MSG(&quot;B|%d|&quot;, &quot;%s&quot;, name, &quot;&quot;);
-}
-
-void atrace_end_body()
-{
-    WRITE_MSG(&quot;E|%d&quot;, &quot;%s&quot;, &quot;&quot;, &quot;&quot;);
-}
-
-void atrace_async_begin_body(const char* name, int32_t cookie)
-{
-    WRITE_MSG(&quot;S|%d|&quot;, &quot;|%&quot; PRId32, name, cookie);
-}
-
-void atrace_async_end_body(const char* name, int32_t cookie)
-{
-    WRITE_MSG(&quot;F|%d|&quot;, &quot;|%&quot; PRId32, name, cookie);
-}
-
-void atrace_int_body(const char* name, int32_t value)
-{
-    WRITE_MSG(&quot;C|%d|&quot;, &quot;|%&quot; PRId32, name, value);
-}
-
-void atrace_int64_body(const char* name, int64_t value)
-{
-    WRITE_MSG(&quot;C|%d|&quot;, &quot;|%&quot; PRId64, name, value);
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;其中begin和end是以栈结构成对出现的，举个例子：&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;… tracing_mark_write: B&lt;/td&gt;
-      &lt;td&gt;1000&lt;/td&gt;
-      &lt;td&gt;name1&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;table&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;… tracing_mark_write: B&lt;/td&gt;
-      &lt;td&gt;1000&lt;/td&gt;
-      &lt;td&gt;name2&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;table&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;… tracing_mark_write: E&lt;/td&gt;
-      &lt;td&gt;1000  //匹配name2&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;table&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;… tracing_mark_write: E&lt;/td&gt;
-      &lt;td&gt;1000  //匹配name1&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;用户侧 ATRACE_TAG_xxx 事件，定义在 frameworks/native/cmds/atrace/atrace.cpp&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Bash&quot;&gt;{ &quot;gfx&quot;,        &quot;Graphics&quot;,                 ATRACE_TAG_GRAPHICS, { } },
-{ &quot;input&quot;,      &quot;Input&quot;,                    ATRACE_TAG_INPUT, { } },
-{ &quot;view&quot;,       &quot;View System&quot;,              ATRACE_TAG_VIEW, { } },
-{ &quot;webview&quot;,    &quot;WebView&quot;,                  ATRACE_TAG_WEBVIEW, { } },
-{ &quot;wm&quot;,         &quot;Window Manager&quot;,           ATRACE_TAG_WINDOW_MANAGER, { } },
-{ &quot;am&quot;,         &quot;Activity Manager&quot;,         ATRACE_TAG_ACTIVITY_MANAGER, { } },
-{ &quot;sm&quot;,         &quot;Sync Manager&quot;,             ATRACE_TAG_SYNC_MANAGER, { } },
-{ &quot;audio&quot;,      &quot;Audio&quot;,                    ATRACE_TAG_AUDIO, { } },
-{ &quot;video&quot;,      &quot;Video&quot;,                    ATRACE_TAG_VIDEO, { } },
-{ &quot;camera&quot;,     &quot;Camera&quot;,                   ATRACE_TAG_CAMERA, { } },
-{ &quot;hal&quot;,        &quot;Hardware Modules&quot;,         ATRACE_TAG_HAL, { } },
-{ &quot;res&quot;,        &quot;Resource Loading&quot;,         ATRACE_TAG_RESOURCES, { } },
-{ &quot;dalvik&quot;,     &quot;Dalvik VM&quot;,                ATRACE_TAG_DALVIK, { } },
-{ &quot;rs&quot;,         &quot;RenderScript&quot;,             ATRACE_TAG_RS, { } },
-{ &quot;bionic&quot;,     &quot;Bionic C Library&quot;,         ATRACE_TAG_BIONIC, { } },
-{ &quot;power&quot;,      &quot;Power Management&quot;,         ATRACE_TAG_POWER, { } },
-{ &quot;pm&quot;,         &quot;Package Manager&quot;,          ATRACE_TAG_PACKAGE_MANAGER, { } },
-{ &quot;ss&quot;,         &quot;System Server&quot;,            ATRACE_TAG_SYSTEM_SERVER, { } },
-{ &quot;database&quot;,   &quot;Database&quot;,                 ATRACE_TAG_DATABASE, { } },
-{ &quot;network&quot;,    &quot;Network&quot;,                  ATRACE_TAG_NETWORK, { } },
-{ &quot;adb&quot;,        &quot;ADB&quot;,                      ATRACE_TAG_ADB, { } },
-{ &quot;vibrator&quot;,   &quot;Vibrator&quot;,                 ATRACE_TAG_VIBRATOR, { } },
-{ &quot;aidl&quot;,       &quot;AIDL calls&quot;,               ATRACE_TAG_AIDL, { } },
-{ &quot;nnapi&quot;,      &quot;NNAPI&quot;,                    ATRACE_TAG_NNAPI, { } },
-{ &quot;rro&quot;,        &quot;Runtime Resource Overlay&quot;, ATRACE_TAG_RRO, { } },
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;第1列是使用命令抓取systrace时的可选&lt;em&gt;categories。&lt;/em&gt;&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;内核侧 events/xxx/enable，定义在 frameworks/native/cmds/atrace/atrace.cpp&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Assembly%20language&quot;&gt;{ &quot;sched&quot;,      &quot;CPU Scheduling&quot;,   0, {
-    { REQ,      &quot;events/sched/sched_switch/enable&quot; },
-    { REQ,      &quot;events/sched/sched_wakeup/enable&quot; },
-    { OPT,      &quot;events/sched/sched_waking/enable&quot; },
-    { OPT,      &quot;events/sched/sched_blocked_reason/enable&quot; },
-    { OPT,      &quot;events/sched/sched_cpu_hotplug/enable&quot; },
-    { OPT,      &quot;events/sched/sched_pi_setprio/enable&quot; },
-    { OPT,      &quot;events/sched/sched_process_exit/enable&quot; },
-    { OPT,      &quot;events/cgroup/enable&quot; },
-    { OPT,      &quot;events/oom/oom_score_adj_update/enable&quot; },
-    { OPT,      &quot;events/task/task_rename/enable&quot; },
-    { OPT,      &quot;events/task/task_newtask/enable&quot; },
-} },
-{ &quot;irq&quot;,        &quot;IRQ Events&quot;,   0, {
-    { REQ,      &quot;events/irq/enable&quot; },
-    { OPT,      &quot;events/ipi/enable&quot; },
-} },
-{ &quot;irqoff&quot;,     &quot;IRQ-disabled code section tracing&quot;, 0, {
-    { REQ,      &quot;events/preemptirq/irq_enable/enable&quot; },
-    { REQ,      &quot;events/preemptirq/irq_disable/enable&quot; },
-} },
-{ &quot;preemptoff&quot;, &quot;Preempt-disabled code section tracing&quot;, 0, {
-    { REQ,      &quot;events/preemptirq/preempt_enable/enable&quot; },
-    { REQ,      &quot;events/preemptirq/preempt_disable/enable&quot; },
-} },
-{ &quot;i2c&quot;,        &quot;I2C Events&quot;,   0, {
-    { REQ,      &quot;events/i2c/enable&quot; },
-    { REQ,      &quot;events/i2c/i2c_read/enable&quot; },
-    { REQ,      &quot;events/i2c/i2c_write/enable&quot; },
-    { REQ,      &quot;events/i2c/i2c_result/enable&quot; },
-    { REQ,      &quot;events/i2c/i2c_reply/enable&quot; },
-    { OPT,      &quot;events/i2c/smbus_read/enable&quot; },
-    { OPT,      &quot;events/i2c/smbus_write/enable&quot; },
-    { OPT,      &quot;events/i2c/smbus_result/enable&quot; },
-    { OPT,      &quot;events/i2c/smbus_reply/enable&quot; },
-} },
-{ &quot;freq&quot;,       &quot;CPU Frequency&quot;,    0, {
-    { REQ,      &quot;events/power/cpu_frequency/enable&quot; },
-    { OPT,      &quot;events/power/clock_set_rate/enable&quot; },
-    { OPT,      &quot;events/power/clock_disable/enable&quot; },
-    { OPT,      &quot;events/power/clock_enable/enable&quot; },
-    { OPT,      &quot;events/clk/clk_set_rate/enable&quot; },
-    { OPT,      &quot;events/clk/clk_disable/enable&quot; },
-    { OPT,      &quot;events/clk/clk_enable/enable&quot; },
-    { OPT,      &quot;events/power/cpu_frequency_limits/enable&quot; },
-    { OPT,      &quot;events/power/suspend_resume/enable&quot; },
-} },
-{ &quot;membus&quot;,     &quot;Memory Bus Utilization&quot;, 0, {
-    { REQ,      &quot;events/memory_bus/enable&quot; },
-} },
-{ &quot;idle&quot;,       &quot;CPU Idle&quot;,         0, {
-    { REQ,      &quot;events/power/cpu_idle/enable&quot; },
-} },
-{ &quot;disk&quot;,       &quot;Disk I/O&quot;,         0, {
-    { OPT,      &quot;events/f2fs/f2fs_sync_file_enter/enable&quot; },
-    { OPT,      &quot;events/f2fs/f2fs_sync_file_exit/enable&quot; },
-    { OPT,      &quot;events/f2fs/f2fs_write_begin/enable&quot; },
-    { OPT,      &quot;events/f2fs/f2fs_write_end/enable&quot; },
-    { OPT,      &quot;events/ext4/ext4_da_write_begin/enable&quot; },
-    { OPT,      &quot;events/ext4/ext4_da_write_end/enable&quot; },
-    { OPT,      &quot;events/ext4/ext4_sync_file_enter/enable&quot; },
-    { OPT,      &quot;events/ext4/ext4_sync_file_exit/enable&quot; },
-    { REQ,      &quot;events/block/block_rq_issue/enable&quot; },
-    { REQ,      &quot;events/block/block_rq_complete/enable&quot; },
-} },
-{ &quot;mmc&quot;,        &quot;eMMC commands&quot;,    0, {
-    { REQ,      &quot;events/mmc/enable&quot; },
-} },
-{ &quot;load&quot;,       &quot;CPU Load&quot;,         0, {
-    { REQ,      &quot;events/cpufreq_interactive/enable&quot; },
-} },
-{ &quot;sync&quot;,       &quot;Synchronization&quot;,  0, {
-    // linux kernel &amp;lt; 4.9
-    { OPT,      &quot;events/sync/enable&quot; },
-    // linux kernel == 4.9.x
-    { OPT,      &quot;events/fence/enable&quot; },
-    // linux kernel &amp;gt; 4.9
-    { OPT,      &quot;events/dma_fence/enable&quot; },
-} },
-{ &quot;workq&quot;,      &quot;Kernel Workqueues&quot;, 0, {
-    { REQ,      &quot;events/workqueue/enable&quot; },
-} },
-{ &quot;memreclaim&quot;, &quot;Kernel Memory Reclaim&quot;, 0, {
-    { REQ,      &quot;events/vmscan/mm_vmscan_direct_reclaim_begin/enable&quot; },
-    { REQ,      &quot;events/vmscan/mm_vmscan_direct_reclaim_end/enable&quot; },
-    { REQ,      &quot;events/vmscan/mm_vmscan_kswapd_wake/enable&quot; },
-    { REQ,      &quot;events/vmscan/mm_vmscan_kswapd_sleep/enable&quot; },
-    { OPT,      &quot;events/lowmemorykiller/enable&quot; },
-} },
-{ &quot;regulators&quot;,  &quot;Voltage and Current Regulators&quot;, 0, {
-    { REQ,      &quot;events/regulator/enable&quot; },
-} },
-{ &quot;binder_driver&quot;, &quot;Binder Kernel driver&quot;, 0, {
-    { REQ,      &quot;events/binder/binder_transaction/enable&quot; },
-    { REQ,      &quot;events/binder/binder_transaction_received/enable&quot; },
-    { REQ,      &quot;events/binder/binder_transaction_alloc_buf/enable&quot; },
-    { OPT,      &quot;events/binder/binder_set_priority/enable&quot; },
-} },
-{ &quot;binder_lock&quot;, &quot;Binder global lock trace&quot;, 0, {
-    { OPT,      &quot;events/binder/binder_lock/enable&quot; },
-    { OPT,      &quot;events/binder/binder_locked/enable&quot; },
-    { OPT,      &quot;events/binder/binder_unlock/enable&quot; },
-} },
-{ &quot;pagecache&quot;,  &quot;Page cache&quot;, 0, {
-    { REQ,      &quot;events/filemap/enable&quot; },
-} },
-{ &quot;memory&quot;,  &quot;Memory&quot;, 0, {
-    { OPT,      &quot;events/mm_event/mm_event_record/enable&quot; },
-    { OPT,      &quot;events/kmem/rss_stat/enable&quot; },
-    { OPT,      &quot;events/kmem/ion_heap_grow/enable&quot; },
-    { OPT,      &quot;events/kmem/ion_heap_shrink/enable&quot; },
-    { OPT,      &quot;events/ion/ion_stat/enable&quot; },
-} },
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;REQ即required的缩写，OPT即optional的缩写。&lt;/p&gt;
-
-&lt;p&gt;与CPU调度相关：&lt;/p&gt;
-
-&lt;p&gt;sched_wakeup / sched_waking：内核会通过try_to_wake_up把任务唤醒，这会涉及到这sched_wakeup和sched_waking两个tracepoint。&lt;/p&gt;
-
-&lt;p&gt;sched_switch：当调度器决定schedule另一个task运行的时候，也就是任务切换的时候，会触发该tracepoint。&lt;/p&gt;
-
-&lt;p&gt;Linux进程状态：&lt;/p&gt;
-
-&lt;p&gt;D：Uninterruptible sleep (usually IO)&lt;/p&gt;
-
-&lt;p&gt;R：Running or runnable (on run queue)&lt;/p&gt;
-
-&lt;p&gt;S：Interruptible sleep (waiting for an event to complete)&lt;/p&gt;
-
-&lt;p&gt;T：Stopped, either by a job control signal or because it is being traced.&lt;/p&gt;
-
-&lt;p&gt;W：paging (not valid since the 2.6.xx kernel)&lt;/p&gt;
-
-&lt;p&gt;X：dead (should never be seen)&lt;/p&gt;
-
-&lt;p&gt;Z：Defunct (“zombie”) process, terminated but not reaped by its parent.&lt;/p&gt;
-
-&lt;p&gt;binder通信相关：&lt;/p&gt;
-
-&lt;p&gt;binder_transaction：client端发起请求&lt;/p&gt;
-
-&lt;p&gt;binder_transaction_alloc_buf：分配内存&lt;/p&gt;
-
-&lt;p&gt;binder_transaction_received：server端收到请求&lt;/p&gt;
-
-&lt;h1 id=&quot;3应用绘制流程&quot;&gt;3.应用绘制流程&lt;/h1&gt;
-
-&lt;p&gt;应用侧：buffer的生产者&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;线程&lt;/th&gt;
-      &lt;th&gt;类#方法 - TAG&lt;/th&gt;
-      &lt;th&gt;描述&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;UIThread&lt;/td&gt;
-      &lt;td&gt;Choreographer#doFrame –input   –animation –traversal —-ViewRootImpl.doTraversal ——ViewRootImpl.draw ——–ThreadedRenderer.draw - syncAndDrawFrame&lt;/td&gt;
-      &lt;td&gt;构建Display List Display List的本质是一个缓冲区，它里面记录了即将要执行的绘制命令序列。这些绘制命令最终会转化为Open GL命令由GPU执行。这意味着我们在调用Canvas API绘制UI时，实际上只是将Canvas API调用及其参数记录在Display List中，然后等到下一个Vsync信号到来时，记录在Display List里面的绘制命令才会转化为Open GL命令由GPU执行。 UIThread和RenderThread都各自维护了一份应用程序窗口视图信息。各自维护了一份应用程序窗口视图信息的目的，就是为了可以互不干扰，进而实现最大程度的并行。RenderThread维护的应用程序窗口视图信息是来自于Main Thread的，当UIThread维护的应用程序窗口信息发生了变化时，就需要同步到RenderThread去。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;RenderThread&lt;/td&gt;
-      &lt;td&gt;DrawFrameTask::run - DrawFrame –DrawFrameTask::syncFrameState —-RenderNode::prepareTree –EglManager::beginFrame —-BufferQueueProducer::dequeueBuffer -&amp;gt; SF#dequeueBuffer –SkiaPipeline::renderFrame —-SkiaPipeline::renderLayersImpl ——drawLayer ——flush layers —-SkiaPipeline::renderFrameImpl —-flush commands –eglApi::eglSwapBuffersWithDamageKHR —-BufferQueueProducer::queueBuffer -&amp;gt; SF#onFrameAvailables&lt;/td&gt;
-      &lt;td&gt;渲染Display List Android应用程序窗口的Root Render Node的Display List，包含了Android应用程序窗口所有的绘制命令，因此我们只要对Root Render Node的Display List进行渲染，就可以得到整个Android应用程序窗口的UI。     buffer被queue到buffer队列之后就会回调onFrameAvailable函数通知SurfaceFlinger进行消费&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;hwuiTask0/1&lt;/td&gt;
-      &lt;td&gt;DrawFrameTask::run() - DrawFrame CanvasContext::enqueueFrameWork CommonPool::async CommonPool::enqueue&lt;/td&gt;
-      &lt;td&gt; &lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;p&gt;SurfaceFlinger侧：buffer的消费者&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;消息&lt;/th&gt;
-      &lt;th&gt;类#方法&lt;/th&gt;
-      &lt;th&gt;描述&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;INVALIDATE&lt;/td&gt;
-      &lt;td&gt;onMessageReceived –SurfaceFlinger::onMessageInvalidate —-SurfaceFlinger::handleMessageTransaction —-SurfaceFlinger::handleMessageInvalidate ——SurfaceFlinger::handlePageFlip ——–BufferLayer::latchBuffer ———-BufferQueueConsumer::acquireBuffer —-Scheduler::chooseRefreshRateForContent —-SurfaceFlinger::performSetActiveConfig —-SurfaceFlinger::updateInputFlinger&lt;/td&gt;
-      &lt;td&gt;CPU和GPU处理完之后将buffer入队BufferQueue，并调用onFrameAvailable通知SurfaceFlinger有可用buffer了； SurfaceFlinger通过内部MessageQueue调用requestNextVsync请求接收下一个VSYNC用于合成； 下一个VSYNC到了之后回调MessageQueue的handleMessage函数，实际调到SurfaceFlinger的onMessageReceived函数处理如下两种类型消息：INVALIDATE和REFRESH； 处理REFRESH消息时最终会调用acquireBuffer函数从BufferQueue中将之前APP绘制完成的buffer取出来合成。 处理REFRESH消息时最终会调用releaseBuffer函数将各layer合成后的buffer释放重新入队到BufferQueue中。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;REFRESH&lt;/td&gt;
-      &lt;td&gt;onMessageReceived –SurfaceFlinger::onMessageRefresh —-CompositionEngine::present ——CompositionEngine::preComposition ——Output::prepare ——–Output::rebuildLayerStacks ——Output::present ——–Output::prepareFrame ———-Display::chooseCompositionStrategy ——–Output::finishFrame ———-Output::composeSurfaces ———-BufferQueueConsumer::acquireBuffer ——–Output::postFramebuffer ———-HWComposer::presentAndGetReleaseFences —-SurfaceFlinger::postComposition ——BufferQueueConsumer::releaseBuffer&lt;/td&gt;
-      &lt;td&gt;preComposition：根据上次绘制的图层中是否有更新，来决定是否执行invalidate过程； rebuildLayerStacks：重建每个显示屏的所有可见Layer列表； setUpHWComposer：更新HWComposer的图层 doComposition：合成所有图层的图像 postComposition：回调每个layer的onPostComposition。&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;h1 id=&quot;4解析atrace文件统计绘制掉帧&quot;&gt;4.解析atrace文件统计绘制掉帧&lt;/h1&gt;
-
-&lt;p&gt;以桌面左右滑动为例，如下截图：&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/atrace/frame2.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;VSYNC周期分为：VSYNC-app和VSYNC-sf&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;在VSYNC-app周期内：SurfaceFlinger的app线程唤醒home主线程，接下来执行Choreographer的doFrame流程，包括input，animation，traversal阶段，在traversal中执行draw绘制并将绘制的内容同步给RenderThread线程。RenderThread线程先从buffer队列中dequeueBuffer申请一个buffer，填充内容，然后queueBuffer将buffer加入队列，并通知SurfaceFlinger。&lt;/li&gt;
-  &lt;li&gt;在VSYNC-sf周期内：处理MessageQueue::INVALIDATE消息，从各Layer的BufferQueue拿到最新的缓冲数据，并根据内容更新脏区域；处理MessageQueue::REFRESH消息，通过HWC合成各Layer的buffer，发送至显示设备进行显示。&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;对应atrace中的日志：&lt;/p&gt;
-
-&lt;p&gt;// EventThread线程sf-app唤醒home主线程&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;app-1786  ( 1049) [002] d..4 14425.778934: sched_wakeup: comm=com.miui.home pid=3022 prio=98 target_cpu=005
-&amp;lt;idle&amp;gt;-0     (-----) [005] d..2 14425.778938: sched_switch: prev_comm=swapper/5 prev_pid=0 prev_prio=120 prev_state=R ==&amp;gt; next_comm=com.miui.home next_pid=3022 next_prio=98
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;// home主线程&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779000: tracing_mark_write: B|3022|Choreographer#doFrame
-&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779010: tracing_mark_write: B|3022|animation
-&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779599: tracing_mark_write: B|3022|traversal
-&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779695: tracing_mark_write: B|3022|draw
-&amp;lt;...&amp;gt;-3022  ( 3022) [005] .... 14425.779745: tracing_mark_write: B|3022|syncAndDrawFrame
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;// home主线程唤醒RenderThread线程&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3022  ( 3022) [005] d..4 14425.779767: sched_wakeup: comm=RenderThread pid=3253 prio=98 target_cpu=006
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;// RenderThread线程&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-4
-5
-6
-7
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3253  ( 3022) [006] .... 14425.779787: tracing_mark_write: B|3022|DrawFrame
-&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780064: tracing_mark_write: B|3022|syncFrameState
-&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780294: tracing_mark_write: B|3022|beginFrame
-&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780336: tracing_mark_write: B|3022|dequeueBuffer
-&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.780615: tracing_mark_write: B|3022|renderFrame
-&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.782260: tracing_mark_write: B|3022|eglSwapBuffersWithDamageKHR
-&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.782401: tracing_mark_write: B|3022|queueBuffer
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;// 更新buffer数量&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-3253  ( 3022) [004] .... 14425.782772: tracing_mark_write: C|3022|GPU completion|1
-&amp;lt;...&amp;gt;-3299  ( 1049) [001] .... 14425.782498: tracing_mark_write: C|1049|com.miui.home/com.miui.home.launcher.Launcher#0|1
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;// MessageQueue::INVALIDATE&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-3
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;surfaceflinger-1049  ( 1049) [000] .... 14425.778852: tracing_mark_write: B|1049|onMessageReceived
-surfaceflinger-1049  ( 1049) [000] .... 14425.778856: tracing_mark_write: B|1049|onMessageInvalidate
-surfaceflinger-1049  ( 1049) [000] .... 14425.778918: tracing_mark_write: B|1049|handleMessageInvalidate
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;// MessageQueue::REFRESH&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;surfaceflinger-1049  ( 1049) [000] .... 14425.779283: tracing_mark_write: B|1049|onMessageReceived
-surfaceflinger-1049  ( 1049) [000] .... 14425.779288: tracing_mark_write: B|1049|onMessageRefresh
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;// hwc&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;&amp;lt;...&amp;gt;-1157  (  931) [004] .... 14425.779796: tracing_mark_write: B|931|HIDL::IComposerClient::executeCommands_2_2::server
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;p&gt;// crtc&lt;/p&gt;
-
-&lt;div class=&quot;language-plaintext highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;table class=&quot;rouge-table&quot;&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class=&quot;rouge-gutter gl&quot;&gt;&lt;pre class=&quot;lineno&quot;&gt;1
-2
-&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;rouge-code&quot;&gt;&lt;pre&gt;crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373|commit|1
-crtc_commit:128-373   (  373) [003] .... 14425.788972: tracing_mark_write: C|373|commit|0
-&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
-
-&lt;h1 id=&quot;5参考文档&quot;&gt;5.参考文档&lt;/h1&gt;
-&lt;p&gt;&lt;a href=&quot;https://blog.csdn.net/qq_34211365/category_10070121.html&quot;&gt;Android图形系统&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://www.kancloud.cn/alex_wsc/androids/473752&quot;&gt;Android应用程序UI架构&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;http://gityuan.com/2017/02/11/surface_flinger/&quot;&gt;SurfaceFlinger启动篇&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;http://gityuan.com/2017/02/18/surface_flinger_2/&quot;&gt;SurfaceFlinger绘图篇&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://blog.csdn.net/SSSxCCC/article/details/119250538&quot;&gt;SurfaceFlinger中Layer的合成&lt;/a&gt;&lt;br /&gt;
-&lt;a href=&quot;https://cloud.tencent.com/developer/article/1639711&quot;&gt;HWC在SurfaceFlinger中的角色&lt;/a&gt;&lt;/p&gt;
-</description>
-        <pubDate>Mon, 24 Oct 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/10/24/%E5%9F%BA%E4%BA%8Eatrace%E7%BB%9F%E8%AE%A1%E5%BA%94%E7%94%A8%E7%BB%98%E5%88%B6%E6%8E%89%E5%B8%A7/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/10/24/%E5%9F%BA%E4%BA%8Eatrace%E7%BB%9F%E8%AE%A1%E5%BA%94%E7%94%A8%E7%BB%98%E5%88%B6%E6%8E%89%E5%B8%A7/</guid>
-        
-        <category>Android</category>
-        
-        <category>atrace</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>Android meminfo 字段详解</title>
-        <description>&lt;p&gt;对于Android内存的统计拆分，需要从系统到进程，再细分到内存分类。Android的内存通常被多个进程共享，一个进程占用的内存涉及到虚拟内存、物理内存、私有、共享、图形显存等等。想要详细统计一个进程的内存占用，就需要了解Android 的内存管理机制和对内存的分类拆解。&lt;/p&gt;
-
-&lt;h1 id=&quot;1android-内存管理&quot;&gt;1.Android 内存管理&lt;/h1&gt;
-
-&lt;p&gt;Android内存的管理核心是&lt;strong&gt;paging&lt;/strong&gt;和&lt;strong&gt;memory-mapping（mmap）&lt;/strong&gt;。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/memory/mmap.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;h2 id=&quot;11-paging&quot;&gt;1.1 paging&lt;/h2&gt;
-
-&lt;p&gt;Andoid系统中使用虚拟内存地址来索引内存，虚拟内存被划分为固定大小的page页，典型的页大小为4K。内存分配最开始都是在虚拟内存上分配，当需要访问这段内存的时候，如果发现它没有存在于物理内存上（即MMU不能找到这个虚地址va对应的物理地址pa），即发生了缺页（page fault），缺页有几种可能：&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;Bug，程序访问了它不应该访问的虚地址空间，android系统会触发访问不合法，kill掉进程。​&lt;/li&gt;
-  &lt;li&gt;Va是合法的，但是这块va对应的pa还从来没有被分配出来过（例如你mmap的一段内存空间，但是从来没用过，这时第一次在这块内存上写入），这叫做lazy-allocation，这时系统会真正分配一段物理内存给你用，然后在页表上对应好这段pa和va。注意第一次写入这里才算真正占用了物理内存，mmap的分配并不算。​&lt;/li&gt;
-  &lt;li&gt;Va是合法的，但是这va对应的pa内容当前并没有在物理内存上，而是被swap到一个backup的file上，这时系统会给这个page在pa上分配物理内存，然后将这块内容从文件读回到物理内存上（swap-in）。&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/memory/page.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;h2 id=&quot;12-swap--zram&quot;&gt;1.2 swap &amp;amp; zram&lt;/h2&gt;
-
-&lt;p&gt;典型的linux系统的虚拟内存都有swap操作，即一段物理内存在一段时间不用的时候，为了节省物理内存将他们备份到它的backup file上，一段时间后缺页时再换回。&lt;/p&gt;
-
-&lt;p&gt;但是在android上大多数情况是没有这套swap机制的，因为对于移动端的IO代价太大，所以大多数情况被映射到pa的page是不能被swap的。只有一种情况除外，即如果这段虚拟地址段具有backup file，并且当他被swap-in到pa后是只读的，那么它是有机会被swap-out回disk的，因为swap这种内存的代价很小，他们不会在物理内存上被更改，通常这类情况包括那些代码文件的mmap（如dex、so等）。&lt;/p&gt;
-
-&lt;p&gt;此外android上还使用了一种特殊的ZRAM机制来压缩一些物理内存上的page，但是并不把他们swap-out到disk上，而是仍然在ram中，这是一段被压缩了的page，系统会选择压缩一些page存储在内存中以腾出一些物理内存的占用。&lt;/p&gt;
-
-&lt;h2 id=&quot;13-mmap&quot;&gt;1.3 mmap&lt;/h2&gt;
-
-&lt;p&gt;Linux上一个重要的特性是memory mapping。如上面所述，va和pa之间通过mmu建立了一个对应关系，通过page fault来触发pa的分配，此外va还会对应一个backup file，作为swap-in/out时的备份存储。这个va和backup file之间的对应关系就叫做memory mapping，我们可以利用这个机制做文件读取。&lt;/p&gt;
-
-&lt;p&gt;第一种是映射文件到内存做读取， 这时提供一个文件句柄，然后将文件内容映射到一段虚拟内存地址空间，这样就做到了通过访问虚拟地址空间–造成缺页—swapin backup file的方式来根据需要读取文件。他相比传统的文件读取效率更高。&lt;/p&gt;
-
-&lt;p&gt;第二种是创建一个匿名映射，匿名映射没有backupfile，只是单纯分配一块虚拟内存空间，这其实是android上调用new一个对象做的事情，我们new一块int的数组，事实上在new后很可能是通过mmap分配了一块虚拟内存空间，而只有当第一次写入的时候才触发缺页而占用真正的物理内存，所以统计android的物理内存占用不是看new了多少，或者文件映射了多少，而是实际上虚拟内存缺页了多少。&lt;/p&gt;
-
-&lt;h1 id=&quot;2meminfo-数据详解&quot;&gt;2.meminfo 数据详解&lt;/h1&gt;
-
-&lt;p&gt;通过命令 dumpsys meminfo package_name|pid 查看指定进程的内存使用情况。通过输出的信息，可以看出来应用在内存哪里分配出现了问题，比如native heap分配高，就要查一下自己的native部分的代码哪里分配后没有及时释放。&lt;/p&gt;
-
-&lt;p&gt;下面是system_server进程的meminfo。
-&lt;img src=&quot;/img/memory/meminfo.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;这里面可以看到pss、privatedirty、privateclean、swapped diry这几个重要的指标。&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;&lt;strong&gt;PSS&lt;/strong&gt;&lt;br /&gt;&lt;em&gt;Proportional Set Size&lt;/em&gt;&lt;/th&gt;
-      &lt;th&gt;进程实际占用的物理内存大小，但是android内存涉及到在系统中同其他进程共享一部分库（可能是so，可能是字体文件等的mmap），所以这里面会考虑这个因素计算你的进程平摊的这部分共享库的大小，这里的proportional就意味着统计了这个平摊后的物理内存。这是衡量进程占用内存的最真实指标。&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;&lt;strong&gt;RSS&lt;/strong&gt;&lt;br /&gt;&lt;em&gt;Resident Set Size&lt;/em&gt;&lt;/td&gt;
-      &lt;td&gt;常驻内存大小，是单个进程实际占用的内存大小；RSS 易被误导的原因在于， 它包括了该进程所使用的所有共享库的全部内存大小。对于单个共享库， 尽管无论多少个进程使用， 实际该共享库只会被装入内存一次。 对于单个进程的内存使用大小， RSS  不是一个精确的描述。&lt;br /&gt;Rss=Shared_Clean+Shared_Dirty+Private_Clean+Private_Dirty&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;&lt;strong&gt;USS&lt;/strong&gt;&lt;br /&gt;&lt;em&gt;Unique Set Size&lt;/em&gt;&lt;/td&gt;
-      &lt;td&gt;进程独占的内存&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;&lt;strong&gt;VSS&lt;/strong&gt;&lt;br /&gt;&lt;em&gt;Virtual Set Size&lt;/em&gt;&lt;/td&gt;
-      &lt;td&gt;VSS= RSS+ 未分配实际物理内存&lt;br /&gt;内存的大小关系：VSS &amp;gt;= RSS &amp;gt;= PSS &amp;gt;= USS&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;&lt;strong&gt;swappablePss&lt;/strong&gt;&lt;/td&gt;
-      &lt;td&gt;能够被共享的内存。&lt;br /&gt;&lt;em&gt;sharing_proportion&lt;/em&gt; = (pss - uss) / (shared_clean + shared_dirty)&lt;br /&gt;&lt;em&gt;swapable_pss&lt;/em&gt; = (&lt;em&gt;sharing_proportion&lt;/em&gt; * shared_clean) + private_clean&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;&lt;strong&gt;privateDirty&lt;/strong&gt;&lt;br /&gt;&lt;strong&gt;privateClean&lt;/strong&gt;&lt;/td&gt;
-      &lt;td&gt;它们指的是每个进程独有的内存页面。PrivateDirty指的是进程独有的脏页面，即进程已经修改但尚未提交到磁盘的页面；PrivateClean指的是进程独有的干净页面，即进程已经提交到磁盘的页面。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;&lt;strong&gt;sharedDirty&lt;/strong&gt;&lt;br /&gt;&lt;strong&gt;sharedClean&lt;/strong&gt;&lt;/td&gt;
-      &lt;td&gt;指的是进程和别的进程共享的内存页面。sharedDirty是该过程和至少一个其他过程所引用的映射中的页面，并且由这些过程中的至少一个过程写入的页面；sharedClean是指该进程和至少一个其他进程已引用但未由任何进程修改的映射中的页面。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;&lt;strong&gt;Swapped Dirty&lt;/strong&gt;&lt;/td&gt;
-      &lt;td&gt;指的并不是被swap-out出去的内存，而是android系统中zram机制压缩掉的部分Private Dirty部分的不常用物理内存，这个重要度等同于Private Dirty，因为哪些Private Dirty会被压缩不能被控制，所以这部分多通常也是Private Dirty 的。&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;p&gt;因为PSS中已经包含了Private Dirty和Private Clean，但是没包含swapped dity，所以最终衡量你的进程对物理内存的占用应该是取PSS+Swapped Dirty。&lt;/p&gt;
-
-&lt;p&gt;这里统计的所有值都是物理内存大小，即缺页的那些虚拟内存的大小，而不是真正虚拟内存的大小，注意这里看到的所有内存大小都是真真实实占着你的物理内存的。比如，new 1个int[1024]，在对这块内存写入之前它都不会占用物理内存并体现在这里。&lt;/p&gt;
-
-&lt;h2 id=&quot;21-数据来源&quot;&gt;2.1 数据来源&lt;/h2&gt;
-
-&lt;p&gt;根据属性的不同，进程的虚拟地址空间被划分成若干个vma，每一个vma通过vm_next和vm_prev组成双向链表，链表头位于进程的task-&amp;gt;mm-&amp;gt;mmap。通过cat proc/&lt;pid&gt;/maps可以得到该进程的maps数据如下。每一行的vma对应着起始地址、结束地址、属性、偏移地址、主从设备号、inode编号和文件名。当通过proc接口读取进程的smaps文件时，内核会首先找到该进程的vma链表头，遍历链表中的每一个vma， 通过walk_page_vma统计这块vma的使用情况,最后显示出来。&lt;/pid&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/memory/vma.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;smaps&lt;/strong&gt; 文件是基于maps 的扩展，它展示了一个进程的内存消耗，比同一目录下的maps文件更为详细。如下是maps中一条vma的详细数据，全部数据可通过cat /proc/&lt;pid&gt;/smaps获取。&lt;/pid&gt;&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;7fce3a5000-7fceba4000 rw-p 00000000 00:00 0                            [stack]&lt;br /&gt;
-Size:               8188 kB&lt;br /&gt;
-KernelPageSize:        4 kB&lt;br /&gt;
-MMUPageSize:           4 kB&lt;br /&gt;
-Rss:                 156 kB&lt;br /&gt;
-Pss:                 152 kB&lt;br /&gt;
-Shared_Clean:          0 kB&lt;br /&gt;
-Shared_Dirty:          4 kB&lt;br /&gt;
-Private_Clean:         0 kB&lt;br /&gt;
-Private_Dirty:       152 kB&lt;br /&gt;
-Referenced:          156 kB&lt;br /&gt;
-Anonymous:           156 kB&lt;br /&gt;
-LazyFree:              0 kB&lt;br /&gt;
-AnonHugePages:         0 kB&lt;br /&gt;
-ShmemPmdMapped:        0 kB&lt;br /&gt;
-FilePmdMapped:         0 kB&lt;br /&gt;
-Shared_Hugetlb:        0 kB&lt;br /&gt;
-Private_Hugetlb:       0 kB&lt;br /&gt;
-Swap:                  0 kB&lt;br /&gt;
-SwapPss:               0 kB&lt;br /&gt;
-Locked:                0 kB&lt;br /&gt;
-THPeligible:    0&lt;br /&gt;
-VmFlags: rd wr mr mw me gd ac &lt;br /&gt;&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;p&gt;AMS中dump meminfo功能最终也是通过JNI调用libmeminfo读取进程smaps的节点。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/memory/smaps.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/memory/libmeminfo.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;h2 id=&quot;22-内存分类&quot;&gt;2.2 内存分类&lt;/h2&gt;
-
-&lt;p&gt;&lt;strong&gt;Native Heap&lt;/strong&gt;：C/C++层直接通过malloc分配的内存。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Dalvik Heap/other&lt;/strong&gt;：Java堆分配的内存。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Stack&lt;/strong&gt;：栈分配的内存。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Ashmem&lt;/strong&gt;：进程的匿名共享内存 Anonymous Shared Memory。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;GFX dev&lt;/strong&gt;：通俗来说是显存，Android 显存和内存在同样的物理设备上，所以统计的总内存是包括显存的，至于adb如何知道哪些是显存，是因为gles和egl的so库在分配显存的时候也是使用的带backup文件的mmap，adb只是简单的统计了所有gles和egl的mmap将其视为显存，这部分通常就是在gpu上的资源，gpu上的资源由很多种，占比较多的就是texture，buffer，shader programe，通常是游戏应用。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Other dev&lt;/strong&gt;：除显卡外所有其他硬件设备的mmap后的物理内存，可能包括声卡等，通常不多。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;.so mmap&lt;/strong&gt;：这个就是so库本身文件mmap占用的物理内存，随着程序运行会逐渐的读取so文件，造成和缺页的部分就是在物理内存产生占用，这部分大就是so库太大了，但是这部分因为有很多是readonly的mmap，所以有更大的机会被swap-out出去。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;.apk .dex oat .art mmap&lt;/strong&gt;：这些都是android 程序文件本身被mmap占用的内存，和so的性质差不多。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Other mmap&lt;/strong&gt;：是所有除了上面的之外其他的所有非匿名方式的mmap。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Unkonwn&lt;/strong&gt;：在meminf中它指除了部分已知的有名字的匿名映射（以anon:为前缀，例如”[anon:dalvik-“）之外的所有的匿名mmap，还有其他的未命名的vma（name字段不显示），因为无法分辨来源，就统计在unkown中。例如，看到anon:dalvik-*，那它一般是dalvik 虚拟机的分配，这个最终会被统计到meminfo的dalvik里。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;anon&lt;/strong&gt;：这个就是匿名mmap映射，除了部分已知的匿名映射如”[anon:dalvik-“, “[anon:stack_and_tls:”等，其他匿名映射所占用的内存最终会被统计到meminfo的unkown里。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;anon:libc_malloc&lt;/strong&gt; ：这个是通过malloc方法进入的mmap，即所有的new，malloc调用。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Kgsl-3d&lt;/strong&gt;：则是gles对显存硬件的虚拟内存映射，换句话说就是显存，meminf正是统计这个标签来获取gfx的大小。&lt;/p&gt;
-
-&lt;p&gt;更详细的拆解在&lt;a href=&quot;https://android.googlesource.com/platform/frameworks/base/+/master/core/jni/android_os_Debug.cpp&quot;&gt;android_os_Debug.cpp&lt;/a&gt;中。&lt;/p&gt;
-
-&lt;h2 id=&quot;23-unknown&quot;&gt;2.3 Unknown&lt;/h2&gt;
-
-&lt;p&gt;根据&lt;a href=&quot;https://android.googlesource.com/platform/frameworks/base/+/master/core/jni/android_os_Debug.cpp&quot;&gt;android_os_Debug.cpp&lt;/a&gt;中对smaps的分类，当前meminfo中对内存的统计，匿名映射除了下面这几个字段前缀的可以被统计以外，其他有名的匿名映射和没有名字的vma则被统计到Unknown字段中。&lt;/p&gt;
-
-&lt;blockquote&gt;
-  &lt;p&gt;“[anon:dalvik-“, “[anon:stack_and_tls:”, “[anon:libc_malloc]”,&lt;/p&gt;
-
-  &lt;p&gt;“[anon:scudo:”, “[anon:GWP-ASan”&lt;/p&gt;
-&lt;/blockquote&gt;
-
-&lt;h2 id=&quot;24-alloc-内存&quot;&gt;2.4 Alloc 内存&lt;/h2&gt;
-
-&lt;p&gt;在数据面板右侧可以看到对已分配和释放内存的累计记录，包括native和dalvik分配（alloc）和释放（free）内存的统计。&lt;/p&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/memory/alloc.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;h2 id=&quot;25-total&quot;&gt;2.5 Total&lt;/h2&gt;
-
-&lt;p&gt;&lt;img src=&quot;/img/memory/total.png&quot; alt=&quot;img&quot; /&gt;&lt;/p&gt;
-
-&lt;p&gt;TOTAL是对每一列的汇总求和，其中Pss列有所不同，Pss列的TOTAL值是Pss Total和SwapPss两列之和。&lt;/p&gt;
-
-&lt;h2 id=&quot;26-app-summary&quot;&gt;2.6 App Summary&lt;/h2&gt;
-
-&lt;p&gt;App Summary部分是对上述细分领域的聚合，提供更直观的统计数据。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Java Heap&lt;/strong&gt;：（Dalvik Heap 的 Private Dirty 数据) + （ .art mmap 部分的 Private Dirty 和 Private Clean 数据) + getOtherPrivate ( OTHER_ART ) 。这里的 .art 是应用的 dex 文件预编译后的 art 文件，所以也是属于该应用的 JavaHeap。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Native Heap&lt;/strong&gt;：Native Heap 的 Private Dirty 数据。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Code&lt;/strong&gt;：.so .jar .apk .ttf .dex .oat 等资源加总。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Stack&lt;/strong&gt;：getOtherPrivateDirty ( OTHER_STACK )。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Graphics&lt;/strong&gt;：gl，gfx，egl 的数据加总。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;Private Other&lt;/strong&gt;：Native Heap + Dalvik Heap - 其他的 Private Dirty + Private Clean&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;System&lt;/strong&gt;：Total Pss  -  Private Dirty - Private Clean。主要是系统占用的内存，如共享的字体、图像资源等。&lt;/p&gt;
-
-&lt;h1 id=&quot;3graphics-memory&quot;&gt;3.Graphics memory&lt;/h1&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt;&lt;strong&gt;name&lt;/strong&gt;&lt;/th&gt;
-      &lt;th&gt;&lt;strong&gt;description&lt;/strong&gt;&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;EGL mtrack&lt;/td&gt;
-      &lt;td&gt;这个部分是gralloc的内存使用。主要是SurfaceView和TextureView的总和。它也包括了帧缓冲区，因此大小也会取决于framebuffers的尺寸。支持的屏幕分辨率越高，EGL mtrack的数目越高。在这个测试中，帧缓冲区的分辨率被降低了来确保比较好的性能。降低帧缓存的大小也会降低这些缓存需要的内存量。&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;GL mtrack   &amp;amp; Gfx dev&lt;/td&gt;
-      &lt;td&gt;GL和Gfx是驱动反馈的GPU内存，主要是GL纹理大小的总和，GL命令缓冲区，固定的全局驱动RAM消耗以及Shader。注意：客户空间驱动和内核空间驱动共享同一个内存空间。在某些Android版本上，这个部分会被重复计算两次，因此Gfx dev要比实际上使用的数值更大。&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;h2 id=&quot;31-gfx-dev&quot;&gt;3.1 Gfx dev&lt;/h2&gt;
-
-&lt;p&gt;Gfx dev的值是从/sys/class/kgsl/kgsl/proc/&lt;pid&gt;/gpumem_mapped下读取的，这里主要为/dev/kgsl-3d0占用的空间，gpu使用的内存。smaps中所有kgsl-3d0内存加起来等于gpumem_mapped中读到的内存。&lt;/pid&gt;&lt;/p&gt;
-
-&lt;h2 id=&quot;32-egl-mtrack&quot;&gt;3.2 EGL mtrack&lt;/h2&gt;
-
-&lt;p&gt;主要是APP eglWindowSurface，包括normal HWUI based app windowsurface，SurfaceView，TextureView。这部分内存是从SurfaceFlinger 分配的，可以跟 dumpsys SurfaceFlingher 的 Alloated buffers 可以对应上。&lt;/p&gt;
-</description>
-        <pubDate>Mon, 10 Oct 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/10/10/Android-meminfo%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/10/10/Android-meminfo%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3/</guid>
-        
-        <category>Android</category>
-        
-        <category>Memory</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>内存泄漏治理shark解析hprof文件</title>
-        <description>&lt;p&gt;解析hprof文件主要分为如下几个步骤，逐一来介绍。&lt;/p&gt;
-
-&lt;h1 id=&quot;1parsing_heap_dump&quot;&gt;1.PARSING_HEAP_DUMP&lt;/h1&gt;
-
-&lt;p&gt;这一步是解析hprof文件，包含两部分：&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;解析Header部分&lt;/li&gt;
-  &lt;li&gt;解析Records部分&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;p&gt;hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/manual.html&lt;/p&gt;
-
-&lt;p&gt;重点在读取Records部分，读取逻辑在 StreamingHprofReader 这个类，处理逻辑在&lt;/p&gt;
-
-&lt;p&gt;HprofInMemoryIndex 这个类中，这里共读取了两遍：&lt;/p&gt;
-
-&lt;p&gt;第1遍，收集数据信息，包括 类/实例/object数组/原始类型数组 的数量、数据最大长度等等。&lt;/p&gt;
-
-&lt;p&gt;第2遍，生成 类/实例/object数组/原始类型数组 的信息，以支持随机读取。&lt;/p&gt;
-
-&lt;table&gt;
-  &lt;thead&gt;
-    &lt;tr&gt;
-      &lt;th&gt; &lt;/th&gt;
-      &lt;th&gt;支持随机读取所需信息，以Byte数组形式存储&lt;/th&gt;
-    &lt;/tr&gt;
-  &lt;/thead&gt;
-  &lt;tbody&gt;
-    &lt;tr&gt;
-      &lt;td&gt;类&lt;/td&gt;
-      &lt;td&gt;ID，文件中位置，父类ID，实例大小，数据长度，数组下标&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;实例&lt;/td&gt;
-      &lt;td&gt;ID，文件中位置，类ID，数据长度&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;object数组&lt;/td&gt;
-      &lt;td&gt;ID，文件中位置，类ID，数据长度&lt;/td&gt;
-    &lt;/tr&gt;
-    &lt;tr&gt;
-      &lt;td&gt;primitive数组&lt;/td&gt;
-      &lt;td&gt;ID，文件中位置，原始类型，数据长度&lt;/td&gt;
-    &lt;/tr&gt;
-  &lt;/tbody&gt;
-&lt;/table&gt;
-
-&lt;p&gt;这里解释下为什么要读两遍：&lt;/p&gt;
-
-&lt;p&gt;主要是从节省内存的角度考虑，比如 文件中位置 这个数值，第一遍读取后我们可以获得文件的大小，从而可以确定存储 文件中位置 这个数值所需要的byte数量，从而避免直接使用int或long存储节省内存。&lt;/p&gt;
-
-&lt;p&gt;这里有两个知识点：&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;1.Shark 比 Haha 占用内存小的原因？&lt;/strong&gt;&lt;/p&gt;
-
-&lt;p&gt;Shark并不会直接把所有的Records都读取到内存中。&lt;/p&gt;
-
-&lt;p&gt;&lt;strong&gt;2.gc root对象都有哪些？&lt;/strong&gt;&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;fun defaultIndexedGcRootTags(): EnumSet&amp;lt;HprofRecordTag&amp;gt; = EnumSet.of(
-  HprofRecordTag.ROOT_JNI_GLOBAL,
-  HprofRecordTag.ROOT_JAVA_FRAME,
-  HprofRecordTag.ROOT_JNI_LOCAL,
-  HprofRecordTag.ROOT_MONITOR_USED,
-  HprofRecordTag.ROOT_NATIVE_STACK,
-  HprofRecordTag.ROOT_STICKY_CLASS,
-  HprofRecordTag.ROOT_THREAD_BLOCK,
-  HprofRecordTag.ROOT_THREAD_OBJECT,
-  HprofRecordTag.ROOT_JNI_MONITOR
-)
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;2extracting_metadata&quot;&gt;2.EXTRACTING_METADATA&lt;/h1&gt;
-
-&lt;p&gt;这一步是解析一些常量值，具体参考 AndroidMetadataExtractor 这个类。&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;override fun extractMetadata(graph: HeapGraph): Map&amp;lt;String, String&amp;gt; {
-  val metadata = mutableMapOf&amp;lt;String, String&amp;gt;()
-
-  val build = AndroidBuildMirror.fromHeapGraph(graph)
-  metadata[&quot;Build.VERSION.SDK_INT&quot;] = build.sdkInt.toString()
-  metadata[&quot;Build.MANUFACTURER&quot;] = build.manufacturer
-  metadata[&quot;LeakCanary version&quot;] = readLeakCanaryVersion(graph)
-  metadata[&quot;App process name&quot;] = readProcessName(graph)
-  metadata[&quot;Class count&quot;] = graph.classCount.toString()
-  metadata[&quot;Instance count&quot;] = graph.instanceCount.toString()
-  metadata[&quot;Primitive array count&quot;] = graph.primitiveArrayCount.toString()
-  metadata[&quot;Object array count&quot;] = graph.objectArrayCount.toString()
-  metadata[&quot;Thread count&quot;] = readThreadCount(graph).toString()
-  metadata[&quot;Heap total bytes&quot;] = readHeapTotalBytes(graph).toString()
-  metadata.putBitmaps(graph)
-  metadata.putDbLabels(graph)
-
-  return metadata
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;3finding_retained_objects&quot;&gt;3.FINDING_RETAINED_OBJECTS&lt;/h1&gt;
-
-&lt;p&gt;这一步是找出泄漏对象。Android中常见的泄漏对象定义在 AndroidObjectInspectors 这个类中，&lt;/p&gt;
-
-&lt;p&gt;以 Activity 为例，当 Activity 实例中 mDestroyed == true 时，也就是 Activity 执行完 onDestroyed 回调，Activity 实例仍存在则判定为内存泄漏。&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;override val leakingObjectFilter = { heapObject: HeapObject -&amp;gt;
-  heapObject is HeapInstance &amp;amp;&amp;amp;
-    heapObject instanceOf &quot;android.app.Activity&quot; &amp;amp;&amp;amp;
-    heapObject[&quot;android.app.Activity&quot;, &quot;mDestroyed&quot;]?.value?.asBoolean == true
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;4finding_paths_to_retained_objects&quot;&gt;4.FINDING_PATHS_TO_RETAINED_OBJECTS&lt;/h1&gt;
-
-&lt;p&gt;这一步是找出泄漏最短路径。核心逻辑在 PathFinder 类，首先遍历所有的 gc roots 对象，然后依次递归遍历其所引用的子对象，直至找出包含上一步找出的所有泄漏对象。因为在遍历过程中可以创建父子关系，所以从泄漏对象一直找parent，即为最短泄漏路径。&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;private fun State.findPathsFromGcRoots(): PathFindingResults {
-  enqueueGcRoots()
-
-  val shortestPathsToLeakingObjects = mutableListOf&amp;lt;ReferencePathNode&amp;gt;()
-  visitingQueue@ while (queuesNotEmpty) {
-    val node = poll()
-    if (leakingObjectIds.contains(node.objectId)) {
-      shortestPathsToLeakingObjects.add(node)
-      // Found all refs, stop searching (unless computing retained size)
-      if (shortestPathsToLeakingObjects.size == leakingObjectIds.size()) {
-        if (computeRetainedHeapSize) {
-          listener.onAnalysisProgress(FINDING_DOMINATORS)
-        } else {
-          break@visitingQueue
-        }
-      }
-    }
-
-    val heapObject = graph.findObjectById(node.objectId)
-    objectReferenceReader.read(heapObject).forEach { reference -&amp;gt;
-      val newNode = ChildNode(
-        objectId = reference.valueObjectId,
-        parent = node,
-        lazyDetailsResolver = reference.lazyDetailsResolver
-      )
-      enqueue(newNode, isLowPriority = reference.isLowPriority)
-    }
-  }
-  return PathFindingResults(
-    shortestPathsToLeakingObjects,
-    if (visitTracker is Dominated) visitTracker.dominatorTree else null
-  )
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;这里还包含了关键一步，去重最短路径，逻辑在 HeapAnalyzer.deduplicateShortestPaths() ，也就是相同泄漏路径会被合并。举个例子，比如2个不同Activity都是注册了同一listener导致的泄漏，因此泄漏路径是一致的，会被自动合并。&lt;/p&gt;
-
-&lt;h1 id=&quot;5finding_dominators&quot;&gt;5.FINDING_DOMINATORS&lt;/h1&gt;
-
-&lt;p&gt;如果需要计算泄漏对象导致内存泄漏大小，会在上一步的基础上遍历所有对象。&lt;/p&gt;
-
-&lt;p&gt;备注：为了提升效率，我们去掉了这部分功能。&lt;/p&gt;
-
-&lt;h1 id=&quot;6inspecting_objects&quot;&gt;6.INSPECTING_OBJECTS&lt;/h1&gt;
-
-&lt;p&gt;这一步是描述对象是否有泄漏及泄漏原因，还是以 Activity 为例：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;override fun inspect(
-  reporter: ObjectReporter
-) {
-  reporter.whenInstanceOf(&quot;android.app.Activity&quot;) { instance -&amp;gt;
-    // Activity.mDestroyed was introduced in 17.
-    // https://android.googlesource.com/platform/frameworks/base/+
-    // /6d9dcbccec126d9b87ab6587e686e28b87e5a04d
-    val field = instance[&quot;android.app.Activity&quot;, &quot;mDestroyed&quot;]
-
-    if (field != null) {
-      if (field.value.asBoolean!!) {
-        leakingReasons += field describedWithValue &quot;true&quot;
-      } else {
-        notLeakingReasons += field describedWithValue &quot;false&quot;
-      }
-    }
-  }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;7computing_native_retained_size&quot;&gt;7.COMPUTING_NATIVE_RETAINED_SIZE&lt;/h1&gt;
-
-&lt;p&gt;这一步是计算 Native 内存泄漏大小，主要逻辑在 AndroidNativeSizeMapper 类。&lt;/p&gt;
-
-&lt;h1 id=&quot;8computing_retained_size&quot;&gt;8.COMPUTING_RETAINED_SIZE&lt;/h1&gt;
-
-&lt;p&gt;这一步是计算泄漏对象导致内存泄漏大小，主要逻辑在 DominatorTree 类。&lt;/p&gt;
-
-&lt;h1 id=&quot;9building_leak_traces&quot;&gt;9.BUILDING_LEAK_TRACES&lt;/h1&gt;
-
-&lt;p&gt;这一步是生成泄漏堆栈，包括：ApplicationLeak，LibraryLeak。&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;private fun FindLeakInput.buildLeakTraces(
-  shortestPaths: List&amp;lt;ShortestPath&amp;gt;,
-  inspectedObjectsByPath: List&amp;lt;List&amp;lt;InspectedObject&amp;gt;&amp;gt;,
-  retainedSizes: Map&amp;lt;Long, Pair&amp;lt;Int, Int&amp;gt;&amp;gt;?
-): Pair&amp;lt;List&amp;lt;ApplicationLeak&amp;gt;, List&amp;lt;LibraryLeak&amp;gt;&amp;gt; {
-  listener.onAnalysisProgress(BUILDING_LEAK_TRACES)
-
-  val applicationLeaksMap = mutableMapOf&amp;lt;String, MutableList&amp;lt;LeakTrace&amp;gt;&amp;gt;()
-  val libraryLeaksMap =
-    mutableMapOf&amp;lt;String, Pair&amp;lt;LibraryLeakReferenceMatcher, MutableList&amp;lt;LeakTrace&amp;gt;&amp;gt;&amp;gt;()
-
-  shortestPaths.forEachIndexed { pathIndex, shortestPath -&amp;gt;
-    val inspectedObjects = inspectedObjectsByPath[pathIndex]
-
-    val leakTraceObjects = buildLeakTraceObjects(inspectedObjects, retainedSizes)
-
-    val referencePath = buildReferencePath(shortestPath, leakTraceObjects)
-
-    val leakTrace = LeakTrace(
-      gcRootType = GcRootType.fromGcRoot(shortestPath.root.gcRoot),
-      referencePath = referencePath,
-      leakingObject = leakTraceObjects.last()
-    )
-
-    val firstLibraryLeakMatcher = shortestPath.firstLibraryLeakMatcher()
-    if (firstLibraryLeakMatcher != null) {
-      val signature: String = firstLibraryLeakMatcher.pattern.toString()
-        .createSHA1Hash()
-      libraryLeaksMap.getOrPut(signature) { firstLibraryLeakMatcher to mutableListOf() }
-        .second += leakTrace
-    } else {
-      applicationLeaksMap.getOrPut(leakTrace.signature) { mutableListOf() } += leakTrace
-    }
-  }
-  val applicationLeaks = applicationLeaksMap.map { (_, leakTraces) -&amp;gt;
-    ApplicationLeak(leakTraces)
-  }
-  val libraryLeaks = libraryLeaksMap.map { (_, pair) -&amp;gt;
-    val (matcher, leakTraces) = pair
-    LibraryLeak(leakTraces, matcher.pattern, matcher.description)
-  }
-  return applicationLeaks to libraryLeaks
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h1 id=&quot;10reporting_heap_analysis&quot;&gt;10.REPORTING_HEAP_ANALYSIS&lt;/h1&gt;
-
-&lt;p&gt;最后一步，报告分析结果，包括：HeapAnalysisSuccess，HeapAnalysisFailure。&lt;/p&gt;
-</description>
-        <pubDate>Fri, 30 Sep 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/</guid>
-        
-        <category>Android</category>
-        
-        <category>LeakCanary-shark</category>
-        
-        
-      </item>
-    
-      <item>
-        <title>内存泄漏治理-LeakCanary库解析</title>
-        <description>&lt;h1 id=&quot;1认识-leakcanary&quot;&gt;1.认识 LeakCanary&lt;/h1&gt;
-
-&lt;h2 id=&quot;11-什么是内存泄漏&quot;&gt;1.1 什么是内存泄漏&lt;/h2&gt;
-
-&lt;p&gt;内存泄漏（Memory Leaks）指不再使用的对象或数据没有被回收，随着内存泄漏的堆积，应用性能会逐渐变差，甚至发生 OOM 奔溃。在 Android 应用中的内存泄漏可以分为 2 类：&lt;/p&gt;
-
-&lt;ul&gt;
-  &lt;li&gt;Java 内存泄露： 不再使用的对象被生命周期更长的 GC Root 引用，无法被判定为垃圾对象而导致内存泄漏（LeakCanary 只能监控 Java 内存泄漏）。&lt;/li&gt;
-  &lt;li&gt;Native 内存泄露： Native 内存没有垃圾回收机制，未手动回收导致内存泄漏。&lt;/li&gt;
-&lt;/ul&gt;
-
-&lt;h2 id=&quot;12-为什么要使用-leakcanary&quot;&gt;1.2 为什么要使用 LeakCanary?&lt;/h2&gt;
-
-&lt;p&gt;LeakCanray 是 Square 开源的 Java 内存泄漏分析工具，用于在实验室阶段检测 Android 应用中常见中的内存泄漏。&lt;/p&gt;
-
-&lt;p&gt;LeakCanary 的特点或优势在于提前预判出 Android 应用中最常见且影响较大的内存泄漏场景，并对此做针对性的监测手段。 这使得 LeakCanary 相比于其他排查内存泄漏的方案（如分析 OOM 异常时的堆栈日志、MAT 分析工具）更加高效。因为当内存泄漏堆积而内存不足时，应用可能从任何一次无关紧要的内存分配中抛出 OOM，堆栈日志只能体现最后一次内存分配的堆栈信息，而无法体现出导致发生 OOM 的主要原因。&lt;/p&gt;
-
-&lt;p&gt;目前，LeakCanary 支持以下五种 Android 场景中的内存泄漏监测：&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;
-    &lt;p&gt;已销毁的 Activity 对象（进入 DESTROYED 状态）&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;已销毁的 Fragment 对象和 Fragment View 对象（进入 DESTROYED 状态）&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;已清除的的 ViewModel 对象（进入 CLEARED 状态）&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;已销毁的的 Service 对象（进入 DESTROYED 状态）&lt;/p&gt;
-  &lt;/li&gt;
-  &lt;li&gt;
-    &lt;p&gt;已从 WindowManager 中移除的 RootView 对象&lt;/p&gt;
-  &lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;h1 id=&quot;2-leakcanary监控内存泄漏原理&quot;&gt;2. LeakCanary监控内存泄漏原理&lt;/h1&gt;
-
-&lt;h2 id=&quot;21-activitywatcher&quot;&gt;2.1 ActivityWatcher&lt;/h2&gt;
-
-&lt;p&gt;通过 Application.registerActivityLifecycleCallbacks(…) 接口监听 Activity.onDestroy() 事件，将当前 Activity 对象交给 ObjectWatcher 监控：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;private val lifecycleCallbacks =
-  object : Application.ActivityLifecycleCallbacks by noOpDelegate() {
-    override fun onActivityDestroyed(activity: Activity) {
-      reachabilityWatcher.expectWeaklyReachable(
-        activity, &quot;${activity::class.java.name} received Activity#onDestroy() callback&quot;
-      )
-    }
-  }
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h2 id=&quot;22-fragmentandviewmodelwatcher&quot;&gt;2.2 FragmentAndViewModelWatcher&lt;/h2&gt;
-
-&lt;p&gt;通过 Application.registerActivityLifecycleCallbacks(…) 接口监听 Activity.onCreate() 事件，再通过 FragmentManager.registerFragmentLifecycleCallbacks(…) 接口监听 Fragment 的生命周期：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;private val fragmentLifecycleCallbacks = object : FragmentManager.FragmentLifecycleCallbacks() {
-
-  override fun onFragmentCreated(
-    fm: FragmentManager,
-    fragment: Fragment,
-    savedInstanceState: Bundle?
-  ) {
-    ViewModelClearedWatcher.install(fragment, reachabilityWatcher)
-  }
-
-  override fun onFragmentViewDestroyed(
-    fm: FragmentManager,
-    fragment: Fragment
-  ) {
-    val view = fragment.view
-    if (view != null) {
-      reachabilityWatcher.expectWeaklyReachable(
-        view, &quot;${fragment::class.java.name} received Fragment#onDestroyView() callback &quot; +
-        &quot;(references to its views should be cleared to prevent leaks)&quot;
-      )
-    }
-  }
-
-  override fun onFragmentDestroyed(
-    fm: FragmentManager,
-    fragment: Fragment
-  ) {
-    reachabilityWatcher.expectWeaklyReachable(
-      fragment, &quot;${fragment::class.java.name} received Fragment#onDestroy() callback&quot;
-    )
-  }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;p&gt;由于 Android Framework 未提供设置 ViewModel.onClear() 全局监听的方法，所以 LeakCanary 是通过 Hook 的方式实现。即：在 Activity.onCreate() 和 Fragment.onCreate() 事件中实例化一个自定义ViewModel，在进入 ViewModel.onClear() 方法时，通过反射获取当前作用域中所有的 ViewModel 对象交给 ObjectWatcher 监控：&lt;/p&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;override fun invoke(activity: Activity) {
-  if (activity is FragmentActivity) {
-    val supportFragmentManager = activity.supportFragmentManager
-    supportFragmentManager.registerFragmentLifecycleCallbacks(fragmentLifecycleCallbacks, true)
-    ViewModelClearedWatcher.install(activity, reachabilityWatcher)
-  }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h2 id=&quot;23-rootviewwatcher&quot;&gt;2.3 RootViewWatcher&lt;/h2&gt;
-
-&lt;p&gt;由于 Android Framework 未提供设置全局监听 RootView 从 WindowManager 中移除的方法，所以 LeakCanary 是通过 Hook 的方式实现的，这一块是通过 squareup 另一个开源库 curtains 实现的。&lt;/p&gt;
-
-&lt;p&gt;RootView 监控这部分源码也比较复杂了，需要通过 2 步 Hook 来实现：&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;Hook WMS 服务内部的 WindowManagerGlobal.mViews RootView 列表，获取 RootView 新增和移除的时机&lt;/li&gt;
-  &lt;li&gt;检查 View 对应的 Window 类型，如果是 Dialog 或 DreamService 等类型，则在注册 View.addOnAttachStateChangeListener() 监听，在其中的 onViewDetachedFromWindow() 回调中将 View 对象交给 ObjectWatcher 监控&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-Kotlin&quot;&gt;private val listener = OnRootViewAddedListener { rootView -&amp;gt;
-  val trackDetached = when(rootView.windowType) {
-    PHONE_WINDOW -&amp;gt; {
-      when (rootView.phoneWindow?.callback?.wrappedCallback) {
-        // Activities are already tracked by ActivityWatcher
-        is Activity -&amp;gt; false
-        is Dialog -&amp;gt; {
-          // Use app context resources to avoid NotFoundException
-          // https://github.com/square/leakcanary/issues/2137
-          val resources = rootView.context.applicationContext.resources
-          resources.getBoolean(R.bool.leak_canary_watcher_watch_dismissed_dialogs)
-        }
-        // Probably a DreamService
-        else -&amp;gt; true
-      }
-    }
-    // Android widgets keep detached popup window instances around.
-    POPUP_WINDOW -&amp;gt; false
-    TOOLTIP, TOAST, UNKNOWN -&amp;gt; true
-  }
-  if (trackDetached) {
-    rootView.addOnAttachStateChangeListener(object : OnAttachStateChangeListener {
-
-      val watchDetachedView = Runnable {
-        reachabilityWatcher.expectWeaklyReachable(
-          rootView, &quot;${rootView::class.java.name} received View#onDetachedFromWindow() callback&quot;
-        )
-      }
-
-      override fun onViewAttachedToWindow(v: View) {
-        mainHandler.removeCallbacks(watchDetachedView)
-      }
-
-      override fun onViewDetachedFromWindow(v: View) {
-        mainHandler.post(watchDetachedView)
-      }
-    })
-  }
-}
-&lt;/code&gt;&lt;/pre&gt;
-
-&lt;h2 id=&quot;24-servicewatcher&quot;&gt;2.4 ServiceWatcher&lt;/h2&gt;
-
-&lt;p&gt;由于 Android Framework 未提供设置 Service#onDestroy() 全局监听的方法，所以 LeakCanary 是通过 Hook 的方式实现的。&lt;/p&gt;
-
-&lt;p&gt;Service 监控这部分源码比较复杂了，需要通过 2 步 Hook 来实现：&lt;/p&gt;
-
-&lt;ol&gt;
-  &lt;li&gt;Hook 主线程消息循环的 mH.mCallback 回调，监听其中的 STOP_SERVICE 消息，将即将 Destroy 的 Service 对象暂存起来（由于 ActivityThread.H 中没有 DESTROY_SERVICE 消息，所以不能直接监听到 onDestroy() 事件，需要第 2 步）&lt;/li&gt;
-  &lt;li&gt;使用动态代理 Hook AMS 与 App 通信的的 IActivityManager Binder 对象，代理其中的 serviceDoneExecuting() 方法，视为 Service.onDestroy() 的执行时机，拿到暂存的 Service 对象交给 ObjectWatcher 监控&lt;/li&gt;
-&lt;/ol&gt;
-
-&lt;pre&gt;&lt;code class=&quot;language-TypeScript&quot;&gt;override fun install() {
-  checkMainThread()
-  check(uninstallActivityThreadHandlerCallback == null) {
-    &quot;ServiceWatcher already installed&quot;
-  }
-  check(uninstallActivityManager == null) {
-    &quot;ServiceWatcher already installed&quot;
-  }
-  try {
-    swapActivityThreadHandlerCallback { mCallback -&amp;gt;
-      uninstallActivityThreadHandlerCallback = {
-        swapActivityThreadHandlerCallback {
-          mCallback
-        }
-      }
-      Handler.Callback { msg -&amp;gt;
-        // https://github.com/square/leakcanary/issues/2114
-        // On some Motorola devices (Moto E5 and G6), the msg.obj returns an ActivityClientRecord
-        // instead of an IBinder. This crashes on a ClassCastException. Adding a type check
-        // here to prevent the crash.
-        if (msg.obj !is IBinder) {
-          return@Callback false
-        }
-
-        if (msg.what == STOP_SERVICE) {
-          val key = msg.obj as IBinder
-          activityThreadServices[key]?.let {
-            onServicePreDestroy(key, it)
-          }
-        }
-        mCallback?.handleMessage(msg) ?: false
-      }
-    }
-    swapActivityManager { activityManagerInterface, activityManagerInstance -&amp;gt;
-      uninstallActivityManager = {
-        swapActivityManager { _, _ -&amp;gt;
-          activityManagerInstance
-        }
-      }
-      Proxy.newProxyInstance(
-        activityManagerInterface.classLoader, arrayOf(activityManagerInterface)
-      ) { _, method, args -&amp;gt;
-        if (METHOD_SERVICE_DONE_EXECUTING == method.name) {
-          val token = args!![0] as IBinder
-          if (servicesToBeDestroyed.containsKey(token)) {
-            onServiceDestroyed(token)
-          }
-        }
-        try {
-          if (args == null) {
-            method.invoke(activityManagerInstance)
-          } else {
-            method.invoke(activityManagerInstance, *args)
-          }
-        } catch (invocationException: InvocationTargetException) {
-          throw invocationException.targetException
-        }
-      }
-    }
-  } catch (ignored: Throwable) {
-    SharkLog.d(ignored) { &quot;Could not watch destroyed services&quot; }
-  }
-}
-&lt;/code&gt;&lt;/pre&gt;
-</description>
-        <pubDate>Sat, 24 Sep 2022 20:00:00 +0800</pubDate>
-        <link>http://localhost:4000/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/</link>
-        <guid isPermaLink="true">http://localhost:4000/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/</guid>
-        
-        <category>Android</category>
-        
-        <category>MemoryLeak</category>
-        
-        <category>LeakCanary</category>
         
         
       </item>

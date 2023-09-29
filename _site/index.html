@@ -289,7 +289,113 @@ B站：抖音Android基础技...
 <hr>
 
 <div class="post-preview">
-    <a href="/2023/04/17/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
+    <a href="/2023/04/20/%E5%BE%AE%E4%BF%A1Tinker%E7%83%AD%E4%BF%AE%E5%A4%8D/">
+        <h2 class="post-title">
+            微信Tinker热修复
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                Github地址：https://github.com/Tencent/tinker/tree/dev/tinker-android
+
+
+  
+    如何快速接入请参考Tinker 接入指南；
+  
+  
+    如何自定义类请参考Tinker 自定义扩展；
+  
+  
+    Tinker的API预览请参考Tinker API预览；
+  
+
+
+tinker-android的源码主要包括三...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on April 20, 2023
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2023/04/12/%E7%BE%8E%E5%9B%A2Robust%E7%83%AD%E4%BF%AE%E5%A4%8D/">
+        <h2 class="post-title">
+            美团Robust热修复
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                Github地址：https://github.com/Meituan-Dianping/Robust
+WIKI：https://github.com/Meituan-Dianping/Robust/wiki
+Instant Run原理：https://android.googlesource.com/platform/tools/base/+/studio-3.0/instant-run/...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on April 12, 2023
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2023/04/05/Android%E7%83%AD%E4%BF%AE%E5%A4%8D%E5%8E%9F%E7%90%86/">
+        <h2 class="post-title">
+            Android热修复原理
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                
+
+
+  
+    
+       
+      Dalvik
+      ART
+      AOP
+      HotFix
+       
+    
+  
+  
+    
+      Dexposed
+      ✓
+       
+      ✓
+      ✓
+      替换Method的nativeFunc
+    
+    
+      AndFix / HotFix
+   ...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on April 5, 2023
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2023/03/30/Android%E8%B5%84%E6%BA%90%E5%8A%A0%E8%BD%BD%E6%B5%81%E7%A8%8B/">
         <h2 class="post-title">
             Android资源加载流程
         </h2>
@@ -321,7 +427,7 @@ assets类资源放在工程根目录的assets子目录下，它里面保存的�
         </div>
     </a>
     <p class="post-meta">
-        Posted by Yaku on April 17, 2023
+        Posted by Yaku on March 30, 2023
     </p>
 </div>
 <hr>
@@ -354,6 +460,40 @@ assets类资源放在工程根目录的assets子目录下，它里面保存的�
     </a>
     <p class="post-meta">
         Posted by Yaku on March 24, 2023
+    </p>
+</div>
+<hr>
+
+<div class="post-preview">
+    <a href="/2023/01/30/Activity%E4%BA%8B%E4%BB%B6%E5%88%86%E5%8F%91%E6%B5%81%E7%A8%8B/">
+        <h2 class="post-title">
+            Activity事件分发流程
+        </h2>
+        
+        <h3 class="post-subtitle">
+            
+        </h3>
+        
+        <div class="post-content-preview">
+            
+                1.IMS初始化
+
+
+
+InputManagerService初始化过程中主要创建了2个Native线程：
+
+
+  InputReader，读取底层输入，转换成Input事件，交给InputDispatcher分发。
+  InputDispatcher，向窗口分发Input事件，监控窗口ANR。
+
+
+InputManager::InputManager(
+        const sp&l...
+            
+        </div>
+    </a>
+    <p class="post-meta">
+        Posted by Yaku on January 30, 2023
     </p>
 </div>
 <hr>
@@ -466,127 +606,6 @@ sta...
 </div>
 <hr>
 
-<div class="post-preview">
-    <a href="/2022/10/24/%E5%9F%BA%E4%BA%8Eatrace%E7%BB%9F%E8%AE%A1%E5%BA%94%E7%94%A8%E7%BB%98%E5%88%B6%E6%8E%89%E5%B8%A7/">
-        <h2 class="post-title">
-            基于atrace统计应用绘制掉帧
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                0.概述
-
-ftrace：是一个内核函数跟踪器，function tracer，旨在帮助开发人员和系统设计者可以找到内核内部发生的事情。
-
-atrace：Android tracer，使用ftrace来跟踪Android上层的函数调用。为数据采集部分。
-
-systrace：atrace数据分析工具，将atrace采集上来的数据，以图形化的方式展现出来。
-
-抓取trace方式：
-
-
-  开发者...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on October 24, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/10/10/Android-meminfo%E5%AD%97%E6%AE%B5%E8%AF%A6%E8%A7%A3/">
-        <h2 class="post-title">
-            Android meminfo 字段详解
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                对于Android内存的统计拆分，需要从系统到进程，再细分到内存分类。Android的内存通常被多个进程共享，一个进程占用的内存涉及到虚拟内存、物理内存、私有、共享、图形显存等等。想要详细统计一个进程的内存占用，就需要了解Android 的内存管理机制和对内存的分类拆解。
-
-1.Android 内存管理
-
-Android内存的管理核心是paging和memory-mapping（mmap）。...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on October 10, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/09/30/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-shark%E8%A7%A3%E6%9E%90hprof%E6%96%87%E4%BB%B6/">
-        <h2 class="post-title">
-            内存泄漏治理shark解析hprof文件
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                解析hprof文件主要分为如下几个步骤，逐一来介绍。
-
-1.PARSING_HEAP_DUMP
-
-这一步是解析hprof文件，包含两部分：
-
-
-  解析Header部分
-  解析Records部分
-
-
-hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/src/share/demo/jvmti/hprof/man...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on September 30, 2022
-    </p>
-</div>
-<hr>
-
-<div class="post-preview">
-    <a href="/2022/09/24/%E5%86%85%E5%AD%98%E6%B3%84%E6%BC%8F%E6%B2%BB%E7%90%86-LeakCanary%E5%BA%93%E8%A7%A3%E6%9E%90/">
-        <h2 class="post-title">
-            内存泄漏治理-LeakCanary库解析
-        </h2>
-        
-        <h3 class="post-subtitle">
-            
-        </h3>
-        
-        <div class="post-content-preview">
-            
-                1.认识 LeakCanary
-
-1.1 什么是内存泄漏
-
-内存泄漏（Memory Leaks）指不再使用的对象或数据没有被回收，随着内存泄漏的堆积，应用性能会逐渐变差，甚至发生 OOM 奔溃。在 Android 应用中的内存泄漏可以分为 2 类：
-
-
-  Java 内存泄露： 不再使用的对象被生命周期更长的 GC Root 引用，无法被判定为垃圾对象而导致内存泄漏（LeakCanary 只...
-            
-        </div>
-    </a>
-    <p class="post-meta">
-        Posted by Yaku on September 24, 2022
-    </p>
-</div>
-<hr>
-
 
 <!-- Pager -->
 
@@ -621,39 +640,39 @@ hprof文件格式参考：http://hg.openjdk.java.net/jdk6/jdk6/jdk/raw-file/tip/
                 <a data-sort="0001" 
                     href="/archive/?tag=Android"
                     title="Android"
-                    rel="32">Android</a>
+                    rel="33">Android</a>
         
-                <a data-sort="0027" 
+                <a data-sort="0028" 
                     href="/archive/?tag=SystemUI"
                     title="SystemUI"
                     rel="6">SystemUI</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
                     href="/archive/?tag=ANR"
                     title="ANR"
                     rel="3">ANR</a>
         
-                <a data-sort="0030" 
+                <a data-sort="0031" 
+                    href="/archive/?tag=Activity"
+                    title="Activity"
+                    rel="3">Activity</a>
+        
+                <a data-sort="0031" 
                     href="/archive/?tag=HotFix"
                     title="HotFix"
                     rel="3">HotFix</a>
         
-                <a data-sort="0031" 
-                    href="/archive/?tag=Activity"
-                    title="Activity"
-                    rel="2">Activity</a>
-        
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=Binder"
                     title="Binder"
                     rel="2">Binder</a>
         
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=Memory"
                     title="Memory"
                     rel="2">Memory</a>
         
-                <a data-sort="0031" 
+                <a data-sort="0032" 
                     href="/archive/?tag=MemoryLeak"
                     title="MemoryLeak"
                     rel="2">MemoryLeak</a>
